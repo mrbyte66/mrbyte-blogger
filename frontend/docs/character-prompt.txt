@@ -1,0 +1,8 @@
+Use case: stylized-concept
+Asset type: standalone transparent character cutout for a premium personal software and literature website.
+Primary request: A premium hyperrealistic 3D rendered male upper-body character wearing a charcoal turtleneck. His head is replaced by a beautiful chunky graphite CRT monitor. The screen faces the camera almost straight on, with subtle three-quarter dimensionality to show monitor depth. Curly dark hair tuft on top and around the sides of the monitor. Round black spectacles physically positioned over the glass screen. The screen shows exactly two simple softly glowing ice-white eyes.
+Style/medium: Sophisticated fashion editorial styling, realistic sculptural materials, impeccable high-end 3D rendering, believable glass reflections, detailed fine knit fabric and brushed metal. Subtle cables at back. Broad male shoulders.
+Composition/framing: Portrait 1024x1536 if possible. Single centered bust from top of hair to mid torso. Entire head, hair, glasses, and shoulder silhouette fully inside frame, with generous margin above and on both sides. Cut bottom at mid torso. No hands needed.
+Lighting/mood: Neutral cool soft studio key light with subtle pale mint rim light. Restrained, intelligent, quietly charismatic.
+Scene/backdrop: Genuinely transparent background with true alpha, no background scene or ground.
+Constraints: One character only. Standalone asset, no webpage screenshot. No text, UI, logos, watermark, or other objects. Preserve generous clear transparent space around the silhouette.

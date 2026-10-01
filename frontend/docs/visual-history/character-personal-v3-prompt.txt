@@ -1,0 +1,8 @@
+Use case: identity-preserve
+Image 1 is the EDIT TARGET: transparent CRT monitor-headed male bust, blank screen, charcoal turtleneck.
+Image 2 is a PERSONAL APPEARANCE REFERENCE ONLY, supplied by the person pictured. Adapt only his hair and spectacle style to the CRT character.
+Preserve the CRT-head concept, exact monitor geometry, location, proportions, camera angle, metal casing, cables, dark inactive glass, charcoal sweater, body, lighting and portrait crop. Preserve the 1024x1536 composition and true alpha transparent background.
+Change hair: match the reference person's short natural dark curls and higher receding hairline. Substantially reduce hair volume and density from image 1. Use restrained small natural curls, with an exposed upper-front monitor casing analogous to the person's high forehead, visibly receded temples, and modest curls primarily along top/back/sides. No hanging fringe. No dense wig, huge ringlets, thick pompadour or long waves. The hairline and slim glasses should make this fictional monitor character recognizably inspired by the reference.
+Change spectacles: slim black softly rectangular frames like image 2, with gently rounded corners rather than circular lenses. Keep lens centers near source coordinates x330,y595 and x543,y589 on the 1024x1536 canvas, with similar overall lens size and placement. Physically believable glasses on monitor.
+The CRT glass must remain blank dark inactive glass with subtle reflections and surface texture, no baked eyes, face, or glow; animated eyes are added separately in code.
+No human face or beard on the monitor, no exposed human skin added, no reference-photo background or jacket, no text, UI, logos, props, or other changes. Photorealistic premium 3D materials.

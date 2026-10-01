@@ -1,0 +1,6 @@
+Use case: precise-object-edit
+Edit target: the supplied CRT monitor-headed male character image, 1024x1536.
+Change ONLY these two details:
+1. Make the dark hair distinctly tighter and curlier: dense natural small springy ringlets instead of the existing long loose waves. Retain the original overall hair silhouette, volume, height, position, and cool rim lighting.
+2. Remove BOTH glowing white eye ovals and all their bloom completely. Leave dark inactive CRT glass behind both round spectacle lenses, preserving original subtle glass reflections and screen surface texture. The screen must be entirely blank with NO eyes, face, graphics, or residual eye glow, because animated eyes will be composited into the website later.
+Strict invariants: Preserve the exact graphite monitor casing, spectacles and their precise placement, monitor screen geometry, body, turtleneck, fabric texture, cables, camera angle, proportions, object placement, crop, lighting, and 1024x1536 portrait composition. Keep all non-hair elements registered to the same pixel positions as closely as possible, particularly the spectacle lens centers and screen. Preserve true alpha transparency around the subject. No new background, text, UI, logos, props, or other changes. This is a standalone transparent asset, not a website screenshot.
