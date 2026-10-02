@@ -1,6 +1,6 @@
 import { topics, type Topic } from "../content";
 
-export const blockKinds = ["header", "intro", "scene", "articles", "quote", "about", "projects", "footer"] as const;
+export const blockKinds = ["header", "intro", "scene", "articles", "series", "quote", "about", "projects", "footer"] as const;
 export type BlockKind = (typeof blockKinds)[number];
 export type Accent = string;
 export type Typography = "modern" | "editorial" | "mono";
@@ -16,6 +16,7 @@ export type PageBlock =
   | (Base<"intro"> & { title: string; description: string; eyebrow: string; layout: IntroLayout })
   | (Base<"scene"> & { title: string; emphasis: string; description: string })
   | (Base<"articles"> & { title: string; category: Topic; display: "rows" | "cards"; loading: "all" | "progressive" })
+  | (Base<"series"> & { title: string; display: "cards" | "list" })
   | (Base<"quote"> & { text: string; attribution: string; display: QuoteDisplay })
   | (Base<"about"> & { title: string; text: string })
   | (Base<"projects"> & { title: string })
@@ -40,11 +41,12 @@ const starterKinds: Record<Starter, BlockKind[]> = {
 };
 export const blockLabels: Record<BlockKind, string> = {
   header: "Üst menü", intro: "Giriş", scene: "Karakter sahnesi", articles: "Yazı akışı",
-  quote: "Alıntı", about: "Hakkımda", projects: "Projeler", footer: "Footer",
+  series: "Seriler", quote: "Alıntı", about: "Hakkımda", projects: "Projeler", footer: "Footer",
 };
 export const blockDescriptions: Record<BlockKind, string> = {
   header: "Site adı ve içeriklere yönlendiren menü.", intro: "Güçlü bir başlık ve kısa bir giriş.",
   scene: "Karakter, hareket ve sahne içi gezinme.", articles: "Yazıları kategoriye göre listele.",
+  series: "Sıralı yazı serilerini bir öğrenme yolculuğuna dönüştür.",
   quote: "Bir düşünceye nefes alacak yer aç.", about: "Ekranın arkasındaki insanı anlat.",
   projects: "Projelerin için bir bölüm ayır.", footer: "Sayfayı bir imzayla tamamla.",
 };
@@ -66,6 +68,7 @@ export function createBlock(kind: BlockKind, id: string): PageBlock {
     case "intro": return { kind, id, layout: "statement", eyebrow: "KOD, KELİME VE ARADAKİLER", title: "Merakın kaynak kodu.", description: "Yazılım, yapay zekâ ve satır aralarında kalan düşünceler. Bir geliştiricinin açık defteri." };
     case "scene": return { kind, id, title: "Kod yazarım.", emphasis: "Bazen de satır.", description: "Yazılım, edebiyat ve\nikisinin arasında bir insan." };
     case "articles": return { kind, id, title: "Açık defter", category: "Tümü", display: "rows", loading: "progressive" };
+    case "series": return { kind, id, title: "Seriler", display: "cards" };
     case "quote": return { kind, id, display: "band", text: "Bir sorunun peşinden gitmek de bir başlangıçtır.", attribution: "Kişisel not" };
     case "about": return { kind, id, title: "Bir insan. Birçok merak.", text: "Kod yazıyorum. Yapay zekâ, kitaplar ve gündelik meraklar üzerine düşünüyorum. Bu defter, hepsinin yan yana durabildiği bir yer." };
     case "projects": return { kind, id, title: "Deney alanı" };
@@ -198,6 +201,7 @@ function validBlock(value: unknown): value is PageBlock {
     case "intro": return text(value.title, 160) && text(value.description) && text(value.eyebrow, 120) && typeof value.layout === "string" && ["statement", "centered", "split"].includes(value.layout);
     case "scene": return text(value.title, 160) && text(value.emphasis, 160) && text(value.description);
     case "articles": return text(value.title, 160) && topics.some((topic) => topic === value.category) && typeof value.display === "string" && ["rows", "cards"].includes(value.display) && typeof value.loading === "string" && ["all", "progressive"].includes(value.loading);
+    case "series": return text(value.title, 160) && typeof value.display === "string" && ["cards", "list"].includes(value.display);
     case "quote": return text(value.text) && text(value.attribution, 120) && typeof value.display === "string" && ["band", "card"].includes(value.display);
     case "about": return text(value.title, 160) && text(value.text);
     case "projects": return text(value.title, 160);

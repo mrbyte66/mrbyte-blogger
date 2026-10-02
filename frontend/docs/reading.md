@@ -13,6 +13,8 @@ Apply highlights via the browser Highlight registry without wrapping or mutating
 
 Toolbar and closed panel never cover article text. Reserve space on desktop while the note panel is open; mobile uses a dismissible bottom panel. Support keyboard focus, reduced motion, local storage errors and browsers without highlight rendering. No raw HTML is accepted for notes.
 
+Selection remains available while the reader invokes an annotation action. On pointer release or collapse outside the toolbar/panel, clear the stale selection preview and native browser selection; keep stored highlights until the visitor removes that saved record. Never leave a stale quote eligible for a later action.
+
 Anonymous marks remain private to the local browser. They are not owner-public annotations, server-saved records, or an authenticated account feature. Public layers and syncing require separate backend contracts.
 
 Reference: [MDN CSS highlight pseudo-element](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::highlight).

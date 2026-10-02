@@ -8,6 +8,7 @@ Read the repository `../AGENTS.md` first. Then consult only the frontend guides 
 | React boundaries and frontend/backend integration | `docs/frontend.md` |
 | Theme renderer, blocks, local editor and preview | `docs/builder.md` |
 | Modular article annotations and local notes | `docs/reading.md` |
+| Series, chapter order and future member visit history | `docs/series.md` |
 | Test and acceptance criteria | `docs/quality.md` |
 
 This is a Next.js App Router / React / TypeScript application. Keep components focused; content definitions live in `lib/`, screen composition in `components/`, and styling in `app/globals.css`. Do not introduce backend behavior in Next.js route handlers.

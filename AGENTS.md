@@ -10,6 +10,9 @@ This repository contains separate frontend and backend applications.
 | Local reading tools and future annotation layers | `docs/features/reading-tools.md` |
 | Planned owner-managed nostalgia corner | `docs/features/nostalgia-corner.md` |
 | Planned editable article summaries | `docs/features/article-summary.md` |
+| Blog series and chapter journeys | `docs/features/blog-series.md` |
+| Public membership introduction | `docs/features/site-introduction.md` |
+| Interactive character rotation | `docs/features/character-interaction.md` |
 | Frontend implementation/design/tests | `frontend/AGENTS.md` |
 | Backend implementation/API/domain/tests | `backend/AGENTS.md` |
 

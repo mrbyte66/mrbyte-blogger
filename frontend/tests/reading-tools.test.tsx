@@ -132,6 +132,23 @@ describe("browser-local reading tools", () => {
     unmount();
     expect(registry.delete).toHaveBeenCalledWith("mrbyte-reading-underline");
   });
+  it("clears a stale selection when the reader releases or collapses it, while keeping it for the toolbar action", async () => {
+    const user = userEvent.setup();
+    const { container } = renderReader();
+    const highlight = screen.getByRole("button", { name: "Seçili metni fosforlu kalemle işaretle" });
+    selectText();
+    expect(highlight.hasAttribute("disabled")).toBe(false);
+    await user.click(highlight);
+    expect(saved()?.marks).toHaveLength(1);
+    expect(window.getSelection()?.isCollapsed).toBe(true);
+
+    const paragraph = container.querySelector('[data-reading-anchor="paragraph-0"]')!;
+    selectText(0, 5);
+    act(() => { window.getSelection()!.removeAllRanges(); document.dispatchEvent(new Event("selectionchange")); });
+    fireEvent.pointerUp(paragraph, { pointerType: "mouse", button: 0 });
+    expect(screen.getByRole("button", { name: "Seçili metnin altını çiz" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByText("Seçilen alıntı")).toBeNull();
+  });
   it("closes the panel with Escape and exposes the paragraph after a mobile jump", async () => {
     localStorage.setItem(readingStorageKey("sample"), JSON.stringify({ version: 1, articleId: "sample", marks: [mark] }));
     const user = userEvent.setup(); renderReader();

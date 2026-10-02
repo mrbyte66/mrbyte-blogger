@@ -1,61 +1,80 @@
 import { useReducer } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { ContentPanel } from "../components/ContentPanel";
-import { articles } from "../lib/content";
 import { initialNavigation, navigate } from "../lib/navigation";
 
-function Harness() {
-  const [navigation, dispatch] = useReducer(navigate, { ...initialNavigation, section: "writing" });
+function Reader() {
+  const [navigation, dispatch] = useReducer(navigate, { ...initialNavigation, section: "writing", articleSlug: "yapay-zeka-ile-dusunmek", topic: "Yazılım" });
   return <ContentPanel navigation={navigation} dispatch={dispatch} />;
 }
+function touch(element: Element, type: string, x: number, y: number) {
+  const event = new Event(type, { bubbles: true });
+  Object.assign(event, { pointerType: "touch", pointerId: 1, clientX: x, clientY: y });
+  fireEvent(element, event);
+}
 
-describe("reading panel", () => {
-  it("filters, opens a text and returns to the same filtered list", async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-    await user.click(screen.getByRole("button", { name: "Edebiyat" }));
-    expect(screen.queryByText("Yapay zekâ ile düşünmek")).toBeNull();
-    await user.click(screen.getByRole("button", { name: /Satır aralarında bir yer/ }));
-    expect(screen.getByRole("heading", { name: "Satır aralarında bir yer" })).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Satır aralarında bir yer" }));
-    await user.click(screen.getByRole("button", { name: /Bütün yazılar/ }));
-    expect(screen.getByRole("button", { name: "Edebiyat" }).getAttribute("aria-pressed")).toBe("true");
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: /Satır aralarında bir yer/ }));
-    expect(screen.queryByText("Yapay zekâ ile düşünmek")).toBeNull();
+describe("reader return shortcuts", () => {
+  beforeEach(() => { localStorage.clear(); });
+  it("keeps header tabs keyboard accessible without sliding catalog content", () => {
+    const { container } = render(<Reader />);
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    const articles = screen.getByRole("tab", { name: "Yazılar", selected: true });
+    articles.focus();
+    fireEvent.keyDown(articles, { key: "ArrowRight" });
+    const series = screen.getByRole("tab", { name: "Seriler", selected: true });
+    expect(document.activeElement).toBe(series);
+    expect(container.querySelector(".cover-changing")).toBeNull();
+    fireEvent.click(series);
+    expect(container.querySelector(".click-ripple")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /YZ ile düşün, yaz ve geliştir/ }));
+    expect(container.querySelector(".cover-changing")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "İlk bölümden başla" }));
+    expect(container.querySelector(".cover-changing")).not.toBeNull();
   });
-  it("copies the displayed code verbatim", async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-    await user.click(screen.getByRole("button", { name: /Yapay zekâ ile düşünmek/ }));
-    await user.click(screen.getByRole("button", { name: "Kodu kopyala" }));
-    expect(await navigator.clipboard.readText()).toBe(articles[0].code);
-    expect(screen.getByRole("button", { name: "Kopyalandı" })).toBeTruthy();
+  it("returns from a series chapter to its chapters, then its catalog, then the scene", () => {
+    render(<Reader />);
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    fireEvent.click(screen.getByRole("tab", { name: "Seriler" }));
+    fireEvent.click(screen.getByRole("button", { name: /YZ ile düşün, yaz ve geliştir/ }));
+    fireEvent.click(screen.getByRole("button", { name: "İlk bölümden başla" }));
+    expect(screen.getByRole("button", { name: "Bölümlere dön" })).toBeTruthy();
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(screen.getByRole("heading", { name: "YZ ile düşün, yaz ve geliştir" })).toBeTruthy();
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(screen.getByRole("heading", { name: "Seriler" })).toBeTruthy();
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("restores the list scroll position after reading a later article", async () => {
-    const user = userEvent.setup();
-    const { container } = render(<Harness />);
-    const scrollArea = container.querySelector(".panel-scroll")!;
-    scrollArea.scrollTop = 280;
-    await user.click(screen.getByRole("button", { name: /Merak da bir alışkanlık/ }));
-    expect(scrollArea.scrollTop).toBe(0);
-    await user.click(screen.getByRole("button", { name: /Bütün yazılar/ }));
-    expect(scrollArea.scrollTop).toBe(280);
+  it("returns to the filtered list on Escape, then closes on a second Escape", () => {
+    render(<Reader />);
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(screen.getByRole("heading", { name: "Yazılar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Yazılım", pressed: true })).toBeTruthy();
+    expect(screen.queryByText("Satır aralarında bir yer")).toBeNull();
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("reports clipboard failures without falsely claiming success", async () => {
-    const user = userEvent.setup();
-    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValueOnce(new Error("Denied"));
-    render(<Harness />);
-    await user.click(screen.getByRole("button", { name: /Yapay zekâ ile düşünmek/ }));
-    await user.click(screen.getByRole("button", { name: "Kodu kopyala" }));
-    expect(screen.getByRole("status").textContent).toContain("Kopyalanamadı");
-    expect(screen.queryByRole("button", { name: "Kopyalandı" })).toBeNull();
+  it("returns with Alt+Left without changing the selected category", () => {
+    render(<Reader />);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowLeft", altKey: true });
+    expect(screen.getByRole("heading", { name: "Yazılar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Yazılım", pressed: true })).toBeTruthy();
   });
-  it("closes in response to native Escape cancellation", () => {
-    render(<Harness />);
-    const dialog = screen.getByRole("dialog");
-    fireEvent(dialog, new Event("cancel", { cancelable: true }));
-    expect(dialog.hasAttribute("open")).toBe(false);
+  it("accepts a deliberate rightward edge swipe, ignoring vertical scroll and cancellation", () => {
+    const { container } = render(<Reader />);
+    const edge = container.querySelector(".panel-swipe-edge") as HTMLElement;
+    edge.setPointerCapture = () => {};
+    touch(edge, "pointerdown", 10, 200);
+    touch(edge, "pointerup", 130, 300);
+    expect(screen.getByRole("heading", { name: "Yapay zekâ ile düşünmek" })).toBeTruthy();
+    touch(edge, "pointerdown", 10, 200);
+    touch(edge, "pointercancel", 100, 200);
+    touch(edge, "pointerup", 130, 200);
+    expect(screen.getByRole("heading", { name: "Yapay zekâ ile düşünmek" })).toBeTruthy();
+    touch(edge, "pointerdown", 10, 200);
+    touch(edge, "pointermove", 130, 210);
+    touch(edge, "pointerup", 130, 210);
+    expect(screen.getByRole("heading", { name: "Yazılar" })).toBeTruthy();
   });
 });

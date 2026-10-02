@@ -53,7 +53,7 @@ export function MonitorFace({ motionEnabled, ready, figure }: Props) {
       const bounds = figure.current?.getBoundingClientRect();
       if (!bounds) return;
       const gaze = getScreenGaze(event.clientX, event.clientY, bounds);
-      const attentive = event.target instanceof Element && event.target.closest(".destination, .latest-note, .index-button");
+      const attentive = event.target instanceof Element && event.target.closest(".destination, .latest-note");
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         element.style.setProperty("--gaze-x", `${gaze.x}px`);

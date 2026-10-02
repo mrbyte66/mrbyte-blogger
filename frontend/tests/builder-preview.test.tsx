@@ -85,6 +85,17 @@ describe("preview message protocol", () => {
 });
 
 describe("rendered theme appearance and canvas interaction", () => {
+  it("renders the shared published series block with its stable permalink and navigation", () => {
+    localStorage.clear();
+    const theme: Theme = { ...createTheme("feed"), blocks: [
+      { kind: "header", id: "series-header" },
+      { kind: "series", id: "series-list", title: "Okuma yolları", display: "list" },
+    ] };
+    const { container } = render(<ThemeRenderer theme={theme} />);
+    expect(screen.getByRole("heading", { name: "Okuma yolları" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Seriler" }).getAttribute("href")).toBe("#seriler");
+    expect(container.querySelector(".series-block-list .series-card")?.getAttribute("href")).toBe("/seriler/yapay-zeka-ile-yazilim");
+  });
   it("applies all visual choices and custom accent to the renderer while preserving article urls", () => {
     const theme: Theme = { ...createTheme("magazine"), accent: "#123456", surface: "night", spacing: "compact" };
     const { container } = render(<ThemeRenderer theme={theme} />);

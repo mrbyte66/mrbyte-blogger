@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useReducer, useState } from "react";
+import { useReducer } from "react";
+import { useSitePreferences } from "./SitePreferences";
 import { Character } from "./Character";
 import { ContentPanel } from "./ContentPanel";
 import { initialNavigation, navigate, type Section } from "../lib/navigation";
@@ -14,37 +15,19 @@ const destinations: { section: Section; number: string; label: string; detail: s
 export function Experience({ siteName = "SATIR", title = "Kod yazarım.", emphasis = "Bazen de satır.", description = "Yazılım, edebiyat ve\nikisinin arasında bir insan.", headingLevel = "h1", colorMode = "remember" }: { siteName?: string; title?: string; emphasis?: string; description?: string; headingLevel?: "h1" | "h2"; colorMode?: "light" | "dark" | "remember" }) {
   const Heading = headingLevel;
   const [navigation, dispatch] = useReducer(navigate, initialNavigation);
-  const [dark, setDark] = useState(colorMode === "dark");
-  const [motionEnabled, setMotionEnabled] = useState(true);
-  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
-
-  useEffect(() => {
-    try {
-      setDark(colorMode === "remember" ? localStorage.getItem("satir:theme") === "dark" : colorMode === "dark");
-      const savedMotion = localStorage.getItem("satir:motion");
-      setMotionEnabled(savedMotion ? savedMotion === "on" : !matchMedia("(prefers-reduced-motion: reduce)").matches);
-    } catch { setMotionEnabled(!matchMedia("(prefers-reduced-motion: reduce)").matches); }
-    setPreferencesLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (!preferencesLoaded) return;
-    try {
-      localStorage.setItem("satir:theme", dark ? "dark" : "light");
-      localStorage.setItem("satir:motion", motionEnabled ? "on" : "off");
-    } catch { /* Private browsing can disable storage. Preferences still work in memory. */ }
-  }, [dark, motionEnabled, preferencesLoaded]);
+  const { colorMode: preference, setColorMode, motionEnabled, setMotionEnabled } = useSitePreferences();
+  const dark = preference ? preference === "dark" : colorMode === "dark";
 
   return <section aria-label="Karakterli evren" className={`experience ${dark ? "theme-dark" : "theme-light"} ${motionEnabled ? "motion-on" : "motion-off"} ${navigation.section ? "panel-open" : ""}`}>
     <a className="skip-link" href="#scene-navigation">İçeriklere geç</a>
     <div className="stage-texture" aria-hidden="true" />
-    <header className="site-header"><button className="wordmark" aria-label={`${siteName} ana sahne`} onClick={() => dispatch({ type: "close" })}>{siteName}<span>.</span></button><span className="header-description">KİŞİSEL BİR EVREN</span><button className="index-button" onClick={() => dispatch({ type: "open", section: "writing" })}><span>Dizini aç</span><span className="index-icon" aria-hidden="true"><i /><i /><i /><i /></span></button></header>
+    <header className="site-header"><button className="wordmark" aria-label={`${siteName} ana sahne`} onClick={() => dispatch({ type: "close" })}>{siteName}<span>.</span></button><span className="header-description">KİŞİSEL BİR EVREN</span></header>
 
     <div className="scene">
       <span className="scene-coordinate" aria-hidden="true">FIG. 001 — İNSAN / MAKİNE</span>
       <div className="scene-halo" aria-hidden="true" />
       <div className="scene-word" aria-hidden="true">merak.</div>
-      <Character motionEnabled={motionEnabled && !navigation.section} />
+      <Character motionEnabled={motionEnabled} />
 
       <div className="introduction"><p className="eyebrow"><span className="tiny-cross" aria-hidden="true">+</span> MERHABA, DÜNYA.</p><Heading className="scene-heading">{title}<br /><em>{emphasis}</em></Heading><p className="intro-description" style={{ whiteSpace: "pre-line" }}>{description}</p><div className="intro-line" aria-hidden="true" /></div>
 
@@ -54,7 +37,7 @@ export function Experience({ siteName = "SATIR", title = "Kod yazarım.", emphas
       <div className="character-caption" aria-hidden="true"><span className="caption-line" /><span>Kıvırcık düşünceler.<br />Düzenli satırlar.</span></div>
     </div>
 
-    <footer className="site-footer"><span className="footer-signature">HER ŞEY BİR MERAKLA BAŞLAR.</span><span className="scene-indicator"><span aria-hidden="true">✳</span> BURADASIN</span><div className="scene-controls"><button aria-label={dark ? "Açık temaya geç" : "Koyu temaya geç"} aria-pressed={dark} onClick={() => setDark(!dark)}><span className="sun-icon" aria-hidden="true">☼</span><span>Işıklar {dark ? "kapalı" : "açık"}</span></button><span className="control-divider" /><button aria-label="Sahne hareketi" aria-pressed={motionEnabled} onClick={() => setMotionEnabled(!motionEnabled)}><span className={`motion-icon ${motionEnabled ? "playing" : ""}`} aria-hidden="true"><i /><i /><i /></span><span className="motion-label">{motionEnabled ? "Hareket açık" : "Hareket kapalı"}</span></button></div></footer>
+    <footer className="site-footer"><span className="footer-signature">HER ŞEY BİR MERAKLA BAŞLAR.</span><span className="scene-indicator"><span aria-hidden="true">✳</span> BURADASIN</span><div className="scene-controls"><button aria-label={dark ? "Açık temaya geç" : "Koyu temaya geç"} aria-pressed={dark} onClick={() => setColorMode(dark ? "light" : "dark")}><span className="sun-icon" aria-hidden="true">☼</span><span>Işıklar {dark ? "kapalı" : "açık"}</span></button><span className="control-divider" /><button aria-label="Sahne hareketi" aria-pressed={motionEnabled} onClick={() => setMotionEnabled(!motionEnabled)}><span className={`motion-icon ${motionEnabled ? "playing" : ""}`} aria-hidden="true"><i /><i /><i /></span><span className="motion-label">{motionEnabled ? "Hareket açık" : "Hareket kapalı"}</span></button></div></footer>
     <ContentPanel navigation={navigation} dispatch={dispatch} siteName={siteName} />
   </section>;
 }

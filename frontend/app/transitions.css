@@ -1,0 +1,49 @@
+/* Cover movements keep surfaces opaque: content slides, rather than dissolves. */
+.content-dialog { opacity:1; --panel-duration:240ms; transition:transform var(--panel-duration) var(--panel-ease),display var(--panel-duration) allow-discrete,overlay var(--panel-duration) allow-discrete; }
+.content-dialog[open] { opacity:1; --panel-duration:420ms; }
+.cover-frame { position:relative; flex:1; min-height:0; overflow:hidden; background:var(--panel); }
+.cover-current,.cover-previous { height:100%; width:100%; background:var(--panel); }
+.cover-current { position:relative; z-index:2; }
+.cover-previous { position:absolute; inset:0; z-index:1; pointer-events:none; }
+.cover-frame .panel-scroll { height:100%; }
+.cover-changing.cover-forward .cover-current { animation:cover-in 420ms var(--motion-ease) both; }
+.cover-changing.cover-forward .cover-previous { animation:cover-aside 420ms var(--motion-ease) both; }
+.cover-changing.cover-back .cover-current { animation:cover-return 360ms var(--motion-ease) both; }
+.cover-changing.cover-back .cover-previous { z-index:3; animation:cover-leave 360ms var(--motion-ease) both; }
+@keyframes cover-in { from { transform:translateX(100%); } to { transform:translateX(0); } }
+@keyframes cover-aside { from { transform:translateX(0); } to { transform:translateX(-24%); } }
+@keyframes cover-return { from { transform:translateX(-24%); } to { transform:translateX(0); } }
+@keyframes cover-leave { from { transform:translateX(0); } to { transform:translateX(100%); } }
+::view-transition-old(root),::view-transition-new(root) { mix-blend-mode:normal; animation-duration:420ms; animation-timing-function:var(--motion-ease); }
+::view-transition-old(root) { animation-name:cover-aside; }
+::view-transition-new(root) { animation-name:cover-in; }
+::view-transition-group(root) { animation-duration:420ms; }
+.route-current { min-height:100dvh; }
+.route-current.route-sliding { position:relative; z-index:101; animation:cover-in 420ms var(--motion-ease) both; }
+body:has(.route-sliding) { overflow-x:clip; }
+.route-previous { position:fixed; inset:0; z-index:100; overflow:hidden; pointer-events:none; }
+.route-previous.route-sliding { animation:cover-aside 420ms var(--motion-ease) both; }
+.elastic-content { transform:translateY(var(--edge-shift,0px)); transition:transform 220ms var(--motion-ease); }
+.panel-content-switch { display:flex; align-items:center; gap:14px; margin-left:8px; }
+.panel-switch-label { font:10px var(--mono); letter-spacing:.12em; color:var(--muted); }
+.writing-tabs { display:flex; gap:4px; padding:4px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+.writing-tabs button { padding:10px 20px; font-size:14px; min-height:42px; border:1px solid transparent; border-radius:8px; color:var(--muted); }
+.writing-tabs button[aria-selected=true] { background:var(--panel); border-color:var(--line); color:var(--ink); font-weight:600; }
+.writing-tabs button:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+.panel-context { display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); padding:4px 36px; color:var(--muted); font-size:12px; }
+.panel-context .panel-back { min-height:36px; font-size:12px; }
+.panel-shell:has(.panel-context) .panel-swipe-edge { top:112px; }
+.catalog-heading { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px 16px; margin:0 0 22px; }
+.catalog-heading h2 { margin:0; font-size:28px; line-height:1.2; font-weight:550; letter-spacing:-.04em; }
+.catalog-heading p { margin:0; font-size:14px; color:var(--muted); }
+.catalog-heading>span { margin-left:auto; font-size:12px; color:var(--muted); }
+.progressive-footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:24px 0 12px; font-size:12px; color:var(--muted); }
+.progressive-footer button { border:1px solid var(--line); border-radius:8px; padding:12px 16px; font-size:13px; min-height:44px; color:var(--ink); }
+.progressive-footer button:hover { background:var(--surface); border-color:var(--muted); }
+.progressive-footer button:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
+.ripple-button { position:relative; overflow:hidden; isolation:isolate; }
+.click-ripple { position:absolute; pointer-events:none; border-radius:50%; background:var(--ink); opacity:0; transform:translate(-50%,-50%) scale(0); animation:click-ripple 360ms ease-out; }
+@keyframes click-ripple { from { opacity:.14; transform:translate(-50%,-50%) scale(0); } to { opacity:0; transform:translate(-50%,-50%) scale(1); } }
+@media(max-width:600px) { .panel-topbar { gap:10px; padding:0 18px; }.panel-content-switch { margin-left:0; gap:0; }.panel-switch-label { display:none; }.writing-tabs button { padding:9px 14px; }.panel-context { padding:4px 20px; }.catalog-heading { gap:8px 12px; }.catalog-heading h2 { font-size:25px; }.catalog-heading>span { width:100%; margin-left:0; } }
+html[data-motion=off]::view-transition-old(root),html[data-motion=off]::view-transition-new(root),html[data-motion=off]::view-transition-group(root) { animation:none; }
+@media(prefers-reduced-motion:reduce) { ::view-transition-old(root),::view-transition-new(root),::view-transition-group(root) { animation:none; } }

@@ -1,46 +1,52 @@
 "use client";
 
-import Link from "next/link";
+import { scrollBehavior } from "../../lib/motion";
+
+import { SlideLink as Link } from "../SlideLink";
 import { useEffect, useRef, useState } from "react";
 import { filterArticles } from "../../lib/content";
 import { blockLabels, type PageBlock, type Theme } from "../../lib/builder/model";
 import { themeAppearance } from "../../lib/builder/appearance";
 import { parseCanvasSelection, previewEvents, type CanvasSelection } from "../../lib/builder/preview-protocol";
 import { useWorkspace } from "../../lib/builder/use-workspace";
+import { ThemeToggle } from "../SitePreferences";
 import { Experience } from "../Experience";
+import { SeriesCatalog } from "../series/SeriesCatalog";
+import { useSeriesWorkspace } from "../../lib/series/use-series-workspace";
+import { useProgressiveItems } from "../../lib/use-progressive-items";
 
 type ArticlesBlock = Extract<PageBlock, { kind: "articles" }>;
 function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolean }) {
   const items = filterArticles(block.category);
-  const [visible, setVisible] = useState(2);
-  const sentinel = useRef<HTMLDivElement>(null);
   const progressive = block.loading === "progressive";
-  const more = progressive && visible < items.length;
-  useEffect(() => {
-    if (!more || !sentinel.current || !("IntersectionObserver" in window)) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) setVisible((count) => Math.min(count + 2, items.length));
-    }, { rootMargin: "120px" });
-    observer.observe(sentinel.current);
-    return () => observer.disconnect();
-  }, [more, visible, items.length]);
+  const feed = useProgressiveItems({ total: progressive ? items.length : 0, listKey: `${block.id}-${block.category}` });
+  const more = progressive && feed.hasMore;
   return <section className="theme-section feed-section" id="yazilar" aria-labelledby={`${block.id}-title`}>
     <div className="section-kicker"><span>01 / DÜŞÜNCELER & NOTLAR</span><span>{String(items.length).padStart(2, "0")} YAZI</span></div>
     <div className="feed-heading"><h2 id={`${block.id}-title`}>{block.title}</h2><span className="feed-sample">Örnek içerikler</span></div>
     <div className={`feed-list feed-${block.display}`}>
-      {(progressive ? items.slice(0, visible) : items).map((article, index) => <Link className="feed-article" key={article.slug} href={`/yazilar/${article.slug}`} target={preview ? "_blank" : undefined}>
+      {(progressive ? items.slice(0, feed.visible) : items).map((article, index) => <Link className="feed-article" key={article.slug} href={`/yazilar/${article.slug}`} target={preview ? "_blank" : undefined}>
         <span className="feed-index">{String(index + 1).padStart(2, "0")}</span>
         <div><div className="feed-meta"><span>{article.category}</span><span>{article.minutes} dk okuma</span></div><h3>{article.title}</h3><p>{article.excerpt}</p></div>
         <span className="feed-arrow" aria-hidden="true">↗</span>
       </Link>)}
     </div>
-    <div ref={sentinel} className="feed-end" aria-live="polite">{more ? <button onClick={() => setVisible((count) => Math.min(count + 2, items.length))}>Daha fazla yazı ↓</button> : <span>Şimdilik defterin sonuna geldin. <span aria-hidden="true">✳</span></span>}</div>
+    <div ref={feed.sentinel} className="feed-end" aria-live="polite">{more ? <button onClick={feed.loadMore}>Sonraki 5 yazıyı göster ↓</button> : <span>Şimdilik defterin sonuna geldin. <span aria-hidden="true">✳</span></span>}</div>
   </section>;
 }
 
 export function ThemeNavigation({ theme }: { theme: Theme }) {
-  const links = [{ kind: "articles", id: "yazilar", label: "Yazılar" }, { kind: "projects", id: "projeler", label: "Projeler" }, { kind: "about", id: "hakkimda", label: "Hakkımda" }];
-  return <header className="theme-header"><a className="theme-wordmark" href="#top">{theme.siteName}<span>.</span></a><nav aria-label="Site menüsü">{links.filter((link) => theme.blocks.some((block) => block.kind === link.kind)).map((link) => <a key={link.id} href={`#${link.id}`}>{link.label}</a>)}</nav><span className="theme-header-note">KİŞİSEL BİR DEFTER <span aria-hidden="true">✳</span></span></header>;
+  const links = [{ kind: "articles", id: "yazilar", label: "Yazılar" }, { kind: "series", id: "seriler", label: "Seriler" }, { kind: "projects", id: "projeler", label: "Projeler" }, { kind: "about", id: "hakkimda", label: "Hakkımda" }];
+  return <header className="theme-header"><a className="theme-wordmark" href="#top">{theme.siteName}<span>.</span></a><nav aria-label="Site menüsü">{links.filter((link) => theme.blocks.some((block) => block.kind === link.kind)).map((link) => <a key={link.id} href={`#${link.id}`}>{link.label}</a>)}</nav><ThemeToggle defaultDark={theme.surface === "night"} /><span className="theme-header-note">KİŞİSEL BİR DEFTER <span aria-hidden="true">✳</span></span></header>;
+}
+
+function SeriesBlock({ block }: { block: Extract<PageBlock, { kind: "series" }> }) {
+  const { series } = useSeriesWorkspace();
+  return <section className={`theme-section series-block series-block-${block.display}`} id="seriler" aria-labelledby={`${block.id}-title`}>
+    <p className="editorial-eyebrow">ADIM ADIM / OKUMA YOLLARI</p>
+    <h2 id={`${block.id}-title`}>{block.title}</h2>
+    <SeriesCatalog series={series} />
+  </section>;
 }
 
 function BlockContent({ block, theme, primaryTitle, preview }: { block: PageBlock; theme: Theme; primaryTitle?: string; preview: boolean }) {
@@ -54,6 +60,7 @@ function BlockContent({ block, theme, primaryTitle, preview }: { block: PageBloc
         }
         case "scene": return <Experience key={`${block.id}-${theme.surface}`} colorMode={theme.surface === "night" ? "dark" : theme.surface === "warm" ? "light" : "remember"} headingLevel={primaryTitle === block.id ? "h1" : "h2"} siteName={theme.siteName} title={block.title} emphasis={block.emphasis} description={block.description} />;
         case "articles": return <ArticleFeed key={`${block.id}-${block.category}-${block.loading}`} block={block} preview={preview} />;
+        case "series": return <SeriesBlock block={block} />;
         case "quote": return <section className={`theme-section theme-quote quote-${block.display}`}><blockquote><p><span className="quote-mark" aria-hidden="true">“</span>{block.text}<span className="quote-mark" aria-hidden="true">”</span></p><cite>{block.attribution}</cite></blockquote></section>;
         case "about": return <section className="theme-section theme-about" id="hakkimda" aria-labelledby={`${block.id}-title`}><p className="editorial-eyebrow">EKRANIN DİĞER TARAFINDA</p><h2 id={`${block.id}-title`}>{block.title}</h2><p>{block.text}</p></section>;
         case "projects": return <section className="theme-section theme-projects" id="projeler" aria-labelledby={`${block.id}-title`}><p className="editorial-eyebrow">KOD & DENEYLER</p><h2 id={`${block.id}-title`}>{block.title}</h2><div className="project-empty"><span aria-hidden="true">[ _ ]</span><p>İlk deney için yer hazır.<br /><small>Henüz proje eklenmedi.</small></p></div></section>;
@@ -69,7 +76,7 @@ export function ThemeRenderer({ theme, preview = false, selection, onSelect }: {
   const selectedExists = theme.blocks.some((block) => block.id === selection?.id);
   useEffect(() => {
     if (!editing || !selection?.id || !selectedExists) return;
-    nodes.current.get(selection.id)?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    nodes.current.get(selection.id)?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
   }, [selection?.id, selection?.request, editing, selectedExists]);
 
   return <main id="top" className={`${appearance.className} ${editing ? "canvas-editing" : ""} ${editing && selectedExists ? "canvas-spotlight" : ""}`} style={appearance.style}>

@@ -1,5 +1,7 @@
 "use client";
 
+import { scrollBehavior } from "../../lib/motion";
+
 import { useEffect, useRef, useState } from "react";
 import { anchorRange, findAnchor, maxMarks, maxNoteLength, selectionAnchors, type ReadingMark, type ReadingMarkKind, type TextAnchor } from "../../lib/reading/model";
 import { readReadingDocument, writeReadingDocument } from "../../lib/reading/storage";
@@ -38,9 +40,28 @@ export function ReadingTools({ articleId, contentRootId }: { articleId: string; 
       if (!root) return;
       const next = selectionAnchors(root, window.getSelection());
       if (next.length) { setFragments(next); setStatus(""); }
+      else if (root.contains(document.activeElement)) setFragments([]);
+    }
+    function finishPointerSelection(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Element) || target.closest(".reading-toolbar, .reading-panel")) return;
+      const root = document.getElementById(contentRootId);
+      if (!root) return;
+      const next = root.contains(target) ? selectionAnchors(root, window.getSelection()) : [];
+      setFragments(next);
+      if (!next.length) {
+        setWriting(false);
+        window.getSelection()?.removeAllRanges();
+      }
     }
     document.addEventListener("selectionchange", capture);
-    return () => document.removeEventListener("selectionchange", capture);
+    document.addEventListener("pointerup", finishPointerSelection);
+    document.addEventListener("pointercancel", finishPointerSelection);
+    return () => {
+      document.removeEventListener("selectionchange", capture);
+      document.removeEventListener("pointerup", finishPointerSelection);
+      document.removeEventListener("pointercancel", finishPointerSelection);
+    };
   }, [contentRootId]);
   useEffect(() => { if (writing) noteInput.current?.focus(); }, [writing]);
   useEffect(() => {
@@ -96,7 +117,7 @@ export function ReadingTools({ articleId, contentRootId }: { articleId: string; 
     const paragraph = root && findAnchor(root, mark.fragments[0].anchorId);
     if (!paragraph) { setStatus("Bu alıntının bölümü artık bulunamıyor. Kayıtlı notun listede korunuyor."); return; }
     if (matchMedia("(max-width: 1100px)").matches) setOpen(false);
-    paragraph.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    paragraph.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     setStatus("Alıntının bulunduğu bölüme gidildi.");
   }
   const disabled = !ready || fragments.length === 0 || marks.length >= maxMarks;

@@ -1,0 +1,37 @@
+.series-catalog { display:grid; gap:12px; }
+.series-block>h2 { font-size:clamp(28px,4vw,42px); font-weight:550; letter-spacing:-.04em; line-height:1.2; margin:24px 0; }
+.series-block-cards .series-catalog { grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); }
+.series-block-list .series-card { border-radius:0; border-width:0 0 1px; padding:26px 0; background:transparent; }
+.series-block-list .series-card-footer { border:0; padding-top:0; }
+.series-card { display:flex; flex-direction:column; gap:12px; width:100%; padding:20px; text-align:left; border:1px solid var(--line); border-radius:12px; background:var(--panel); color:var(--ink); transition:border-color 160ms,background-color 160ms; }
+.series-card:hover { border-color:var(--muted); background:var(--surface); }
+.series-card:focus-visible,.series-chapter:focus-visible,.series-article-nav :is(a,button):focus-visible { outline:2px solid var(--ink); outline-offset:4px; }
+.series-card>strong { font-size:22px; font-weight:550; letter-spacing:-.035em; line-height:1.25; }
+.series-meta,.series-card-footer { display:flex; flex-wrap:wrap; gap:8px 16px; font-size:12px; line-height:1.5; color:var(--muted); }
+.series-meta>span+span::before { content:"·"; margin-right:12px; }
+.series-summary { font-size:15px; line-height:1.65; color:var(--muted); max-width:65ch; }
+.series-card-footer { justify-content:space-between; }
+.series-card-footer>span:last-child { color:var(--ink); }
+.series-detail :is(h1,h2) { font-size:clamp(26px,3.2vw,36px); line-height:1.2; letter-spacing:-.04em; font-weight:550; margin:16px 0 12px; }
+.series-start-actions { display:flex; flex-wrap:wrap; gap:12px; margin:20px 0 24px; }
+.series-primary,.series-secondary { display:inline-flex; align-items:center; justify-content:center; min-height:46px; border-radius:28px; padding:12px 20px; font-size:14px; border:1px solid var(--line); }
+.series-start-actions .series-primary { background:var(--accent); color:var(--accent-ink,#18301d); }
+.series-secondary { background:var(--surface); color:var(--ink); }
+.series-chapters { margin:0; padding:0; list-style:none; display:grid; gap:12px; }
+.series-chapter { display:flex; gap:16px; align-items:flex-start; width:100%; text-align:left; padding:20px; border:1px solid var(--line); border-radius:12px; color:var(--ink); background:var(--panel); transition:border-color 160ms,background-color 160ms; }
+.series-chapter:hover { border-color:var(--muted); background:var(--surface); }
+.series-chapter-number { font-size:14px; color:var(--muted); padding-top:6px; font-variant-numeric:tabular-nums; }
+.series-chapter-copy { display:flex; flex-direction:column; gap:8px; flex:1; min-width:0; }
+.series-chapter-copy>strong { font-size:20px; letter-spacing:-.025em; font-weight:550; line-height:1.35; }
+.series-chapter-copy>span { font-size:15px; line-height:1.7; color:var(--muted); }
+.series-chapter-copy>small { font-size:12px; color:var(--muted); }
+.series-empty { padding:25px 0; font-size:16px; line-height:1.75; color:var(--muted); }
+.series-article-nav { border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin:0 0 24px; background:var(--panel); color:var(--ink); }
+.series-article-heading { display:flex; flex-wrap:wrap; gap:10px 20px; align-items:center; justify-content:space-between; font-size:14px; }
+.series-article-heading>span { color:var(--muted); font-size:12px; }
+.series-article-heading :is(a,button) { text-align:left; min-height:44px; border:1px solid transparent; border-radius:8px; padding:8px 10px; }
+.series-article-nav :is(a,button):hover { border-color:var(--muted); background:var(--surface); }
+.series-article-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:14px; margin-top:12px; }
+.series-article-actions :is(a,button) { padding:10px 12px; border:1px solid var(--line); border-radius:24px; font-size:13px; min-height:44px; }
+.series-permalink-content { max-width:850px; padding:60px 40px; margin:auto; }
+@media(max-width:600px) { .series-card { padding:18px; }.series-permalink-content { padding:30px 20px; }.series-chapter { padding:16px; gap:12px; }.series-chapter-copy>strong { font-size:18px; } }

@@ -1,6 +1,6 @@
 import { addBlock, blockDescriptions, blockKinds, blockLabels, canMoveBlock, inferStarter, moveBlock, type Starter, type Theme } from "../../lib/builder/model";
 
-const symbols = { header: "≡", intro: "Aa", scene: "[ ]", articles: "▤", quote: "“", about: "◎", projects: "⌘", footer: "↳" };
+const symbols = { header: "≡", intro: "Aa", scene: "[ ]", articles: "▤", series: "▥", quote: "“", about: "◎", projects: "⌘", footer: "↳" };
 export const starters: { id: Starter; label: string; detail: string }[] = [
   { id: "scene", label: "Karakterli evren", detail: "Tek ekran · etkileşimli sahne" },
   { id: "feed", label: "Açık defter", detail: "Kaydırılan sayfa · yazı akışı" },

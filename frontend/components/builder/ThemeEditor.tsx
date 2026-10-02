@@ -1,6 +1,10 @@
 "use client";
 
+import { scrollBehavior } from "../../lib/motion";
+
 import Link from "next/link";
+import { ThemeToggle } from "../SitePreferences";
+import { SeriesStudio } from "../series/SeriesStudio";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   applyDraft, blockDescriptions, blockLabels, blockPlacementNote,
@@ -17,7 +21,7 @@ import { ThemeStructure } from "./ThemeStructure";
 export function ThemeEditor() {
   const { workspace, save, ready, storageError } = useWorkspace();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [inspector, setInspector] = useState<"block" | "theme">("block");
+  const [inspector, setInspector] = useState<"block" | "theme" | "series">("block");
   const [mobile, setMobile] = useState(false);
   const [editingCanvas, setEditingCanvas] = useState(true);
   const [spotlight, setSpotlight] = useState(true);
@@ -43,12 +47,12 @@ export function ThemeEditor() {
     setInspector("block");
     setFocusRequest((request) => request + 1);
     setMessage("Tuvalde seçtiğin bölümün ayarları açıldı. Değişiklikler burada anında görünür.");
-    if (window.innerWidth <= 860) properties.current?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+    if (window.innerWidth <= 860) properties.current?.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
   }, []);
   function selectFromList(id: string) {
     setSelectedId(id); setSpotlight(true); setInspector("block"); setEditingCanvas(true);
     setFocusRequest((request) => request + 1);
-    if (window.innerWidth <= 1100) canvas.current?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+    if (window.innerWidth <= 1100) canvas.current?.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
     setMessage("Seçilen bölüm tuvalde aydınlatıldı. Ayarlarını özellikler panelinden değiştirebilirsin.");
   }
   function edit(theme: Theme) { save({ ...workspace, draft: theme }); setMessage(""); setUndo(null); }
@@ -81,7 +85,7 @@ export function ThemeEditor() {
   return <main className="studio">
     <header className="studio-topbar">
       <div className="studio-brand"><span className="studio-logo" aria-hidden="true">m<span>↗</span></span><div><strong>mrbyte<span> / </span>studio</strong><span className="studio-brand-note">KENDİ EVRENİNİ KUR.</span></div></div>
-      <div className="studio-top-actions"><Link className="studio-text-link" href="/" target="_blank">Uygulanan siteyi aç ↗</Link><Link className="studio-secondary" href="/preview" target="_blank">Taslağı tam ekran gör ↗</Link><button className="studio-primary" onClick={apply} disabled={!ready || !dirty || errors.length > 0}>Temayı uygula <span aria-hidden="true">↗</span></button></div>
+      <div className="studio-top-actions"><ThemeToggle /><Link className="studio-text-link" href="/" target="_blank">Uygulanan siteyi aç ↗</Link><Link className="studio-secondary" href="/preview" target="_blank">Taslağı tam ekran gör ↗</Link><button className="studio-primary" onClick={apply} disabled={!ready || !dirty || errors.length > 0}>Temayı uygula <span aria-hidden="true">↗</span></button></div>
     </header>
     <div className="studio-local-note"><span className="local-dot" /><strong>Yerel tasarım stüdyosu</strong><span>Taslak otomatik kaydedilir. “Uygula” bu tarayıcıdaki ana sayfayı değiştirir; sunucuda yayın yapmaz.</span></div>
     <div className="studio-workspace">
@@ -95,8 +99,8 @@ export function ThemeEditor() {
         <div className="canvas-bottom"><span>{editingCanvas ? "SEÇİLİ BÖLÜM AYDINLIK KALIR." : "ZİYARETÇİ ÖNİZLEMESİ"}</span><span>Yazılar örnektir. İçerikler tema değişince korunur.</span></div>
       </section>
       <aside className={`studio-inspector ${selectedId && inspector === "block" ? "inspector-linked" : ""}`} aria-label="Düzenleme özellikleri" ref={properties}>
-        <div className="inspector-switch" role="group" aria-label="Özellik türü"><button aria-pressed={inspector === "block"} onClick={() => setInspector("block")}>Blok ayarları</button><button aria-pressed={inspector === "theme"} onClick={() => setInspector("theme")}>Tema tasarımı</button></div>
-        <fieldset disabled={!ready} className="inspector-fields">{inspector === "block" ? selected ? <><span className="studio-eyebrow">03 / {selectedId ? "TUVALLE BAĞLANTILI BLOK" : "BLOK ÖZELLİKLERİ"}</span><h2>{blockLabels[selected.kind]}</h2><p className="property-summary">{blockDescriptions[selected.kind]}</p><p className="placement-note">{blockPlacementNote(selected.kind)}</p><BlockProperties block={selected} onChange={(block) => edit(replaceBlock(workspace.draft, block))} /><button className="studio-remove" onClick={removeSelected}>Bloğu kaldır −</button></> : <div className="inspector-empty"><span aria-hidden="true">＋</span><h2>Yeni bir bölüm ekle.</h2><p>Son bloğu da kaldırdın. “Blok ekle” ile yeniden başlayabilirsin; ana sayfadaki teman korunuyor.</p><button className="studio-secondary" onClick={() => setPaletteOpen(true)}>Blok paletini aç</button></div> : <><span className="studio-eyebrow">03 / GÖRSEL KİMLİK</span><h2>Başka bir site hissi.</h2><p className="property-summary">Yalnızca renk değil: yazı karakteri, atmosfer, genişlik ve ritim.</p><ThemeSettings theme={workspace.draft} onChange={edit} /></>}</fieldset>
+        <div className="inspector-switch" role="group" aria-label="Özellik türü"><button aria-pressed={inspector === "block"} onClick={() => setInspector("block")}>Blok ayarları</button><button aria-pressed={inspector === "theme"} onClick={() => setInspector("theme")}>Tema tasarımı</button><button aria-pressed={inspector === "series"} onClick={() => setInspector("series")}>Seriler</button></div>
+        <fieldset disabled={!ready} className="inspector-fields"><div hidden={inspector !== "series"}><SeriesStudio /></div>{inspector === "series" ? null : inspector === "block" ? selected ? <><span className="studio-eyebrow">03 / {selectedId ? "TUVALLE BAĞLANTILI BLOK" : "BLOK ÖZELLİKLERİ"}</span><h2>{blockLabels[selected.kind]}</h2><p className="property-summary">{blockDescriptions[selected.kind]}</p><p className="placement-note">{blockPlacementNote(selected.kind)}</p><BlockProperties block={selected} onChange={(block) => edit(replaceBlock(workspace.draft, block))} onManageSeries={() => setInspector("series")} /><button className="studio-remove" onClick={removeSelected}>Bloğu kaldır −</button></> : <div className="inspector-empty"><span aria-hidden="true">＋</span><h2>Yeni bir bölüm ekle.</h2><p>Son bloğu da kaldırdın. “Blok ekle” ile yeniden başlayabilirsin; ana sayfadaki teman korunuyor.</p><button className="studio-secondary" onClick={() => setPaletteOpen(true)}>Blok paletini aç</button></div> : <><span className="studio-eyebrow">03 / GÖRSEL KİMLİK</span><h2>Başka bir site hissi.</h2><p className="property-summary">Yalnızca renk değil: yazı karakteri, atmosfer, genişlik ve ritim.</p><ThemeSettings theme={workspace.draft} onChange={edit} /></>}</fieldset>
         <div className="studio-save-state"><span className="studio-eyebrow">TASLAK & ANA SAYFA</span><p>{!ready ? "Kayıt yükleniyor…" : dirty ? "Şu an taslağı düzenliyorsun. Ana sayfa henüz değişmedi." : "Taslak, bu tarayıcıdaki ana sayfayla aynı."}</p><button disabled={!ready || !dirty} onClick={() => setConfirmation("restore")}>Taslağı uygulanan temaya döndür ↶</button>{undo && <button className="undo-removal" onClick={() => { save({ ...workspace, draft: undo }); setUndo(null); setMessage("Son kaldırılan blok geri geldi."); }}>Son kaldırmayı geri al ↶</button>}{storageError && <p role="alert" className="studio-error">{storageError}</p>}{errors.length > 0 && <ul className="studio-error">{errors.map((error) => <li key={error}>{error}</li>)}</ul>}</div>
       </aside>
     </div>

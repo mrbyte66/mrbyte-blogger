@@ -38,3 +38,7 @@ Araçların ilk listesi, kenar yerleşimi, mobil seçim etkileşimi, yerel depol
 Metindeki işaretler CSS Custom Highlight API ile çizilir; destek bulunmadığında kaydedilen alıntı/not listesi kullanılabilir. React'in yönettiği DOM'a etiket sararak müdahale edilmez. Alıntı bağları kaydedilen metin ve bağlamla doğrulanır; yanlış veya belirsiz bir eşleşme sessizce uygulanmaz.
 
 Bu modül yazar notlarını herkese yayınlamaz. Yayınlanmış yazar katmanı için backend ve açık yayınlama akışı; özel hesap eşitlemesi için üyelik gerekir. Panel içindeki sahne okumasına entegrasyon ve daha zengin kalem/renk araçları sonraki aşamadır. Ön yüz sözleşmesi: `../../frontend/docs/reading.md`.
+
+## Seçim temizliği — 2026-10-02
+
+Seçilen metni araç düğmesine tıklayana kadar koru; toolbar ve not paneli etkileşimleri bu seçimi erken silmemelidir. Kullanıcı yazıda seçimi bırakır veya daraltırsa seçili alıntı önizlemesini ve toolbar'ın kullanılabilir seçim durumunu temizle, tarayıcının mavi metin seçimini kaldır. Kaydedilmiş fosforlu işaretler ayrıca tutulur ve kullanıcı kaydı kaldırana kadar görünmeye devam eder. Bir işaret eklemek seçim/kalem modunu temizler; ekrandaki metin seçimiyle kalıcı işaret birbirine karıştırılmamalıdır.

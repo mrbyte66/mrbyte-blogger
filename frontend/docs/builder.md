@@ -31,3 +31,7 @@ The Studio keeps the structure list, canvas, and block properties simultaneously
 Intro layout and quote display enums are part of the block schema. Version 1 missing those values receives statement/band defaults; explicit unsupported values are rejected. Magazine defaults to centered/card. Character halo color is not an accent customization target.
 
 Starter selection immediately loads the chosen default composition into the draft, even when already selected. No notification or replacement dialog is shown; site name/accent remain. Homepage Apply and explicit Restore stay separate operations.
+
+Series content lives in `lib/series/`, outside theme snapshots. The inspector adds a Seriler area with explicit local save, title/slug/summary/level, visibility, ongoing/completed state and accessible chapter order controls. Selecting another series is blocked until unsaved edits are saved or cancelled; clicking the selected series preserves edits. New titles generate a Turkish-normalized ASCII slug until the owner manually changes it. Shared domain validation rejects duplicate slugs, repeated/cross-series article membership and empty publication. Removing a membership never deletes its article.
+
+The optional `series` page block has `title` and `display: cards | list`; its source is the shared published series collection. It follows normal body placement rules and can be added once through the palette. Block appearance and chapter content are separate controls; the canvas stays visible while editing either.

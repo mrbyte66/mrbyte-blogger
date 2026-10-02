@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+  <rect width="1200" height="600" rx="20" fill="#202924"/>
+  <g fill="none" stroke="#405247"><path d="M0 100H1200M0 200H1200M0 300H1200M0 400H1200M0 500H1200M100 0V600M300 0V600M500 0V600M700 0V600M900 0V600M1100 0V600" opacity=".4"/></g>
+  <text x="70" y="86" fill="#a8bbaa" font-family="monospace" font-size="18" letter-spacing="3">DÜŞÜNMENİN DÖNGÜSÜ / 01</text>
+  <g stroke="#a6c89f" stroke-width="3" fill="none"><path d="M340 295H430m-14-10 14 10-14 10M740 295H830m-14-10 14 10-14 10M965 395V475H225V395"/><path d="m215 410 10-15 10 15"/></g>
+  <g fill="#2f4035" stroke="#6b896e"><rect x="90" y="195" width="270" height="200" rx="12"/><rect x="465" y="195" width="270" height="200" rx="12"/><rect x="840" y="195" width="270" height="200" rx="12"/></g>
+  <g fill="#d6efce" font-family="Arial,sans-serif" text-anchor="middle"><text x="225" y="286" font-size="38">Soru</text><text x="600" y="286" font-size="38">Deneme</text><text x="975" y="286" font-size="33">Değerlendirme</text></g>
+  <g fill="#afc2b0" font-family="Arial,sans-serif" text-anchor="middle" font-size="20"><text x="225" y="331">Neyi anlamak istiyorum?</text><text x="600" y="331">Küçük bir örnek üret.</text><text x="975" y="331">Sonucu sorgula.</text><text x="600" y="532">Yeni bir soru, yeni bir deneme.</text></g>
+</svg>
