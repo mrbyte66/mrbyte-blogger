@@ -18,6 +18,6 @@ npm ci
 npm run dev
 ```
 
-Then open http://127.0.0.1:3000. Backend implementation and database modeling remain deferred until the visual direction is approved; its boundaries are recorded in `backend/README.md`.
+Then open http://127.0.0.1:3000. The local theme editor is at `/studio`; `/preview` shows its draft. Choose a starter, add/reorder blocks, change properties, and apply the draft to this browser's homepage. Themes share article content and `/yazilar/[slug]` links. This prototype uses browser storage; the production admin, authentication, database and server publication will be implemented separately in `backend/`.
 
 Start with `AGENTS.md`. The project and app guides live beside the work they govern.

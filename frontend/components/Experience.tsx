@@ -11,15 +11,16 @@ const destinations: { section: Section; number: string; label: string; detail: s
   { section: "about", number: "03", label: "Hakkımda", detail: "EKRANIN ARKASINDAKİ" },
 ];
 
-export function Experience() {
+export function Experience({ siteName = "SATIR", title = "Kod yazarım.", emphasis = "Bazen de satır.", description = "Yazılım, edebiyat ve\nikisinin arasında bir insan.", headingLevel = "h1", colorMode = "remember" }: { siteName?: string; title?: string; emphasis?: string; description?: string; headingLevel?: "h1" | "h2"; colorMode?: "light" | "dark" | "remember" }) {
+  const Heading = headingLevel;
   const [navigation, dispatch] = useReducer(navigate, initialNavigation);
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(colorMode === "dark");
   const [motionEnabled, setMotionEnabled] = useState(true);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   useEffect(() => {
     try {
-      setDark(localStorage.getItem("satir:theme") === "dark");
+      setDark(colorMode === "remember" ? localStorage.getItem("satir:theme") === "dark" : colorMode === "dark");
       const savedMotion = localStorage.getItem("satir:motion");
       setMotionEnabled(savedMotion ? savedMotion === "on" : !matchMedia("(prefers-reduced-motion: reduce)").matches);
     } catch { setMotionEnabled(!matchMedia("(prefers-reduced-motion: reduce)").matches); }
@@ -34,10 +35,10 @@ export function Experience() {
     } catch { /* Private browsing can disable storage. Preferences still work in memory. */ }
   }, [dark, motionEnabled, preferencesLoaded]);
 
-  return <main className={`experience ${dark ? "theme-dark" : "theme-light"} ${motionEnabled ? "motion-on" : "motion-off"} ${navigation.section ? "panel-open" : ""}`}>
+  return <section aria-label="Karakterli evren" className={`experience ${dark ? "theme-dark" : "theme-light"} ${motionEnabled ? "motion-on" : "motion-off"} ${navigation.section ? "panel-open" : ""}`}>
     <a className="skip-link" href="#scene-navigation">İçeriklere geç</a>
     <div className="stage-texture" aria-hidden="true" />
-    <header className="site-header"><button className="wordmark" aria-label="SATIR ana sahne" onClick={() => dispatch({ type: "close" })}>SATIR<span>.</span></button><span className="header-description">KİŞİSEL BİR EVREN</span><button className="index-button" onClick={() => dispatch({ type: "open", section: "writing" })}><span>Dizini aç</span><span className="index-icon" aria-hidden="true"><i /><i /><i /><i /></span></button></header>
+    <header className="site-header"><button className="wordmark" aria-label={`${siteName} ana sahne`} onClick={() => dispatch({ type: "close" })}>{siteName}<span>.</span></button><span className="header-description">KİŞİSEL BİR EVREN</span><button className="index-button" onClick={() => dispatch({ type: "open", section: "writing" })}><span>Dizini aç</span><span className="index-icon" aria-hidden="true"><i /><i /><i /><i /></span></button></header>
 
     <div className="scene">
       <span className="scene-coordinate" aria-hidden="true">FIG. 001 — İNSAN / MAKİNE</span>
@@ -45,7 +46,7 @@ export function Experience() {
       <div className="scene-word" aria-hidden="true">merak.</div>
       <Character motionEnabled={motionEnabled && !navigation.section} />
 
-      <div className="introduction"><p className="eyebrow"><span className="tiny-cross" aria-hidden="true">+</span> MERHABA, DÜNYA.</p><h1>Kod yazarım.<br /><em>Bazen de satır.</em></h1><p className="intro-description">Yazılım, edebiyat ve<br />ikisinin arasında bir insan.</p><div className="intro-line" aria-hidden="true" /></div>
+      <div className="introduction"><p className="eyebrow"><span className="tiny-cross" aria-hidden="true">+</span> MERHABA, DÜNYA.</p><Heading className="scene-heading">{title}<br /><em>{emphasis}</em></Heading><p className="intro-description" style={{ whiteSpace: "pre-line" }}>{description}</p><div className="intro-line" aria-hidden="true" /></div>
 
       <nav id="scene-navigation" className="scene-navigation" aria-label="Ana içerikler"><p className="navigation-label">NEREYE GİDELİM?</p>{destinations.map((destination) => <button key={destination.section} className="destination" onClick={() => dispatch({ type: "open", section: destination.section })}><span className="destination-number">{destination.number}</span><span className="destination-copy"><span className="destination-label">{destination.label}</span><span className="destination-detail">{destination.detail}</span></span><span className="destination-plus" aria-hidden="true">+</span></button>)}</nav>
 
@@ -54,6 +55,6 @@ export function Experience() {
     </div>
 
     <footer className="site-footer"><span className="footer-signature">HER ŞEY BİR MERAKLA BAŞLAR.</span><span className="scene-indicator"><span aria-hidden="true">✳</span> BURADASIN</span><div className="scene-controls"><button aria-label={dark ? "Açık temaya geç" : "Koyu temaya geç"} aria-pressed={dark} onClick={() => setDark(!dark)}><span className="sun-icon" aria-hidden="true">☼</span><span>Işıklar {dark ? "kapalı" : "açık"}</span></button><span className="control-divider" /><button aria-label="Sahne hareketi" aria-pressed={motionEnabled} onClick={() => setMotionEnabled(!motionEnabled)}><span className={`motion-icon ${motionEnabled ? "playing" : ""}`} aria-hidden="true"><i /><i /><i /></span><span className="motion-label">{motionEnabled ? "Hareket açık" : "Hareket kapalı"}</span></button></div></footer>
-    <ContentPanel navigation={navigation} dispatch={dispatch} />
-  </main>;
+    <ContentPanel navigation={navigation} dispatch={dispatch} siteName={siteName} />
+  </section>;
 }

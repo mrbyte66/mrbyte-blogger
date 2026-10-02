@@ -20,5 +20,7 @@ Independent Next.js App Router application using React, TypeScript, and CSS. Kee
 - `components/MonitorFace.tsx`: animated eye gaze and blinking.
 - `lib/character-motion.ts`: bounded gaze calculations in source-image coordinates.
 - `app/globals.css`: shared tokens, responsive composition, and motion.
+- `components/ArticleContent.tsx`: common article body for the scene panel and standalone routes.
+- Theme/editor boundaries are described in `docs/builder.md`; the homepage now renders the locally applied theme, whose default is the original scene.
 
 Keep metadata and static layout separate from interactive client components. Use semantic controls, avoid fake links, and keep navigation state explicit. No backend API is simulated in Next.js route handlers; backend belongs in the sibling `../backend/` project.

@@ -1,3 +1,2 @@
-import { Experience } from "../components/Experience";
-
-export default function Home() { return <Experience />; }
+import { PublishedSite } from "../components/builder/ThemeRenderer";
+export default function Home() { return <PublishedSite />; }

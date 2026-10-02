@@ -1,43 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type Dispatch } from "react";
-import { articles, filterArticles, findArticle, topics, type Article } from "../lib/content";
+import { useEffect, useRef, type Dispatch } from "react";
+import { articles, filterArticles, findArticle, topics } from "../lib/content";
+import { ArticleContent } from "./ArticleContent";
 import type { Navigation, NavigationAction } from "../lib/navigation";
 
 const sectionNames = { writing: "Yazılar", projects: "Projeler", about: "Hakkımda" };
 
-function CodeBlock({ code }: { code: string }) {
-  const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(code);
-      setStatus("copied");
-    } catch { setStatus("error"); }
-  }
-  return <div className="code-block">
-    <div className="code-toolbar"><span>JAVA</span><button onClick={copy}>{status === "copied" ? "Kopyalandı" : "Kodu kopyala"}</button></div>
-    <pre><code>{code}</code></pre>
-    <span className="copy-status" role="status">{status === "error" ? "Kopyalanamadı. Kodu seçerek kopyalayabilirsin." : ""}</span>
-  </div>;
-}
-
-function ArticleView({ article, onBack }: { article: Article; onBack: () => void }) {
-  return <article className="article-view">
-    <button className="back-button" onClick={onBack}><span aria-hidden="true">‹</span> Bütün yazılar</button>
-    <p className="eyebrow">{article.eyebrow}</p>
-    <h2 id="panel-title">{article.title}</h2>
-    <div className="article-meta"><span>Örnek yazı</span><span>{article.minutes} dk okuma</span></div>
-    <p className="article-lead">{article.excerpt}</p>
-    {article.paragraphs.map((paragraph, index) => <div key={paragraph}>
-      <p>{paragraph}</p>
-      {index === 2 && article.code && <CodeBlock code={article.code} />}
-    </div>)}
-    <div className="article-end"><span aria-hidden="true">✳</span><p>Şimdilik bu kadar.<br />Bir sonraki satırda görüşürüz.</p></div>
-    <p className="sample-note">Bu metin, okuma deneyimini göstermek için hazırlanmış bir örnektir.</p>
-  </article>;
-}
-
-export function ContentPanel({ navigation, dispatch }: { navigation: Navigation; dispatch: Dispatch<NavigationAction> }) {
+export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { navigation: Navigation; dispatch: Dispatch<NavigationAction>; siteName?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
   const listScroll = useRef(0);
@@ -80,9 +50,9 @@ export function ContentPanel({ navigation, dispatch }: { navigation: Navigation;
     onCancel={(event) => { event.preventDefault(); dispatch({ type: "close" }); }}
     onClick={(event) => { if (event.target === event.currentTarget) dispatch({ type: "close" }); }}>
     <div className="panel-shell">
-      <div className="panel-topbar"><span className="panel-mark">SATIR<span>.</span></span><span className="panel-location">{navigation.section ? sectionNames[navigation.section] : ""}</span><button className="close-button" aria-label="İçeriği kapat" onClick={() => dispatch({ type: "close" })}><span aria-hidden="true">×</span></button></div>
+      <div className="panel-topbar"><span className="panel-mark">{siteName}<span>.</span></span><span className="panel-location">{navigation.section ? sectionNames[navigation.section] : ""}</span><button className="close-button" aria-label="İçeriği kapat" onClick={() => dispatch({ type: "close" })}><span aria-hidden="true">×</span></button></div>
       <div className="panel-scroll" ref={scrollArea}>
-        {navigation.section === "writing" && (article ? <ArticleView key={article.slug} article={article} onBack={() => dispatch({ type: "back" })} /> : <section className="writing-view">
+        {navigation.section === "writing" && (article ? <div key={article.slug}><button className="back-button" onClick={() => dispatch({ type: "back" })}><span aria-hidden="true">‹</span> Bütün yazılar</button><ArticleContent article={article} /></div> : <section className="writing-view">
           <p className="eyebrow">DÜŞÜNCELERİN KAYNAK KODU</p>
           <div className="section-heading"><h2 id="panel-title">Açık<br /><em>sekme.</em></h2><span className="item-count">{String(articles.length).padStart(2, "0")} NOT</span></div>
           <p className="section-intro">Koddan cümleye. Aklımda kalanlar, öğrendiklerim, peşine düştüklerim.</p>

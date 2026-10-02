@@ -165,7 +165,7 @@ pre { font: 12px/1.9 var(--mono); overflow-x: auto; padding: 8px 20px 16px; tab-
   .scene-coordinate { display: none; }
   .character-placement { left: 47%; height: 94vh; width: 62.67vh; bottom: -5vh; opacity: .95; }
   .introduction { top: 24%; left: 6%; max-width: 40%; }
-  .introduction h1 { font-size: 31px; }
+  .introduction .scene-heading { font-size: 31px; }
   .introduction .eyebrow { font-size: 9px; margin-bottom: 15px; }
   .intro-description { font-size: 12px; margin-top: 18px; }
   .intro-line { display: none; }
@@ -197,7 +197,7 @@ pre { font: 12px/1.9 var(--mono); overflow-x: auto; padding: 8px 20px 16px; tab-
   .character-image { mask-image: linear-gradient(to bottom,#000 0%, #000 70%,transparent 98%); }
   .introduction { top: 106px; left: 6%; max-width: 100%; z-index: 2; }
   .introduction .eyebrow { display: none; }
-  .introduction h1 { font-size: 27px; }
+  .introduction .scene-heading { font-size: 27px; }
   .intro-description { display: none; }
   .scene-navigation { top: auto; bottom: 109px; left: 6%; right: 6%; width: auto; max-width: none; display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 0; background: #e7ece2c9; backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: 5px; padding: 13px 8px; }
   .theme-dark .scene-navigation { background: #18251ce3; }
@@ -248,7 +248,7 @@ pre { font: 12px/1.9 var(--mono); overflow-x: auto; padding: 8px 20px 16px; tab-
 .experience { min-height: 0; }
 @media (max-width: 900px) and (max-height: 650px) {
   .introduction { top: 86px; }
-  .introduction h1 { font-size: 23px; }
+  .introduction .scene-heading { font-size: 23px; }
   .character-placement { height: 72svh; width: 48svh; bottom: 13svh; }
 }
 @media (max-width: 360px) {
@@ -258,3 +258,9 @@ pre { font: 12px/1.9 var(--mono); overflow-x: auto; padding: 8px 20px 16px; tab-
   .destination-number { font-size: 8px; }
   .latest-title { font-size: 11px; }
 }
+
+.introduction .scene-heading { font-weight:450; line-height:1.1; letter-spacing:-.055em; margin:0; }
+.introduction h2.scene-heading { font-size:clamp(31px,3.5vw,57px); }
+.introduction .scene-heading em { font-family:var(--serif); font-weight:400; letter-spacing:-.055em; }
+@media(max-width:760px) { .introduction h2.scene-heading { font-size:27px; } }
+@media(max-width:900px) and (max-height:650px) { .introduction h2.scene-heading { font-size:23px; } }

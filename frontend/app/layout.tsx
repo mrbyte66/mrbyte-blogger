@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./themes.css";
+import "./reading-tools.css";
 
 export const metadata: Metadata = {
   title: "SATIR. — Kod, kelime ve aradakiler",
