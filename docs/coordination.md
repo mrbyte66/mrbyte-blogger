@@ -105,3 +105,31 @@ Verification: 135 tests across 16 files passed; production build and TypeScript 
 Modal and permalink readers now use the same compact translucent engagement bar for view counts, clap toggle and sharing. Opening an article in the side panel does not increment views; visible card impressions and permalink visits do. Removed the standalone view paragraph and replaced colored emoji/circle counters with shared monochrome line icons across reader and catalog cards. Studio actions remain disabled; counting remains browser-local.
 
 Verification: 142 tests passed, TypeScript and production build passed. Desktop and 390px mobile inspection verified the shared toolbar, clap/undo and share menu with no horizontal page overflow. The progressive-list observer test now distinguishes sentinel observation from independent card-impression observers.
+
+## Private member library preview — 2026-10-03
+
+Added independent bookmark controls to article/chapter cards, theme feeds and the shared reader bar. Initial save targets Kaydedilenler; a compact picker supports existing/new categories and removal. `/kaydedilenler` centralizes filtering, moving/removing articles, category naming/deletion and unavailable records. Category deletion retains articles under the default. A root context owns validated browser-local storage, cross-tab synchronization and explicit mock membership; guest preview hides personal records. Public save metrics currently reflect only the local demo member (0/1), with no fabricated site-wide totals. Studio counts remain read-only. Saved collections are now included in the membership introduction plan, with backend ownership/idempotency requirements in `features/saved-articles.md`.
+
+Verification: 149 tests across 19 files, TypeScript and production build passed. Tests cover default save, unique records, category movement/deletion, corruption/write failures, remount persistence, guest hiding and Studio restrictions. Desktop and 390px mobile browser checks verified independent save/open actions, category creation/rename, filtering, light/dark contrast, category deletion retaining the record and record removal. Fixed a clipped first-card popup; mobile had no page overflow. Temporary browser records/categories were removed after verification. Real authentication, user isolation and aggregate member totals remain backend work.
+
+## Library refinement and optional Mozart listening — 2026-10-03
+
+Removed detached per-card category/removal rows; bookmark menus now own those actions. Category selection stays a draft until “Taşı”, and moving a saved record preserves its insertion position. Library-return links use an explicit reverse cover direction in native/fallback navigation. Added one persistent opt-in Mozart audio element with lower-right controls, including a shared control inside the native reading dialog. Streams are Musopen Symphony public-domain recordings via Commons; movements repeat in order up to forty minutes of played media time. Pause/resume retains position; Studio pauses audio.
+
+Verification: 155 tests across 20 files, TypeScript and production build passed. Added coverage for stable order, deferred category changes, reverse fallback movement, opt-in start/pause/resume, route continuity, playlist advancement, the forty-minute stop/restart and failure/retry. Browser playback reported readyState 4, paused=false and advancing currentTime; the first MP3 responded 206 with audio/mpeg. Playback persisted on the home route and could be paused from inside the native dialog. Desktop and 390px library inspection verified integrated controls and no page overflow; preview category choices were cancelled without changing member records.
+
+## Ambient listening refinement — 2026-10-03
+
+44px translucent monochrome control, decorative playback-only bars with reduced-motion support, consistent desktop reading inset and mobile notes clearance. Studio retains the pause control and playback; embedded preview hides its duplicate control. Future instrumental/nature categories, opt-in weather/season suggestions and advanced floating interaction are recorded in `features/ambient-audio.md`. Verification: 155 tests, typecheck and production build passed; browser confirmed four bars during actual playback and Studio control visibility.
+
+## Shared audio session and scene alignment — 2026-10-03
+
+Music now shares the scene footer controls and palette, with a short Mozart biography in the caption. BroadcastChannel mirrors playback state; a Web Lock enforces one audio owner per origin. New tabs remotely pause/resume the owner; normal closure releases the lock and shares the position for explicit resume elsewhere. Browser verification: main audio advanced; new Studio tab had no media source while its control showed playing; Studio pause stopped main at 26.12s and resume continued at 26.44s. Unit coverage includes joining, remote controls and owner-close handoff.
+
+## Audio owner-close recovery — 2026-10-03
+
+Active followers now queue on the owner Web Lock, so takeover also works if closing a tab omits pagehide/broadcast. Pausing cancels queued takeovers. Playback position and elapsed listening time are preserved; a NotAllowedError exposes an explicit continuation state without restarting. Browser test: closing the owner at 17.59s transferred 17.43s to the remaining tab; that browser blocked automatic audio and correctly presented the continuation control. 157 tests, TypeScript and production build passed.
+
+## Background audio recovery — 2026-10-03
+
+Fixed denied/error owners retaining the Web Lock and forwarding continuation clicks to the wrong document. Blocked/error owners release ownership; explicit recovery runs in the clicked tab. Fixed stale local media position/track on reacquisition and pending takeover cleanup. Five-tab regression plus stale-media test added. Browser: owner closed at 13.4s, unrelated site visited, Studio resume played at 13.77s with other audio paused; Studio then closed at 31.84s, original tab recovered at 32.09s. Browser required a gesture on both transfers; this is recovery, not a promise of uninterrupted background playback. 159 tests, TypeScript and production build passed.

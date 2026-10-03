@@ -1,0 +1,80 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AmbientAudioProvider, AmbientAudioToggle } from "../components/audio/AmbientAudio";
+import { listeningLimit, mozartTracks } from "../lib/audio/mozart";
+const route = vi.hoisted(() => ({ path: "/kaydedilenler" }));
+vi.mock("next/navigation", () => ({ usePathname: () => route.path }));
+beforeEach(() => {
+  route.path = "/kaydedilenler";
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
+});
+afterEach(() => vi.restoreAllMocks());
+const player = <AmbientAudioProvider><AmbientAudioToggle /></AmbientAudioProvider>;
+describe("opt-in Mozart player", () => {
+  it("loads only after a click, pauses/resumes and keeps playing across visitor routes", async () => {
+    const { container, rerender } = render(player);
+    const audio = container.querySelector("audio")!;
+    expect(audio.getAttribute("src")).toBeNull();
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini aç" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Mozart müziğini kapat" }).getAttribute("aria-busy")).toBe("false"));
+    audio.currentTime = 12;
+    fireEvent.timeUpdate(audio);
+    route.path = "/"; rerender(<AmbientAudioProvider><AmbientAudioToggle /></AmbientAudioProvider>);
+    expect(screen.getByRole("button", { name: "Mozart müziğini kapat" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini kapat" }));
+    expect(audio.currentTime).toBe(12);
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini aç" }));
+    await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2));
+    expect(audio.currentTime).toBe(12);
+  });
+  it("advances the playlist and stops after forty minutes of media playback", async () => {
+    const { container } = render(player);
+    const audio = container.querySelector("audio")!;
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini aç" }));
+    await act(async () => {});
+    audio.currentTime = 360; fireEvent.ended(audio);
+    await act(async () => {});
+    expect(audio.src).toBe(mozartTracks[1].src);
+    audio.currentTime = listeningLimit - 360; fireEvent.timeUpdate(audio);
+    expect(screen.getByRole("button", { name: "Mozart müziğini aç" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini aç" }));
+    await act(async () => {});
+    expect(audio.src).toBe(mozartTracks[0].src);
+  });
+  it("preserves the position when browser playback permission needs a click", async () => {
+    vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(new DOMException("gesture needed", "NotAllowedError"));
+    const { container } = render(player);
+    const audio = container.querySelector("audio")!;
+    audio.currentTime = 42;
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini aç" }));
+    const resume = await screen.findByRole("button", { name: "Mozart müziğine devam et" });
+    audio.currentTime = 42;
+    fireEvent.click(resume);
+    await act(async () => {});
+    expect(audio.currentTime).toBe(42);
+    expect(screen.getByRole("button", { name: "Mozart müziğini kapat" })).toBeTruthy();
+  });
+  it("reports playback failures and lets the visitor retry", async () => {
+    vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(new Error("network"));
+    render(player);
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini aç" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini yeniden dene" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  });
+  it("keeps playback and the pause control accessible in Studio", async () => {
+    const { rerender } = render(player);
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini aç" }));
+    await act(async () => {});
+    route.path = "/studio"; rerender(<AmbientAudioProvider><AmbientAudioToggle /></AmbientAudioProvider>);
+    expect(screen.getByRole("button", { name: "Mozart müziğini kapat" })).toBeTruthy();
+    expect(document.querySelectorAll(".ambient-equalizer i")).toHaveLength(4);
+    fireEvent.click(screen.getByRole("button", { name: "Mozart müziğini kapat" }));
+    expect(screen.getByRole("button", { name: "Mozart müziğini aç" })).toBeTruthy();
+    expect(document.querySelector(".ambient-equalizer")).toBeNull();
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+  });
+});

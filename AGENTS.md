@@ -8,9 +8,11 @@ This repository contains separate frontend and backend applications.
 | Cross-project coordination and decisions | `docs/coordination.md` |
 | Theme system and visual builder scope | `docs/site-builder.md` |
 | Local reading tools and future annotation layers | `docs/features/reading-tools.md` |
+| Future instrumental/nature audio and weather mode | `docs/features/ambient-audio.md` |
 | Planned owner-managed nostalgia corner | `docs/features/nostalgia-corner.md` |
 | Planned editable article summaries | `docs/features/article-summary.md` |
 | Automatic article/series covers and visual cards | `docs/features/automatic-covers.md` |
+| Private member bookmarks and collections | `docs/features/saved-articles.md` |
 | Anonymous claps, aggregate counts and article sharing | `docs/features/claps-and-sharing.md` |
 | Blog series and chapter journeys | `docs/features/blog-series.md` |
 | Public membership introduction | `docs/features/site-introduction.md` |

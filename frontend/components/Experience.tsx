@@ -4,6 +4,7 @@ import { publicArticles } from "../lib/editorial/store";
 import { useArticles } from "../lib/articles/use-articles";
 import { useReducer } from "react";
 import { useSitePreferences } from "./SitePreferences";
+import { AmbientAudioToggle } from "./audio/AmbientAudio";
 import { Character } from "./Character";
 import { ContentPanel } from "./ContentPanel";
 import { initialNavigation, navigateArticles, type Section, type Navigation, type NavigationAction } from "../lib/navigation";
@@ -42,7 +43,7 @@ export function Experience({ siteName = "SATIR", title = "Kod yazarım.", emphas
       <div className="character-caption" aria-hidden="true"><span className="caption-line" /><span>Kıvırcık düşünceler.<br />Düzenli satırlar.</span></div>
     </div>
 
-    <footer className="site-footer"><span className="footer-signature">HER ŞEY BİR MERAKLA BAŞLAR.</span><span className="scene-indicator"><span aria-hidden="true">✳</span> BURADASIN</span><div className="scene-controls"><button aria-label={dark ? "Açık temaya geç" : "Koyu temaya geç"} aria-pressed={dark} onClick={() => setColorMode(dark ? "light" : "dark")}><span className="sun-icon" aria-hidden="true">☼</span><span>Işıklar {dark ? "kapalı" : "açık"}</span></button><span className="control-divider" /><button aria-label="Sahne hareketi" aria-pressed={motionEnabled} onClick={() => setMotionEnabled(!motionEnabled)}><span className={`motion-icon ${motionEnabled ? "playing" : ""}`} aria-hidden="true"><i /><i /><i /></span><span className="motion-label">{motionEnabled ? "Hareket açık" : "Hareket kapalı"}</span></button></div></footer>
+    <footer className="site-footer"><span className="footer-signature">HER ŞEY BİR MERAKLA BAŞLAR.</span><span className="scene-indicator"><span aria-hidden="true">✳</span> BURADASIN</span><div className="scene-controls"><button aria-label={dark ? "Açık temaya geç" : "Koyu temaya geç"} aria-pressed={dark} onClick={() => setColorMode(dark ? "light" : "dark")}><span className="sun-icon" aria-hidden="true">☼</span><span>Işıklar {dark ? "kapalı" : "açık"}</span></button><span className="control-divider" /><button aria-label="Sahne hareketi" aria-pressed={motionEnabled} onClick={() => setMotionEnabled(!motionEnabled)}><span className={`motion-icon ${motionEnabled ? "playing" : ""}`} aria-hidden="true"><i /><i /><i /></span><span className="motion-label">{motionEnabled ? "Hareket açık" : "Hareket kapalı"}</span></button><span className="control-divider" /><AmbientAudioToggle scene /></div></footer>
     <ContentPanel navigation={navigation} dispatch={dispatch} siteName={siteName} />
   </section>;
 }

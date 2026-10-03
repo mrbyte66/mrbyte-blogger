@@ -9,6 +9,7 @@ Help visitors understand the site's writing, reading tools and future membership
 ## Visitor-facing content
 
 - Explain that members can keep a personal reading/work notebook: their notes and saved text highlights appear in their own account.
+- Explain private saved-article collections: save an article, organize it under personal categories such as “Kişisel gelişim” or “Türk edebiyatı”, move/remove it later, and use “Kaydedilenler” when no category is chosen. Saving does not publish the member’s list or categories. The member-view frontend prototype exists; real account storage remains planned.
 - Describe account-synced notes and automatic history of articles or series chapters they have visited, so they can return to them later.
 - Explain that anonymous visitors can browse the public site; any local notes made without an account stay in that browser until they are deliberately imported or discarded.
 - State clearly that a visit is browsing history, not proof that an article was finished or understood.

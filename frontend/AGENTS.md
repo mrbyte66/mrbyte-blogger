@@ -8,6 +8,7 @@ Read the repository `../AGENTS.md` first. Then consult only the frontend guides 
 | React boundaries and frontend/backend integration | `docs/frontend.md` |
 | Theme renderer, blocks, article/series page editor and preview | `docs/builder.md` |
 | Modular article annotations and local notes | `docs/reading.md` |
+| Optional ambient Mozart playback | `docs/audio.md` |
 | Series, chapter order and future member visit history | `docs/series.md` |
 | Test and acceptance criteria | `docs/quality.md` |
 

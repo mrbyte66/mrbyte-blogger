@@ -1,0 +1,47 @@
+.ambient-player { z-index:50; color:var(--ink); }
+.ambient-global { --ink:#242a27; --muted:#687069; --line:#25352722; --panel:#f4f4ee; --surface:#e9ece4; position:fixed; right:max(20px,env(safe-area-inset-right)); bottom:max(20px,env(safe-area-inset-bottom)); }
+.ambient-embedded { position:relative; }
+.ambient-toggle { display:flex; align-items:center; justify-content:center; width:44px; height:44px; border:1px solid var(--line); border-radius:50%; background:color-mix(in srgb,var(--panel) 24%,transparent); color:var(--ink); backdrop-filter:blur(12px); box-shadow:0 2px 12px #00000008; cursor:pointer; }
+.ambient-toggle:hover,.ambient-toggle[aria-pressed=true] { border-color:var(--muted); background:color-mix(in srgb,var(--surface) 38%,transparent); }
+.ambient-toggle:focus-visible,.ambient-caption a:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
+.ambient-caption,.ambient-error { position:absolute; right:0; bottom:calc(100% + 10px); width:190px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--panel); color:var(--ink); font-size:12px; line-height:1.6; text-transform:none; letter-spacing:normal; }
+.ambient-caption { display:none; }
+.ambient-caption span,.ambient-caption a { display:block; }
+.ambient-caption a { margin-top:4px; color:var(--muted); text-decoration:none; }
+.ambient-player:hover .ambient-caption,.ambient-player:focus-within .ambient-caption { display:block; }
+.ambient-error { margin:0; }
+.ambient-player:has(.ambient-error) .ambient-caption { display:none; }
+body:has(.content-dialog[open]) .ambient-global { display:none; }
+
+.panel-bottom:has(.ambient-player) { gap:12px; padding-right:16px; min-height:64px; }
+.panel-bottom>.ambient-player { margin-left:0; flex:none; }
+@media(max-width:600px) { .ambient-global { right:16px; bottom:16px; }.panel-bottom:has(.ambient-player)>span:first-child { font-size:9px; }.ambient-embedded .ambient-toggle { width:44px; height:44px; } }
+
+html[data-theme=dark] .ambient-global,html:not([data-theme=light]):has(.surface-night) .ambient-global { --ink:#edf1e9; --muted:#adb9ae; --line:#d9eddd2b; --panel:#202622; --surface:#2b332d; }
+.ambient-caption::after { content:""; position:absolute; bottom:-12px; left:0; width:100%; height:12px; }
+/* Keep the fixed audio control away from the library's reading links. */
+.saved-page .article-card-read { padding-right:56px; }
+
+.ambient-equalizer { display:flex; align-items:center; justify-content:center; gap:3px; height:20px; }
+.ambient-equalizer i { width:2px; height:8px; border-radius:2px; background:currentColor; opacity:.65; animation:ambient-level 1000ms ease-in-out infinite alternate; }
+.ambient-equalizer i:nth-child(2) { animation-delay:-450ms; }
+.ambient-equalizer i:nth-child(3) { animation-delay:-700ms; }
+.ambient-equalizer i:nth-child(4) { animation-delay:-200ms; }
+@keyframes ambient-level { from { transform:scaleY(.5); } to { transform:scaleY(1.8); } }
+@media(max-width:700px) { body:has(.reading-tools) .ambient-global { bottom:96px; } }
+@media(prefers-reduced-motion:reduce) { .ambient-equalizer i { animation:none; } }
+html[data-motion=off] .ambient-equalizer i { animation:none; }
+
+/* In the character scene audio belongs to the shared footer, not a floating overlay. */
+body:has(.ambient-scene) .ambient-global { display:none; }
+.ambient-scene { position:relative; color:inherit; }
+.scene-controls .ambient-toggle { width:auto; height:44px; min-width:44px; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; color:inherit; padding:10px 0; }
+.scene-controls .ambient-toggle:hover,.scene-controls .ambient-toggle[aria-pressed=true] { background:transparent; color:var(--ink); }
+.ambient-scene .ambient-toggle svg { width:16px; height:16px; }
+.ambient-scene .ambient-equalizer { width:16px; }
+.ambient-caption { width:230px; }
+.ambient-caption p { margin:6px 0; color:var(--muted); font-size:12px; line-height:1.6; }
+
+.scene-controls:has(.ambient-scene) { padding:0 12px; border-radius:8px; background:color-mix(in srgb,var(--panel) 50%,transparent); backdrop-filter:blur(12px); }
+.scene-controls:has(.ambient-scene) button { height:44px; }
+@media(max-width:600px) { .ambient-scene .ambient-label { display:none; }.scene-controls:has(.ambient-scene)>button:first-child>span:last-child { display:none; }.scene-controls:has(.ambient-scene) { gap:10px; padding:0 10px; } }

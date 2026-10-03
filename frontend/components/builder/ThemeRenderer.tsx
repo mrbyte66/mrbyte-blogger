@@ -12,6 +12,7 @@ import { parseCanvasSelection, previewEvents, type CanvasSelection } from "../..
 import { useWorkspace } from "../../lib/builder/use-workspace";
 import { ThemeToggle } from "../SitePreferences";
 import { Experience } from "../Experience";
+import { SaveArticleButton, SavedLibraryLink } from "../saved/SaveArticleButton";
 import { ClapCount } from "../ClapCount";
 import { ViewCount } from "../ViewCount";
 import { SeriesCatalog } from "../series/SeriesCatalog";
@@ -25,11 +26,11 @@ import type { Article } from "../../lib/content";
 type ArticlesBlock = Extract<PageBlock, { kind: "articles" }>;
 function FeedArticle({ article, index, preview }: { article: Article; index: number; preview: boolean }) {
   const view = useVisibleArticleView(article.slug, !preview);
-  return <Link ref={view.attach} className="feed-article" href={`/yazilar/${article.slug}`} target={preview ? "_blank" : undefined}>
+  return <div className="feed-article-wrap"><Link ref={view.attach} className="feed-article" href={`/yazilar/${article.slug}`} target={preview ? "_blank" : undefined}>
     <span className="feed-index">{String(index + 1).padStart(2, "0")}</span>
     <div><div className="feed-meta"><span>{article.category}</span><span>{article.minutes} dk okuma</span><ViewCount slugs={[article.slug]} /><ClapCount slugs={[article.slug]} /></div><h3>{article.title}</h3><p>{article.excerpt}</p></div>
     <span className="feed-arrow" aria-hidden="true">↗</span>
-  </Link>;
+  </Link><SaveArticleButton slug={article.slug} title={article.title} preview={preview} /></div>;
 }
 function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolean }) {
   const { articles: storedArticles } = useArticles();
@@ -48,9 +49,9 @@ function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolea
   </section>;
 }
 
-export function ThemeNavigation({ theme }: { theme: Theme }) {
+export function ThemeNavigation({ theme, preview = false }: { theme: Theme; preview?: boolean }) {
   const links = [{ kind: "articles", id: "yazilar", label: "Yazılar" }, { kind: "series", id: "seriler", label: "Seriler" }, { kind: "projects", id: "projeler", label: "Projeler" }, { kind: "about", id: "hakkimda", label: "Hakkımda" }];
-  return <header className="theme-header"><a className="theme-wordmark" href="#top">{theme.siteName}<span>.</span></a><nav aria-label="Site menüsü">{links.filter((link) => theme.blocks.some((block) => block.kind === link.kind)).map((link) => <a key={link.id} href={`#${link.id}`}>{link.label}</a>)}</nav><ThemeToggle defaultDark={theme.surface === "night"} /><span className="theme-header-note">KİŞİSEL BİR DEFTER <span aria-hidden="true">✳</span></span></header>;
+  return <header className="theme-header"><a className="theme-wordmark" href="#top">{theme.siteName}<span>.</span></a><nav aria-label="Site menüsü">{links.filter((link) => theme.blocks.some((block) => block.kind === link.kind)).map((link) => <a key={link.id} href={`#${link.id}`}>{link.label}</a>)}</nav><ThemeToggle defaultDark={theme.surface === "night"} />{!preview && <SavedLibraryLink />}<span className="theme-header-note">KİŞİSEL BİR DEFTER <span aria-hidden="true">✳</span></span></header>;
 }
 
 function SeriesBlock({ block }: { block: Extract<PageBlock, { kind: "series" }> }) {
@@ -64,7 +65,7 @@ function SeriesBlock({ block }: { block: Extract<PageBlock, { kind: "series" }> 
 
 function BlockContent({ block, theme, primaryTitle, preview }: { block: PageBlock; theme: Theme; primaryTitle?: string; preview: boolean }) {
       switch (block.kind) {
-        case "header": return <ThemeNavigation theme={theme} />;
+        case "header": return <ThemeNavigation theme={theme} preview={preview} />;
         case "intro": {
           const Heading = primaryTitle === block.id ? "h1" : "h2";
           return <section className={`theme-section editorial-intro intro-${block.layout}`}>

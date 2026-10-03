@@ -12,6 +12,8 @@ import { SeriesCatalog } from "./series/SeriesCatalog";
 import { SeriesArticleNav } from "./series/SeriesArticleNav";
 import { useSeriesWorkspace } from "../lib/series/use-series-workspace";
 import { ArticleContent } from "./ArticleContent";
+import { AmbientAudioToggle } from "./audio/AmbientAudio";
+import { SavedLibraryLink } from "./saved/SaveArticleButton";
 import { ArticleCard } from "./ArticleCard";
 import type { Navigation, NavigationAction } from "../lib/navigation";
 
@@ -121,6 +123,7 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
             event.currentTarget.parentElement?.querySelector<HTMLElement>(`#reader-tab-${next}`)?.focus(); selectTab(next);
           }}>{view === "articles" ? "Yazılar" : "Seriler"}</RippleButton>;
         })}</div></div> : canGoBack ? <button className="panel-back" title="Geri dön (Esc veya Alt + ←)" onClick={() => go({ type: "back" })}><span aria-hidden="true">←</span> {displayedNavigation.seriesSlug ? "Bölümlere dön" : "Bütün yazılar"}</button> : <span className="panel-location">{displayedNavigation.section ? sectionNames[displayedNavigation.section] : ""}</span>}
+        <SavedLibraryLink />
         <button className="close-button" aria-label="İçeriği kapat" onClick={() => go({ type: "close" })}><span aria-hidden="true">×</span></button></div>
       {displayedNavigation.seriesSlug && !article && <div className="panel-context"><button className="panel-back" onClick={() => go({ type: "back" })}>← Bütün seriler</button><span>Bölüm listesi</span></div>}
       {canGoBack && <div className="panel-swipe-edge" aria-hidden="true" onPointerDown={startSwipe} onPointerMove={moveSwipe} onPointerUp={endSwipe} onPointerCancel={() => { swipe.current = null; setSwipeProgress(0); }}><span style={{ transform: `translateX(${swipeProgress * 24}px)`, opacity: .45 + swipeProgress * .55 }}>‹</span></div>}
@@ -150,7 +153,7 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
           <p className="sample-note">Tanışma metni taslağı; kişisel anlatımınla birlikte şekillenecek.</p>
         </section>}
       </div></div></CoverTransition>
-      <div className="panel-bottom"><span>{canGoBack ? "SOL KENARDAN SAĞA ÇEK · GERİ DÖN" : "KOD, KELİME VE ARADAKİLER."}</span><span>ESC <span className="escape-label">{canGoBack ? "geri dön" : "kapat"}</span></span></div>
+      <div className="panel-bottom"><span>{canGoBack ? "SOL KENARDAN SAĞA ÇEK · GERİ DÖN" : "KOD, KELİME VE ARADAKİLER."}</span><span>ESC <span className="escape-label">{canGoBack ? "geri dön" : "kapat"}</span></span><AmbientAudioToggle embedded /></div>
     </div>
   </dialog>;
 }

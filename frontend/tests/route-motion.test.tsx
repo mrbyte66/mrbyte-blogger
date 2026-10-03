@@ -46,6 +46,14 @@ describe("permalink cover navigation", () => {
     rerender(<RouteMotion><h1>Yeni sayfa</h1></RouteMotion>);
     await committed;
   });
+  it("reverses the fallback movement for a return from the library", () => {
+    routing.path = "/kaydedilenler";
+    const { container, rerender } = render(<RouteMotion><h1>Kitaplık</h1><SlideLink href="/" direction="back">Siteye dön</SlideLink></RouteMotion>);
+    fireEvent.click(screen.getByRole("link", { name: "Siteye dön" }));
+    routing.path = "/"; rerender(<RouteMotion><h1>Site</h1></RouteMotion>);
+    expect(container.querySelector(".route-current.route-sliding.route-back")).toBeTruthy();
+    expect(container.querySelector(".route-previous.route-sliding.route-back")).toBeTruthy();
+  });
   it("respects motion-off without creating a snapshot", () => {
     document.documentElement.dataset.motion = "off";
     const { container } = render(first);

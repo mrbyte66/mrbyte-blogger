@@ -10,10 +10,11 @@ import { useWorkspace } from "../../lib/builder/use-workspace";
 import { themeAppearance } from "../../lib/builder/appearance";
 import { SeriesArticleNav } from "../series/SeriesArticleNav";
 import { ReadingTools } from "../reading/ReadingTools";
+import { SavedLibraryLink } from "../saved/SaveArticleButton";
 import { ArticleContent } from "../ArticleContent";
 export function ArticlePageView({ article, theme, preview = false }: { article: Article; theme: Theme; preview?: boolean }) {
   const appearance = themeAppearance(theme);
-  return <main className={`${appearance.className} reading-page article-width-${article.presentation?.width ?? "comfortable"}`} style={appearance.style}><header className="reading-header" data-edit-field="layout"><Link href="/">{theme.siteName}.</Link><ThemeToggle defaultDark={theme.surface === "night"} /><Link href="/">← Siteye dön</Link></header><div id="reading-content" className="reading-content"><SeriesArticleNav articleSlug={article.slug} /><ArticleContent article={article} fullPage preview={preview} /></div>{!preview && <ReadingTools articleId={article.slug} contentRootId="reading-content" contentRevision={JSON.stringify([article.excerpt, article.paragraphs])} />}</main>;
+  return <main className={`${appearance.className} reading-page article-width-${article.presentation?.width ?? "comfortable"}`} style={appearance.style}><header className="reading-header" data-edit-field="layout"><Link href="/">{theme.siteName}.</Link><ThemeToggle defaultDark={theme.surface === "night"} />{!preview && <SavedLibraryLink />}<Link href="/">← Siteye dön</Link></header><div id="reading-content" className="reading-content"><SeriesArticleNav articleSlug={article.slug} /><ArticleContent article={article} fullPage preview={preview} /></div>{!preview && <ReadingTools articleId={article.slug} contentRootId="reading-content" contentRevision={JSON.stringify([article.excerpt, article.paragraphs])} />}</main>;
 }
 export function ArticlePage({ article: fallback, slug }: { article?: Article; slug?: string }) {
   const { workspace } = useWorkspace();
