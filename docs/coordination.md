@@ -68,6 +68,26 @@ Two future features are recorded without simulating unavailable account or 3D be
 
 Record decisions that affect both projects here. Keep visual details in `frontend/docs/design.md`, frontend implementation guidance in `frontend/docs/frontend.md`, and backend decisions in `backend/docs/`. Give parallel contributors non-overlapping file ownership and ask them to update the appropriate guide when a decision changes.
 
+## Shared chapter cards and reader reactions — 2026-10-03
+
+Series chapters now use the same cover cards as the writing catalog, preserving chapter ordering, complete-sentence body previews and five-item loading. Full article permalinks provide a reversible anonymous local clap and share controls (copy, platform links, native share when available). Read-only card totals synchronize through an independent validated local record; series totals aggregate their published articles. Studio preview actions are disabled. Global visitor counts require the future Spring Boot service; the UI labels the current browser-only scope.
+
+Verification: 142 tests across 18 files, TypeScript and production build passed. Browser checks verified desktop two-column chapter cards, 390px single-column/no overflow, full-article clap reflected in article and series totals, and the share menu. No social posts were submitted. Local test vote is reverted after verification. Final CSS refinement preserves full chapter previews without ellipsis.
+
+## Article views — 2026-10-03
+
+Visible article summaries now add a view when their card enters the viewport; infinite-list cards below the fold are not counted. Only permalink reader views count on entry; opening an article in the side panel does not add another view. Article, series chapter, theme-feed and published series cards show read-only counts; a series number sums its published chapter views. Draft Studio previews are excluded. In this frontend prototype, data is validated and stored per browser, synchronized within the browser and explicitly labeled as local. Shared visitor totals and server analytics remain a Spring Boot task.
+
+## Visual writing and series cards — 2026-10-03
+
+Replaced the scene panel's small writing rows with two-column medium cover cards, stacking at 540px available container width. Series retain large full-width cards. Four original local SVG artworks provide prototype covers without network calls; custom series images take priority, and load failures fall back safely. Shared series covers also appear in the visitor detail and Studio preview. Existing theme feed layouts and five-item loading behavior remain unchanged. Online cover selection is still planned for Spring Boot.
+
+Verification: 137 tests across 17 files, standalone TypeScript check and production build passed. Browser inspection verified desktop two-column writing cards, full-width series, loaded artwork, article open/back focus, and 390px single-column layout without horizontal overflow in light/dark palettes.
+
+## Automatic covers requirement — 2026-10-03
+
+Recorded content-matched online article/series covers and larger visual article cards in `docs/features/automatic-covers.md`. Pexels is a researched provider candidate, requiring a backend API key and provider/license attribution handling. Manual overrides, stable saved selection and graceful search failure are required. This is a documented feature plan; no online integration or card implementation was added in this step.
+
 ## 2026-10-03 — Unified page navigation and independent articles
 
 Replaced separate home/article/series selectors with one searchable PageNavigator including New article/New series. New independent articles receive title-derived editable ASCII permalinks, collision protection and explicit local save. Saved articles appear first in shared visitor feeds and resolve through dynamic article routes; series membership is optional and supports these records later. Existing fixture collections remain compatible. Shared Studio header/canvas chrome remains consistent. Backend publication/authentication and server SEO for browser-local articles remain future work.
@@ -79,3 +99,9 @@ Verification: 129 tests passed, production build including TypeScript passed. Br
 Studio now uses one desktop command row. PageNavigator lists series before writing, uses readable group typography and exposes active/archive/trash filters. New writing chooses independent, existing series or inline new-series creation beside the canvas. Inline series parameters include title, ASCII slug, summary, cover, level and ongoing state; save selects the series, closes the form and returns to writing. Writing and membership commit together through the validated version-2 content record; legacy keys remain readable and non-authoritative compatibility snapshots after migration. Articles and series support draft/publication/archive/reversible trash, with restore as draft. Visitor lists, article permalinks and series chapter navigation exclude hidden content. Archiving/deleting a series retains its writing.
 
 Verification: 135 tests across 16 files passed; production build and TypeScript passed. New tests cover empty drafts, existing/new series membership, inline cover save, atomic write failure, visitor visibility, archive/trash recovery and preserved series members. Browser QA verified the single desktop command row, readable series-first menu, contextual inline form and 390px layout without horizontal overflow. Temporary browser drafts were cancelled/discarded. Content remains browser-local; server publication and authenticated administration remain future work.
+
+## Unified reader engagement — 2026-10-03
+
+Modal and permalink readers now use the same compact translucent engagement bar for view counts, clap toggle and sharing. Opening an article in the side panel does not increment views; visible card impressions and permalink visits do. Removed the standalone view paragraph and replaced colored emoji/circle counters with shared monochrome line icons across reader and catalog cards. Studio actions remain disabled; counting remains browser-local.
+
+Verification: 142 tests passed, TypeScript and production build passed. Desktop and 390px mobile inspection verified the shared toolbar, clap/undo and share menu with no horizontal page overflow. The progressive-list observer test now distinguishes sentinel observation from independent card-impression observers.

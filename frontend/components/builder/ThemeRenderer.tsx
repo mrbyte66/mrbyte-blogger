@@ -12,13 +12,25 @@ import { parseCanvasSelection, previewEvents, type CanvasSelection } from "../..
 import { useWorkspace } from "../../lib/builder/use-workspace";
 import { ThemeToggle } from "../SitePreferences";
 import { Experience } from "../Experience";
+import { ClapCount } from "../ClapCount";
+import { ViewCount } from "../ViewCount";
 import { SeriesCatalog } from "../series/SeriesCatalog";
 import { useSeriesWorkspace } from "../../lib/series/use-series-workspace";
 import { DocumentPreview } from "./DocumentPreview";
 import { documentEvent, navigateEvent, parseDocumentDraft, targetFromLink, type DocumentDraft } from "../../lib/builder/document-protocol";
 import { useProgressiveItems } from "../../lib/use-progressive-items";
+import { useVisibleArticleView } from "../../lib/reactions/use-views";
+import type { Article } from "../../lib/content";
 
 type ArticlesBlock = Extract<PageBlock, { kind: "articles" }>;
+function FeedArticle({ article, index, preview }: { article: Article; index: number; preview: boolean }) {
+  const view = useVisibleArticleView(article.slug, !preview);
+  return <Link ref={view.attach} className="feed-article" href={`/yazilar/${article.slug}`} target={preview ? "_blank" : undefined}>
+    <span className="feed-index">{String(index + 1).padStart(2, "0")}</span>
+    <div><div className="feed-meta"><span>{article.category}</span><span>{article.minutes} dk okuma</span><ViewCount slugs={[article.slug]} /><ClapCount slugs={[article.slug]} /></div><h3>{article.title}</h3><p>{article.excerpt}</p></div>
+    <span className="feed-arrow" aria-hidden="true">↗</span>
+  </Link>;
+}
 function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolean }) {
   const { articles: storedArticles } = useArticles();
   const articles = publicArticles(storedArticles);
@@ -30,11 +42,7 @@ function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolea
     <div className="section-kicker"><span>01 / DÜŞÜNCELER & NOTLAR</span><span>{String(items.length).padStart(2, "0")} YAZI</span></div>
     <div className="feed-heading"><h2 id={`${block.id}-title`}>{block.title}</h2><span className="feed-sample">{items.length} yazı</span></div>
     <div className={`feed-list feed-${block.display}`}>
-      {(progressive ? items.slice(0, feed.visible) : items).map((article, index) => <Link className="feed-article" key={article.slug} href={`/yazilar/${article.slug}`} target={preview ? "_blank" : undefined}>
-        <span className="feed-index">{String(index + 1).padStart(2, "0")}</span>
-        <div><div className="feed-meta"><span>{article.category}</span><span>{article.minutes} dk okuma</span></div><h3>{article.title}</h3><p>{article.excerpt}</p></div>
-        <span className="feed-arrow" aria-hidden="true">↗</span>
-      </Link>)}
+      {(progressive ? items.slice(0, feed.visible) : items).map((article, index) => <FeedArticle article={article} index={index} preview={preview} key={article.slug} />)}
     </div>
     <div ref={feed.sentinel} className="feed-end" aria-live="polite">{more ? <button onClick={feed.loadMore}>Sonraki 5 yazıyı göster ↓</button> : <span>Şimdilik defterin sonuna geldin. <span aria-hidden="true">✳</span></span>}</div>
   </section>;

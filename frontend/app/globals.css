@@ -98,17 +98,21 @@ h1 em { font-family: var(--serif); font-weight: 400; letter-spacing: -.055em; }
 .topic-filter button { padding: 9px 14px; border: 1px solid var(--line); border-radius: 22px; font-size: 13px; }
 .topic-filter button[aria-pressed="true"] { color: var(--panel); background: var(--ink); border-color: var(--ink); }
 .topic-filter button:hover { border-color: var(--ink); }
-.article-list { display:grid; gap:12px; }
-.article-card { width:100%; display:flex; align-items:flex-start; gap:17px; text-align:left; padding:20px; border:1px solid var(--line); border-radius:12px; background:color-mix(in srgb,var(--surface) 26%,var(--panel)); transition:background-color .18s,border-color .18s; }
-.article-number { font: 10px var(--mono); color: var(--muted); padding-top: 3px; }
-.article-card-main { display: flex; flex-direction: column; gap: 10px; }
-.article-category { font: 10px var(--mono); color: var(--muted); }
-.article-category>span { opacity: .75; }
-.article-card-title { color:var(--ink); font-weight:550; font-size:23px; line-height:1.25; letter-spacing:-.035em; }
+.writing-view { container-type:inline-size; }
+.article-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.article-card { width:100%; min-width:0; display:flex; flex-direction:column; align-items:stretch; text-align:left; padding:10px; border:1px solid var(--line); border-radius:16px; background:color-mix(in srgb,var(--surface) 26%,var(--panel)); transition:background-color .18s,border-color .18s; }
+.article-card-visual { position:relative; display:block; aspect-ratio:1.8; overflow:hidden; border-radius:9px; background:var(--surface); }
+.article-chapter-label { position:absolute; left:10px; top:10px; padding:6px 9px; border-radius:20px; background:var(--panel); color:var(--ink); font-size:11px; font-variant-numeric:tabular-nums; }
+.catalog-cover { display:block; width:100%; height:100%; object-fit:cover; background:var(--surface); }
+.article-card-main { display:flex; flex:1; min-width:0; flex-direction:column; gap:10px; padding:18px 10px 8px; overflow-wrap:anywhere; }
+.article-category { font-size:12px; font-weight:550; line-height:1.4; color:var(--muted); }
+.article-card-title { color:var(--ink); font-weight:550; font-size:22px; line-height:1.3; letter-spacing:-.035em; }
 .article-card:hover { background:var(--surface); border-color:color-mix(in srgb,var(--ink) 38%,var(--line)); }
 .article-card:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
-.article-excerpt { font-size: 14px; line-height: 1.6; color: var(--muted); max-width: 64ch; }
-.article-plus { font-size: 24px; margin-left: auto; padding-left: 10px; }
+.article-excerpt { font-size:14px; line-height:1.65; color:var(--muted); display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+.article-card-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:auto; padding-top:16px; font-size:12px; line-height:1.5; color:var(--muted); }
+.article-card-footer>span:last-child { color:var(--ink); }
+@container (max-width:540px) { .article-list { grid-template-columns:1fr; gap:16px; }.article-card-visual { aspect-ratio:2; } }
 .sample-note { font: 11px/1.7 var(--mono); color: var(--muted); margin-top: 28px; }
 .panel-bottom { min-height: 48px; padding: 12px 42px; display: flex; justify-content: space-between; gap: 12px; align-items: center; border-top: 1px solid var(--line); font: 9px var(--mono); color: var(--muted); }
 .escape-label { font-family: 'DM Sans', sans-serif; margin-left: 5px; }
@@ -261,7 +265,6 @@ pre { font: 12px/1.9 var(--mono); overflow-x: auto; padding: 8px 20px 16px; tab-
 /* Compact navigation chrome; rich content owns its own overflow. */
 .panel-scroll > section > .eyebrow { margin-bottom:12px; }
 .section-heading { gap:16px; flex-wrap:wrap; }
-.article-card-main { min-width:0; flex:1; }
 .article-view { min-width:0; overflow-wrap:anywhere; }
 .article-view figure { margin:28px 0; }
 .article-view figure img { display:block; width:100%; max-width:100%; height:auto; border:1px solid var(--line); border-radius:8px; }

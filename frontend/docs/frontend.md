@@ -18,6 +18,12 @@ Independent Next.js App Router application using React, TypeScript, and CSS. Kee
 - `lib/navigation.ts`: explicit navigation state transitions.
 - `components/Experience.tsx`: scene composition, preferences, and navigation integration.
 - `components/ContentPanel.tsx`: accessible browsing and reading surface.
+- `components/ArticleCard.tsx`: visual article card inside the scene writing catalog.
+- `components/ArticleCard.tsx` also renders ordered series chapters, with an optional chapter label, body preview and callback/link navigation.
+- `lib/reactions/use-claps.ts`: validated independent browser-local reactions; same-tab and cross-tab synchronization. No counts in authored content records.
+- `lib/reactions/use-views.ts`: validated browser-local article view totals and first-visible-card impressions. Full reader entries count once per mount; Studio previews do not count. These totals are not site-wide analytics.
+- `components/ArticleEngagement.tsx` and `ClapCount.tsx`: shared modal/permalink toggle/sharing and read-only totals across cards. Studio preview disables actions. See `../../docs/features/claps-and-sharing.md` for the server boundary.
+- `components/CatalogCover.tsx` and `lib/catalog-covers.ts`: shared decorative cover renderer and explicit local prototype artwork mappings; real provider matching belongs to the planned backend feature.
 - `components/Character.tsx`: original character, screen masking, and ambient wrapper.
 - `components/MonitorFace.tsx`: animated eye gaze and blinking.
 - `lib/character-motion.ts`: bounded gaze calculations in source-image coordinates.

@@ -12,6 +12,7 @@ import { SeriesCatalog } from "./series/SeriesCatalog";
 import { SeriesArticleNav } from "./series/SeriesArticleNav";
 import { useSeriesWorkspace } from "../lib/series/use-series-workspace";
 import { ArticleContent } from "./ArticleContent";
+import { ArticleCard } from "./ArticleCard";
 import type { Navigation, NavigationAction } from "../lib/navigation";
 
 const sectionNames = { writing: "Yazılar", projects: "Projeler", about: "Hakkımda" };
@@ -128,9 +129,7 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
         {displayedNavigation.section === "writing" && (article || displayedNavigation.writingView !== "series") && (article ? <div key={article.slug}><SeriesArticleNav articleSlug={article.slug} onOpenArticle={openArticle} onOpenSeries={(slug) => go({ type: "series", slug })} /><ArticleContent article={article} /></div> : <section className="writing-view">
           <div className="catalog-heading"><h2 id="panel-title">Yazılar</h2><p>Kod, kelime ve aradakiler.</p><span>{articles.length} yazı</span></div>
           <div className="topic-filter" role="group" aria-label="Yazı kategorisi">{topics.map((topic) => <button key={topic} aria-pressed={topic === displayedNavigation.topic} onClick={() => go({ type: "filter", topic })}>{topic}</button>)}</div>
-          <div className="article-list">{filtered.slice(0, feed.visible).map((item, index) => <button className="article-card" data-article={item.slug} key={item.slug} onClick={() => openArticle(item.slug)}>
-            <span className="article-number">{String(index + 1).padStart(2, "0")}</span><span className="article-card-main"><span className="article-category">{item.category} <span> / {item.minutes} dk</span></span><span className="article-card-title">{item.title}</span><span className="article-excerpt">{item.excerpt}</span></span><span className="article-plus" aria-hidden="true">+</span>
-          </button>)}</div>
+          <div className="article-list">{filtered.slice(0, feed.visible).map((item) => <ArticleCard article={item} key={item.slug} onOpen={openArticle} />)}</div>
           <div className="progressive-footer" ref={feed.sentinel}><span role="status">{feed.visible} / {filtered.length} yazı</span>{feed.hasMore && <button onClick={feed.loadMore}>Sonraki 5 yazıyı göster ↓</button>}</div>
           <p className="sample-note">Bu ilk taslakta örnek içerikleri görüyorsun.</p>
         </section>)}

@@ -3,6 +3,8 @@
 import { SlideLink } from "./SlideLink";
 import { useState } from "react";
 import type { Article } from "../lib/content";
+import { ArticleEngagement } from "./ArticleEngagement";
+import { useArticleViews } from "../lib/reactions/use-views";
 
 function CodeBlock({ code }: { code: string }) {
   const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -19,9 +21,10 @@ function CodeBlock({ code }: { code: string }) {
   </div>;
 }
 
-export function ArticleContent({ article, fullPage = false }: { article: Article; fullPage?: boolean }) {
+export function ArticleContent({ article, fullPage = false, preview = false }: { article: Article; fullPage?: boolean; preview?: boolean }) {
+  useArticleViews(article.slug, fullPage && !preview);
   const Heading = fullPage ? "h1" : "h2";
-  return <article className={`article-view article-heading-${article.presentation?.heading ?? "left"}`} data-edit-field="body">
+  return <><article className={`article-view article-heading-${article.presentation?.heading ?? "left"}`} data-edit-field="body">
     <p className="eyebrow" data-edit-field="meta">{article.eyebrow}</p>
     <Heading id="panel-title" data-edit-field="title">{article.title}</Heading>
     {article.presentation?.showMeta !== false && <div className="article-meta" data-edit-field="meta"><span>{article.category}</span><span>{article.minutes} dk okuma</span></div>}
@@ -35,5 +38,5 @@ export function ArticleContent({ article, fullPage = false }: { article: Article
     {!article.authored && <div className="article-end"><span aria-hidden="true">✳</span><p>Şimdilik bu kadar.<br />Bir sonraki satırda görüşürüz.</p></div>}
     {!fullPage && <SlideLink className="reading-permalink" href={`/yazilar/${article.slug}`}>Bu yazının kalıcı bağlantısını aç ↗</SlideLink>}
     {!article.authored && <p className="sample-note">Bu metin, okuma deneyimini göstermek için hazırlanmış bir örnektir.</p>}
-  </article>;
+  </article><ArticleEngagement key={article.slug} slug={article.slug} title={article.title} preview={preview} /></>;
 }

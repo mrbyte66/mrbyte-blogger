@@ -32,6 +32,7 @@ The backend is intentionally unimplemented until the earlier product decisions a
 
 ## Planned extensions
 
+- Content-matched online covers for articles and series, with larger visual writing cards and editable Studio defaults: [automatic covers](features/automatic-covers.md).
 - Public site introduction and membership landing page: explain private reading notes, personal workbooks, account syncing, and visit history with clear ownership and privacy boundaries. [Site introduction](features/site-introduction.md).
 - Interactive character play: drag to turn the character through 360 degrees, then let it ease back to its resting view after inactivity; add a playful dizzy eye loop. [Character interaction](features/character-interaction.md).
 - Modular reading, highlighting, and private/public annotation rules: [reading tools](features/reading-tools.md).
