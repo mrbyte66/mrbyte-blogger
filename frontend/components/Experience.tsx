@@ -1,5 +1,6 @@
 "use client";
 
+import { publicArticles } from "../lib/editorial/store";
 import { useArticles } from "../lib/articles/use-articles";
 import { useReducer } from "react";
 import { useSitePreferences } from "./SitePreferences";
@@ -15,8 +16,9 @@ const destinations: { section: Section; number: string; label: string; detail: s
 
 export function Experience({ siteName = "SATIR", title = "Kod yazarım.", emphasis = "Bazen de satır.", description = "Yazılım, edebiyat ve\nikisinin arasında bir insan.", headingLevel = "h1", colorMode = "remember" }: { siteName?: string; title?: string; emphasis?: string; description?: string; headingLevel?: "h1" | "h2"; colorMode?: "light" | "dark" | "remember" }) {
   const Heading = headingLevel;
-  const { articles } = useArticles();
-  const featured = articles.find((a) => a.slug === "yapay-zeka-ile-dusunmek")!;
+  const { articles: storedArticles } = useArticles();
+  const articles = publicArticles(storedArticles);
+  const featured = articles.find((a) => a.slug === "yapay-zeka-ile-dusunmek") ?? articles[0];
   const [navigation, dispatch] = useReducer((state: Navigation, action: NavigationAction) => navigateArticles(state, action, articles), initialNavigation);
   const { colorMode: preference, setColorMode, motionEnabled, setMotionEnabled } = useSitePreferences();
   const dark = preference ? preference === "dark" : colorMode === "dark";
@@ -36,7 +38,7 @@ export function Experience({ siteName = "SATIR", title = "Kod yazarım.", emphas
 
       <nav id="scene-navigation" className="scene-navigation" aria-label="Ana içerikler"><p className="navigation-label">NEREYE GİDELİM?</p>{destinations.map((destination) => <button key={destination.section} className="destination" onClick={() => dispatch({ type: "open", section: destination.section })}><span className="destination-number">{destination.number}</span><span className="destination-copy"><span className="destination-label">{destination.label}</span><span className="destination-detail">{destination.detail}</span></span><span className="destination-plus" aria-hidden="true">+</span></button>)}</nav>
 
-      <button className="latest-note" data-article={featured.slug} onClick={() => dispatch({ type: "article", slug: "yapay-zeka-ile-dusunmek" })}><span className="note-icon" aria-hidden="true">[ ]</span><span><span className="latest-label">DEFTERDEN BİR SAYFA</span><span className="latest-title">{featured.title}</span></span><span className="latest-plus" aria-hidden="true">+</span></button>
+      <button className="latest-note" data-article={featured?.slug} onClick={() => dispatch(featured ? { type: "article", slug: featured.slug } : { type: "open", section: "writing" })}><span className="note-icon" aria-hidden="true">[ ]</span><span><span className="latest-label">DEFTERDEN BİR SAYFA</span><span className="latest-title">{featured?.title ?? "Yazılar"}</span></span><span className="latest-plus" aria-hidden="true">+</span></button>
       <div className="character-caption" aria-hidden="true"><span className="caption-line" /><span>Kıvırcık düşünceler.<br />Düzenli satırlar.</span></div>
     </div>
 

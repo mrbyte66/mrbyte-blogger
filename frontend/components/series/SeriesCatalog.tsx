@@ -3,7 +3,8 @@
 import { SlideLink as Link } from "../SlideLink";
 import PlainLink from "next/link";
 import { articleBodyPreview } from "../../lib/content";
-import { publishedSeries, type BlogSeries } from "../../lib/series/model";
+import { type BlogSeries } from "../../lib/series/model";
+import { publicArticles, publicSeries } from "../../lib/editorial/store";
 import { useArticles } from "../../lib/articles/use-articles";
 import { useProgressiveItems } from "../../lib/use-progressive-items";
 import "../../app/series.css";
@@ -18,8 +19,9 @@ type Props = {
   onChapterLimitChange?: (value: number) => void;
 };
 export function SeriesCatalog({ series, selectedSeriesSlug, onOpenSeries, onOpenArticle, chapterLimit, onChapterLimitChange, preview = false }: Props) {
-  const { articles } = useArticles();
-  const visible = preview ? series : publishedSeries(series);
+  const { articles: storedArticles } = useArticles();
+  const articles = preview ? storedArticles : publicArticles(storedArticles);
+  const visible = preview ? series : publicSeries(series, storedArticles);
   const selected = visible.find((s) => s.slug === selectedSeriesSlug);
   const chapters = useProgressiveItems({ total: selected?.articleSlugs.length ?? 0, listKey: selectedSeriesSlug ?? "", limit: chapterLimit, onLimitChange: onChapterLimitChange });
   function articleAction(slug: string, label: React.ReactNode, className?: string) {

@@ -34,3 +34,7 @@ Motion uses shared easing and duration tokens in `app/preferences.css` and the c
 ## Catalog cards
 
 Keep writing and series catalogs minimal: consistent rounded cards, comfortable 18–22px reading-panel padding, restrained metadata and compact headings. Selection feedback belongs to the card border and surface, never an underlined title. Use existing ink, panel and surface tokens in every palette; keyboard focus stays clearly visible and distinct from hover.
+
+## Studio command area
+
+Keep Studio commands on one desktop row: compact identity, one page picker, quiet state and contextual save/actions. Article relationships belong near the canvas; show independent/existing/new series in a single selector. An inline series form opens below the canvas and returns to it after save/cancel. Series precede writing in the page picker, with clear 16px theme-aligned group headings. Keep edit fields, canvas and inspector simultaneously visible on desktop. Archives/trash use explicit navigation filters and reversible actions.

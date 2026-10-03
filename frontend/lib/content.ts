@@ -3,6 +3,7 @@ export type Topic = (typeof topics)[number];
 export type Article = {
   slug: string;
   authored?: boolean;
+  status?: "draft" | "published" | "archived" | "trashed";
   title: string;
   category: Exclude<Topic, "Tümü">;
   eyebrow: string;

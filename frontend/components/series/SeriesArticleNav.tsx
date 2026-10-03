@@ -1,6 +1,8 @@
 "use client";
 
 import { SlideLink as Link } from "../SlideLink";
+import { useArticles } from "../../lib/articles/use-articles";
+import { publicSeries } from "../../lib/editorial/store";
 import { articleSeries } from "../../lib/series/model";
 import { useSeriesWorkspace } from "../../lib/series/use-series-workspace";
 import "../../app/series.css";
@@ -8,7 +10,8 @@ import "../../app/series.css";
 type Props = { articleSlug: string; onOpenArticle?: (slug: string) => void; onOpenSeries?: (slug: string) => void };
 export function SeriesArticleNav({ articleSlug, onOpenArticle, onOpenSeries }: Props) {
   const { series, ready } = useSeriesWorkspace();
-  const membership = articleSeries(series, articleSlug);
+  const { articles } = useArticles();
+  const membership = articleSeries(publicSeries(series, articles), articleSlug);
   if (!ready || !membership) return null;
   const index = membership.articleSlugs.indexOf(articleSlug);
   function chapter(slug: string, label: string) { return onOpenArticle ? <button type="button" onClick={() => onOpenArticle(slug)}>{label}</button> : <Link href={`/yazilar/${slug}`}>{label}</Link>; }

@@ -26,3 +26,5 @@ Independent Next.js App Router application using React, TypeScript, and CSS. Kee
 - Theme/editor boundaries are described in `docs/builder.md`; the homepage now renders the locally applied theme, whose default is the original scene.
 
 Keep metadata and static layout separate from interactive client components. Use semantic controls, avoid fake links, and keep navigation state explicit. No backend API is simulated in Next.js route handlers; backend belongs in the sibling `../backend/` project.
+
+`lib/editorial/` owns browser-local article/series persistence and lifecycle; editor and visitor hooks share its validated combined record. Keep UI authoring in focused builder components (series context, inline series form, contextual actions) and avoid adding storage logic to forms.

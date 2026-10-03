@@ -87,7 +87,7 @@ export function ThemeEditor({ onNavigate, navigation }: { navigation?: ReactNode
   }
 
   return <main className="studio">
-    <StudioHeader navigation={navigation} status={<div className="studio-local-note"><span className="local-dot" /><strong>{dirty ? "Tema taslağı" : "Tema uygulandı"}</strong><span>Taslak otomatik kaydedilir. Uygula, bu tarayıcıdaki ana sayfayı günceller.</span></div>} actions={<><Link className="studio-text-link" href="/" target="_blank">Siteyi aç ↗</Link><Link className="studio-secondary" href="/preview" target="_blank">Tam ekran ↗</Link><button className="studio-primary" onClick={apply} disabled={!ready || !dirty || errors.length > 0}>Temayı uygula <span aria-hidden="true">↗</span></button></>} />
+    <StudioHeader navigation={navigation} status={<span className="studio-state" title="Taslak otomatik kaydedilir; Uygula bu tarayıcıdaki ana sayfayı değiştirir.">{dirty ? "Tema taslağı" : "Uygulandı"}</span>} actions={<><Link className="studio-text-link" href="/" target="_blank" aria-label="Siteyi aç ↗" title="Siteyi aç">↗</Link><Link className="studio-secondary" href="/preview" target="_blank" aria-label="Taslağı tam ekran gör ↗" title="Taslağı tam ekran gör">⛶</Link><button className="studio-primary" onClick={apply} disabled={!ready || !dirty || errors.length > 0}>Temayı uygula <span aria-hidden="true">↗</span></button></>} />
 
     <div className="studio-workspace">
 

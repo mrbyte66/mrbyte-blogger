@@ -50,11 +50,12 @@ describe("page editing and visitor content", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
     fireEvent.click(screen.getByRole("button", { name: /Yeni yazı/ }));
     fireEvent.change(screen.getByLabelText("Yazı başlığı"), { target: { value: "Özgür düşünce" } });
-    expect(screen.getByRole("button", { name: /Sayfayı kaydet/ }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: /Sayfayı kaydet/ }).hasAttribute("disabled")).toBe(false);
     message({ type: previewEvents.select, id: "body" });
     fireEvent.change(screen.getByLabelText("Paragraf 1"), { target: { value: "Bir seriye bağlı olmayan yazım." } });
     expect(localStorage.getItem(articleStorageKey)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
+    fireEvent.click(screen.getByLabelText("İçerik işlemleri"));
+    fireEvent.click(screen.getByText("Yayına al"));
     const created = reader.result.current.articles[0];
     expect(created).toMatchObject({ title: "Özgür düşünce", slug: "ozgur-dusunce", authored: true });
     expect(parseArticles(localStorage.getItem(articleStorageKey)!)?.[0]).toEqual(created);
@@ -116,7 +117,7 @@ describe("page editing and visitor content", () => {
     selectPage(/Ana sayfa/);
     expect(screen.queryByLabelText("Yazı başlığı")).toBeNull();
   });
-  it("edits series beside its canvas and discards an unsaved new series", () => {
+  it("edits series beside its canvas and preserves saved links during slug edits", () => {
     render(<SiteEditor />);
     selectPage(initialSeries[0].title);
     message({ type: previewEvents.select, id: "meta" });
@@ -128,12 +129,7 @@ describe("page editing and visitor content", () => {
     expect(localStorage.getItem(seriesKey)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
     expect(JSON.parse(localStorage.getItem(seriesKey)!)[0].summary).toBe("Yeni seri açıklaması");
-    fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Yeni seri/ }));
-    expect((screen.getByLabelText("Seri başlığı") as HTMLInputElement).value).toBe("Yeni seri");
-    fireEvent.click(screen.getByRole("button", { name: "Değişiklikleri geri al" }));
-    expect(screen.queryByLabelText("Seri başlığı")).toBeNull();
-    expect(JSON.parse(localStorage.getItem(seriesKey)!)).toHaveLength(initialSeries.length);
+    expect(screen.getByRole("button", { name: /^Sayfalar:/ })).toBeTruthy();
   });
 });
 describe("document validation", () => {

@@ -9,7 +9,7 @@ export type BlogSeries = {
   coverImage?: string;
   presentation?: { heading: "left" | "center"; chapterStyle: "cards" | "rows" };
   level: typeof SERIES_LEVELS[number];
-  status: "draft" | "published";
+  status: "draft" | "published" | "archived" | "trashed";
   ongoing: boolean;
   articleSlugs: string[];
 };
@@ -58,7 +58,7 @@ export function seriesValidationError(value: unknown, articleSlugs?: readonly st
     if (typeof s.summary !== "string" || s.summary.length > 1000) return "Seri açıklaması en fazla 1000 karakter olabilir.";
     if (s.presentation && (!["left", "center"].includes(s.presentation.heading) || !["cards", "rows"].includes(s.presentation.chapterStyle))) return "Seri sayfa düzeni geçersiz.";
     if (!isValidSeriesCoverImage(s.coverImage)) return "Kapak görseli için site içi bir yol veya HTTPS bağlantısı kullan.";
-    if (!SERIES_LEVELS.includes(s.level as BlogSeries["level"]) || !["draft", "published"].includes(s.status ?? "") || typeof s.ongoing !== "boolean") return "Seri seviyesi ve yayın durumunu seç.";
+    if (!SERIES_LEVELS.includes(s.level as BlogSeries["level"]) || !["draft", "published", "archived", "trashed"].includes(s.status ?? "") || typeof s.ongoing !== "boolean") return "Seri seviyesi ve yayın durumunu seç.";
     if (!Array.isArray(s.articleSlugs) || s.articleSlugs.length > 200 || (s.status === "published" && !s.articleSlugs.length)) return "Yayınlanan seride en az bir bölüm olmalı.";
     for (const slug of s.articleSlugs) {
       if (typeof slug !== "string" || !(articleSlugs ? articleSlugs.includes(slug) : findArticle(slug))) return "Bölümleri mevcut yazılardan seç.";

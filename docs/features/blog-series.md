@@ -29,3 +29,5 @@ The prototype uses existing stable article slugs as references and an ordered me
 ## Example content
 
 The frontend includes three clearly labeled demonstration series. The AI/software series contains ten distinct sample articles; literature and culture use their existing example articles. Expanded fixtures upgrade only an exactly untouched original demo collection. User edits, custom series and intentional deletions must be preserved.
+
+Studio creates a series from a writing draft through the contextual series selector and inline canvas form (title/slug/description/cover/level). Series save selects the new record without leaving writing. Draft writing can be saved before publication; published first chapters activate new single-chapter series. Series support archive and reversible trash through the shared content-actions menu. Membership survives status changes; public chapter lists skip hidden writing.

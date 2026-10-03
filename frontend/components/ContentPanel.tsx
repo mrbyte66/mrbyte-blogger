@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type Dispatch, type PointerEvent } from "react";
 import { topics } from "../lib/content";
+import { publicArticles } from "../lib/editorial/store";
 import { useArticles } from "../lib/articles/use-articles";
 import { useEdgeElasticity } from "../lib/use-edge-elasticity";
 import { CoverTransition } from "./CoverTransition";
@@ -17,7 +18,8 @@ const sectionNames = { writing: "Yazılar", projects: "Projeler", about: "Hakkı
 
 export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { navigation: Navigation; dispatch: Dispatch<NavigationAction>; siteName?: string }) {
   const { series } = useSeriesWorkspace();
-  const { articles } = useArticles();
+  const { articles: storedArticles } = useArticles();
+  const articles = publicArticles(storedArticles);
   const [backward, setBackward] = useState(false);
   const [animated, setAnimated] = useState(false);
   const lastAction = useRef<NavigationAction["type"] | null>(null);

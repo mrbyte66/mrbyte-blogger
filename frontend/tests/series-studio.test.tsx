@@ -19,20 +19,25 @@ function openFirst() { selectPage(initialSeries[0].title); }
 function section(name: string) { fireEvent.click(screen.getByRole("button", { name })); }
 function save() { fireEvent.click(screen.getByRole("button", { name: "Sayfayı kaydet ↗" })); }
 describe("series authoring beside the canvas", () => {
-  it("creates a draft with an automatic Turkish slug and prevents duplicate membership", () => {
+  it("creates a series below an article canvas with a Turkish slug and then edits its chapters", () => {
     localStorage.setItem(seriesKey, JSON.stringify([initialSeries[0], initialSeries[2]]));
     render(<SiteEditor />);
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Yeni seri oluştur|Yeni seri/ }));
-    fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Şiir ve kültür" } });
-    section("Seri bilgileri");
-    expect((screen.getByLabelText("Kalıcı bağlantı adı") as HTMLInputElement).value).toBe("siir-ve-kultur");
+    fireEvent.click(screen.getByRole("button", { name: /Yeni yazı/ }));
+    fireEvent.change(screen.getByLabelText("Yazının serisi"), { target: { value: "new" } });
+    fireEvent.change(screen.getByLabelText("Yeni seri başlığı"), { target: { value: "Şiir ve kültür" } });
+    expect((screen.getByLabelText("Yeni seri bağlantısı") as HTMLInputElement).value).toBe("siir-ve-kultur");
+    fireEvent.click(screen.getByRole("button", { name: "Seriyi kaydet" }));
+    expect(screen.queryByLabelText("Yeni seri başlığı")).toBeNull();
+    expect(storedSeries().at(-1)).toMatchObject({ title: "Şiir ve kültür", slug: "siir-ve-kultur", status: "draft", articleSlugs: [] });
+    fireEvent.click(screen.getByRole("button", { name: "Değişiklikleri geri al" }));
+    selectPage(/Şiir ve kültür/);
     section("Bölümler");
     const picker = screen.getByLabelText("Bölüm ekle");
     expect(within(picker).getByRole("option", { name: /Yapay zekâ ile düşünmek/ }).hasAttribute("disabled")).toBe(true);
     fireEvent.change(picker, { target: { value: "satir-aralarinda" } });
     save();
-    expect(storedSeries().at(-1)).toMatchObject({ title: "Şiir ve kültür", slug: "siir-ve-kultur", status: "draft", articleSlugs: ["satir-aralarinda"] });
+    expect(storedSeries().at(-1)?.articleSlugs).toEqual(["satir-aralarinda"]);
   });
   it("reorders and removes membership without deleting articles or changing saved data before Save", () => {
     render(<SiteEditor />); openFirst(); section("Bölümler");
@@ -45,19 +50,20 @@ describe("series authoring beside the canvas", () => {
     expect(storedSeries()[0].articleSlugs).not.toContain("iyi-kodun-sessizligi");
     expect(articles.find((a) => a.slug === "iyi-kodun-sessizligi")).toBeTruthy();
   });
-  it("keeps invalid links and empty publication unsaved until corrected or discarded", () => {
+  it("keeps invalid inline links unsaved and discards the form without affecting the writing draft", () => {
     render(<SiteEditor />);
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Yeni seri/ }));
-    section("Seri bilgileri");
-    fireEvent.change(screen.getByLabelText("Kalıcı bağlantı adı"), { target: { value: "Türkçe Link!" } });
-    expect(screen.getByRole("button", { name: /Sayfayı kaydet/ }).hasAttribute("disabled")).toBe(true);
-    fireEvent.change(screen.getByLabelText("Kalıcı bağlantı adı"), { target: { value: "yeni-seri" } });
-    fireEvent.change(screen.getByLabelText("Görünürlük"), { target: { value: "published" } });
-    expect(screen.getByRole("button", { name: /Sayfayı kaydet/ }).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /Yeni yazı/ }));
+    fireEvent.change(screen.getByLabelText("Yazı başlığı"), { target: { value: "Korunan yazım" } });
+    fireEvent.change(screen.getByLabelText("Yazının serisi"), { target: { value: "new" } });
+    fireEvent.change(screen.getByLabelText("Yeni seri başlığı"), { target: { value: "Yeni seri" } });
+    fireEvent.change(screen.getByLabelText("Yeni seri bağlantısı"), { target: { value: "Türkçe Link!" } });
+    expect(screen.getByRole("button", { name: "Seriyi kaydet" }).hasAttribute("disabled")).toBe(true);
     expect(localStorage.getItem(seriesKey)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Vazgeç" }));
+    expect(screen.queryByLabelText("Yeni seri başlığı")).toBeNull();
+    expect((screen.getByLabelText("Yazı başlığı") as HTMLInputElement).value).toBe("Korunan yazım");
     fireEvent.click(screen.getByRole("button", { name: "Değişiklikleri geri al" }));
-    expect(screen.queryByLabelText("Kalıcı bağlantı adı")).toBeNull();
   });
   it("saves cover images and presentation in the shared page editor", () => {
     render(<SiteEditor />); openFirst(); section("Kapak görseli");

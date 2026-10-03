@@ -4,6 +4,7 @@ import { scrollBehavior } from "../../lib/motion";
 
 import { SlideLink as Link } from "../SlideLink";
 import { useEffect, useRef, useState } from "react";
+import { publicArticles } from "../../lib/editorial/store";
 import { useArticles } from "../../lib/articles/use-articles";
 import { blockLabels, type PageBlock, type Theme } from "../../lib/builder/model";
 import { themeAppearance } from "../../lib/builder/appearance";
@@ -19,7 +20,8 @@ import { useProgressiveItems } from "../../lib/use-progressive-items";
 
 type ArticlesBlock = Extract<PageBlock, { kind: "articles" }>;
 function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolean }) {
-  const { articles } = useArticles();
+  const { articles: storedArticles } = useArticles();
+  const articles = publicArticles(storedArticles);
   const items = articles.filter((item) => block.category === "Tümü" || item.category === block.category);
   const progressive = block.loading === "progressive";
   const feed = useProgressiveItems({ total: progressive ? items.length : 0, listKey: `${block.id}-${block.category}` });

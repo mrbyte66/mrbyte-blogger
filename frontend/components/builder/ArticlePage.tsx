@@ -3,6 +3,7 @@
 import { SlideLink as Link } from "../SlideLink";
 import { ThemeToggle } from "../SitePreferences";
 import type { Theme } from "../../lib/builder/model";
+import { articleStatus } from "../../lib/editorial/store";
 import { useArticles } from "../../lib/articles/use-articles";
 import type { Article } from "../../lib/content";
 import { useWorkspace } from "../../lib/builder/use-workspace";
@@ -17,7 +18,8 @@ export function ArticlePageView({ article, theme, preview = false }: { article: 
 export function ArticlePage({ article: fallback, slug }: { article?: Article; slug?: string }) {
   const { workspace } = useWorkspace();
   const { articles, ready } = useArticles();
-  const article = articles.find((item) => item.slug === (slug ?? fallback?.slug)) ?? fallback;
+  const found = articles.find((item) => item.slug === (slug ?? fallback?.slug));
+  const article = ready ? (found && articleStatus(found) === "published" ? found : undefined) : fallback;
   if (!article) return <main className="reading-page"><header className="reading-header"><Link href="/">← Siteye dön</Link><ThemeToggle /></header><div className="reading-content"><h1>{ready ? "Yazı bulunamadı" : "Yazı yükleniyor…"}</h1>{ready && <p>Bu bağlantıya ait yazı bu tarayıcıda bulunmuyor.</p>}</div></main>;
   return <ArticlePageView article={article} theme={workspace.applied} />;
 }
