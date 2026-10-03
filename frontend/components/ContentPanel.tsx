@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type Dispatch, type PointerEvent } from "react";
-import { articles, filterArticles, findArticle, topics } from "../lib/content";
+import { topics } from "../lib/content";
+import { useArticles } from "../lib/articles/use-articles";
 import { useEdgeElasticity } from "../lib/use-edge-elasticity";
 import { CoverTransition } from "./CoverTransition";
 import { RippleButton } from "./RippleButton";
@@ -16,6 +17,7 @@ const sectionNames = { writing: "Yazılar", projects: "Projeler", about: "Hakkı
 
 export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { navigation: Navigation; dispatch: Dispatch<NavigationAction>; siteName?: string }) {
   const { series } = useSeriesWorkspace();
+  const { articles } = useArticles();
   const [backward, setBackward] = useState(false);
   const [animated, setAnimated] = useState(false);
   const lastAction = useRef<NavigationAction["type"] | null>(null);
@@ -32,10 +34,10 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
   const [lastOpenNavigation, setLastOpenNavigation] = useState(navigation);
   useEffect(() => { if (navigation.section) setLastOpenNavigation(navigation); }, [navigation]);
   const displayedNavigation = navigation.section ? navigation : lastOpenNavigation;
-  const article = displayedNavigation.articleSlug ? findArticle(displayedNavigation.articleSlug) : undefined;
+  const article = displayedNavigation.articleSlug ? articles.find((item) => item.slug === displayedNavigation.articleSlug) : undefined;
   const canGoBack = !!article || !!displayedNavigation.seriesSlug;
   const viewKey = `${displayedNavigation.section}:${displayedNavigation.articleSlug ?? displayedNavigation.seriesSlug ?? displayedNavigation.writingView ?? "articles"}`;
-  const filtered = filterArticles(displayedNavigation.topic);
+  const filtered = articles.filter((item) => displayedNavigation.topic === "Tümü" || item.category === displayedNavigation.topic);
   const feed = useProgressiveItems({ total: filtered.length, listKey: displayedNavigation.topic, contextKey: viewKey });
   useEdgeElasticity(scrollArea, viewKey);
   const swipe = useRef<{ x: number; y: number; time: number; pointerId: number } | null>(null);
@@ -122,7 +124,7 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
       <CoverTransition viewKey={viewKey} backward={backward} animate={animated}><div className="panel-scroll" ref={scrollArea} role={displayedNavigation.section === "writing" && !article ? "tabpanel" : undefined} id="reader-tabpanel" aria-labelledby={displayedNavigation.section === "writing" && !article ? `reader-tab-${displayedNavigation.writingView ?? "articles"}` : undefined}><div className="elastic-content">
         {displayedNavigation.section === "writing" && !article && displayedNavigation.writingView === "series" && <section>{!displayedNavigation.seriesSlug && <div className="catalog-heading"><h2 id="panel-title">Seriler</h2><p>Bir konuyu, adım adım.</p></div>}<SeriesCatalog series={series} selectedSeriesSlug={displayedNavigation.seriesSlug ?? undefined} onOpenSeries={(slug) => go({ type: "series", slug })} onOpenArticle={openArticle} chapterLimit={chapterLimits[displayedNavigation.seriesSlug ?? ""] ?? 5} onChapterLimitChange={(count) => setChapterLimits((value) => ({ ...value, [displayedNavigation.seriesSlug ?? ""]: count }))} /></section>}
         {displayedNavigation.section === "writing" && (article || displayedNavigation.writingView !== "series") && (article ? <div key={article.slug}><SeriesArticleNav articleSlug={article.slug} onOpenArticle={openArticle} onOpenSeries={(slug) => go({ type: "series", slug })} /><ArticleContent article={article} /></div> : <section className="writing-view">
-          <div className="catalog-heading"><h2 id="panel-title">Yazılar</h2><p>Kod, kelime ve aradakiler.</p><span>{articles.length} örnek yazı</span></div>
+          <div className="catalog-heading"><h2 id="panel-title">Yazılar</h2><p>Kod, kelime ve aradakiler.</p><span>{articles.length} yazı</span></div>
           <div className="topic-filter" role="group" aria-label="Yazı kategorisi">{topics.map((topic) => <button key={topic} aria-pressed={topic === displayedNavigation.topic} onClick={() => go({ type: "filter", topic })}>{topic}</button>)}</div>
           <div className="article-list">{filtered.slice(0, feed.visible).map((item, index) => <button className="article-card" data-article={item.slug} key={item.slug} onClick={() => openArticle(item.slug)}>
             <span className="article-number">{String(index + 1).padStart(2, "0")}</span><span className="article-card-main"><span className="article-category">{item.category} <span> / {item.minutes} dk</span></span><span className="article-card-title">{item.title}</span><span className="article-excerpt">{item.excerpt}</span></span><span className="article-plus" aria-hidden="true">+</span>

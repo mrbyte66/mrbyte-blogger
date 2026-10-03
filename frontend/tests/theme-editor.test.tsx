@@ -123,7 +123,7 @@ describe("visual theme authoring", () => {
     await user.click(current);
     expect(savedWorkspace()?.draft).toEqual(createTheme("scene"));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(editorStatus()).toBe("Taslak otomatik olarak tarayıcıya kaydedilir.");
+    expect(editorStatus()).toBe("");
     await user.click(screen.getByRole("button", { name: "Blok ayarları" }));
     expect((screen.getByLabelText("Başlık") as HTMLInputElement).value).toBe("Kod yazarım.");
   });
@@ -201,7 +201,7 @@ describe("visual theme authoring", () => {
     expect(within(inspector).getByRole("heading", { name: "Alıntı" })).toBeTruthy();
     expect(within(inspector).getByLabelText("Alıntı / düşünce")).toBeTruthy();
     expect(editorStatus()).toContain("Tuvalde seçtiğin bölümün ayarları açıldı");
-    await user.click(screen.getByRole("button", { name: "Tüm sayfayı aydınlat" }));
+    await user.click(screen.getByRole("button", { name: "Seçimi gizle" }));
     expect(within(inspector).getByLabelText("Alıntı / düşünce")).toBeTruthy();
     expect(post).toHaveBeenLastCalledWith(expect.objectContaining({ type: previewEvents.selection, id: null }), window.location.origin);
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();

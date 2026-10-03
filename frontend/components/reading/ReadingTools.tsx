@@ -13,7 +13,7 @@ type HighlightEnvironment = {
 const highlightNames = { highlight: "mrbyte-reading-highlight", underline: "mrbyte-reading-underline", note: "mrbyte-reading-note" };
 const kindLabels = { highlight: "Fosforlu işaret", underline: "Alt çizgi", note: "Not" };
 
-export function ReadingTools({ articleId, contentRootId }: { articleId: string; contentRootId: string }) {
+export function ReadingTools({ articleId, contentRootId, contentRevision = "" }: { articleId: string; contentRootId: string; contentRevision?: string }) {
   const [marks, setMarks] = useState<ReadingMark[]>([]);
   const [fragments, setFragments] = useState<TextAnchor[]>([]);
   const [open, setOpen] = useState(false);
@@ -63,6 +63,7 @@ export function ReadingTools({ articleId, contentRootId }: { articleId: string; 
       document.removeEventListener("pointercancel", finishPointerSelection);
     };
   }, [contentRootId]);
+  useEffect(() => { setFragments([]); setWriting(false); }, [contentRevision]);
   useEffect(() => { if (writing) noteInput.current?.focus(); }, [writing]);
   useEffect(() => {
     if (!open) return;
@@ -93,7 +94,7 @@ export function ReadingTools({ articleId, contentRootId }: { articleId: string; 
       for (const kind of Object.keys(highlightNames) as ReadingMarkKind[]) registry.set(highlightNames[kind], new Constructor(...ranges[kind]));
     }
     return () => { for (const name of Object.values(highlightNames)) registry?.delete(name); };
-  }, [marks, contentRootId]);
+  }, [marks, contentRootId, contentRevision]);
 
   function persist(next: ReadingMark[], message: string) {
     const saved = writeReadingDocument({ version: 1, articleId, marks: next });

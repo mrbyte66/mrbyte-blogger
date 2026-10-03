@@ -1,4 +1,4 @@
-import { findArticle, type Topic } from "./content";
+import { articles, type Article, type Topic } from "./content";
 
 export type Section = "writing" | "projects" | "about";
 export type Navigation = { section: Section | null; articleSlug: string | null; topic: Topic; writingView?: "articles" | "series"; seriesSlug?: string | null };
@@ -14,9 +14,13 @@ export type NavigationAction =
 export const initialNavigation: Navigation = { section: null, articleSlug: null, topic: "Tümü" };
 
 export function navigate(state: Navigation, action: NavigationAction): Navigation {
+  return navigateArticles(state, action, articles);
+}
+
+export function navigateArticles(state: Navigation, action: NavigationAction, availableArticles: readonly Article[]): Navigation {
   switch (action.type) {
     case "open": return { ...state, section: action.section, articleSlug: null, ...(state.seriesSlug ? { seriesSlug: null } : {}) };
-    case "article": return findArticle(action.slug) ? { ...state, section: "writing", articleSlug: action.slug } : state;
+    case "article": return availableArticles.some((article) => article.slug === action.slug) ? { ...state, section: "writing", articleSlug: action.slug } : state;
     case "filter": return { ...state, topic: action.topic, articleSlug: null };
     case "writing-view": return { ...state, section: "writing", articleSlug: null, writingView: action.view, seriesSlug: null };
     case "series": return { ...state, section: "writing", articleSlug: null, writingView: "series", seriesSlug: action.slug };

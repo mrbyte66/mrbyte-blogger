@@ -12,7 +12,9 @@ Independent Next.js App Router application using React, TypeScript, and CSS. Kee
 
 ## Component responsibilities
 
-- `lib/content.ts`: typed sample content and lookups.
+- `lib/content.ts`: typed initial article content; custom browser-local articles live in `lib/articles/` and resolve via dynamic article routes.
+- `lib/articles/`: validated browser-local article records and shared reader/editor synchronization.
+- `components/builder/SiteEditor.tsx`: homepage/article/series workspace navigation.
 - `lib/navigation.ts`: explicit navigation state transitions.
 - `components/Experience.tsx`: scene composition, preferences, and navigation integration.
 - `components/ContentPanel.tsx`: accessible browsing and reading surface.

@@ -2,11 +2,13 @@ export const topics = ["Tümü", "Yazılım", "Edebiyat", "Kültür"] as const;
 export type Topic = (typeof topics)[number];
 export type Article = {
   slug: string;
+  authored?: boolean;
   title: string;
   category: Exclude<Topic, "Tümü">;
   eyebrow: string;
   excerpt: string;
   minutes: number;
+  presentation?: { width: "comfortable" | "wide"; heading: "left" | "center"; showMeta: boolean };
   paragraphs: readonly string[];
   code?: string;
   figure?: { src: string; alt: string; caption: string; width: number; height: number };

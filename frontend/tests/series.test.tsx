@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { articleSeries, initialSeries, publishedSeries, upgradeDemoSeries, seriesValidationError, slugifySeriesTitle, validateSeries } from "../lib/series/model";
+import { articleSeries, initialSeries, isValidSeriesCoverImage, publishedSeries, upgradeDemoSeries, seriesValidationError, slugifySeriesTitle, validateSeries } from "../lib/series/model";
 import { seriesKey, useSeriesWorkspace } from "../lib/series/use-series-workspace";
 import { SeriesArticleNav } from "../components/series/SeriesArticleNav";
 import { articleBodyPreview, articles } from "../lib/content";
@@ -25,6 +25,15 @@ describe("series publishing and ordered membership", () => {
     expect(publishedSeries([{ ...saved[0], status: "draft" }])).toEqual([]);
     expect(articleSeries(saved, "iyi-kodun-sessizligi")?.articleSlugs).toEqual(initialSeries[0].articleSlugs);
     expect(slugifySeriesTitle("İleri Şık Çözümler: Yapay Zekâ ve Işık")).toBe("ileri-sik-cozumler-yapay-zeka-ve-isik");
+  });
+  it("validates and preserves optional local or HTTPS series cover images", () => {
+    const series = fixture();
+    series[0].coverImage = "/assets/ai-series.jpg";
+    expect(validateSeries(series)?.[0].coverImage).toBe("/assets/ai-series.jpg");
+    expect(isValidSeriesCoverImage("https://images.example.com/cover.jpg")).toBe(true);
+    expect(isValidSeriesCoverImage("//images.example.com/cover.jpg")).toBe(false);
+    expect(isValidSeriesCoverImage("javascript:alert(1)")).toBe(false);
+    expect(validateSeries([{ ...series[0], coverImage: "javascript:alert(1)" }])).toBeNull();
   });
   it("synchronizes Studio saves immediately across mounted readers without accepting invalid saves", () => {
     const studio = renderHook(useSeriesWorkspace); const reader = renderHook(useSeriesWorkspace);
@@ -67,6 +76,7 @@ describe("example content and migration", () => {
     expect(upgradeDemoSeries(original)).toEqual(initialSeries);
     expect(upgradeDemoSeries([{ ...original[0], title: "My edited series" }])).toEqual([{ ...original[0], title: "My edited series" }]);
     expect(upgradeDemoSeries([{ ...original[0], articleSlugs: [...original[0].articleSlugs].reverse() }])).toEqual([{ ...original[0], articleSlugs: [...original[0].articleSlugs].reverse() }]);
+    expect(upgradeDemoSeries([{ ...original[0], coverImage: "/assets/custom-cover.jpg" }])).toEqual([{ ...original[0], coverImage: "/assets/custom-cover.jpg" }]);
     expect(upgradeDemoSeries([])).toEqual([]);
     expect(upgradeDemoSeries([...original, { ...fixture()[1], status: "draft" }])).toEqual([...original, { ...fixture()[1], status: "draft" }]);
   });

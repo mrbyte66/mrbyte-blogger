@@ -6,7 +6,7 @@ Read the repository `../AGENTS.md` first. Then consult only the frontend guides 
 | --- | --- |
 | Visual direction, layout, motion, responsive behavior | `docs/design.md` |
 | React boundaries and frontend/backend integration | `docs/frontend.md` |
-| Theme renderer, blocks, local editor and preview | `docs/builder.md` |
+| Theme renderer, blocks, article/series page editor and preview | `docs/builder.md` |
 | Modular article annotations and local notes | `docs/reading.md` |
 | Series, chapter order and future member visit history | `docs/series.md` |
 | Test and acceptance criteria | `docs/quality.md` |

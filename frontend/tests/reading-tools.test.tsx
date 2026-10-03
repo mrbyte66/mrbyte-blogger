@@ -149,6 +149,16 @@ describe("browser-local reading tools", () => {
     expect(screen.getByRole("button", { name: "Seçili metnin altını çiz" }).hasAttribute("disabled")).toBe(true);
     expect(screen.queryByText("Seçilen alıntı")).toBeNull();
   });
+  it("rechecks saved marks when edited article content changes without removing the saved quote", async () => {
+    localStorage.setItem(readingStorageKey("sample"), JSON.stringify({ version: 1, articleId: "sample", marks: [mark] }));
+    const page = (text: string) => <><article id="reading-content"><p data-reading-anchor="paragraph-0">{text}</p></article><ReadingTools articleId="sample" contentRootId="reading-content" contentRevision={text} /></>;
+    const { rerender } = render(page("Hello world"));
+    await userEvent.setup().click(screen.getByRole("button", { name: /Notlar/ }));
+    expect(screen.queryByText(/işaretin metindeki yeri değişmiş/)).toBeNull();
+    rerender(page("Completely rewritten content"));
+    expect(screen.getByText(/1 işaretin metindeki yeri değişmiş/)).toBeTruthy();
+    expect(saved()?.marks[0].fragments[0].quote).toBe("Hello");
+  });
   it("closes the panel with Escape and exposes the paragraph after a mobile jump", async () => {
     localStorage.setItem(readingStorageKey("sample"), JSON.stringify({ version: 1, articleId: "sample", marks: [mark] }));
     const user = userEvent.setup(); renderReader();

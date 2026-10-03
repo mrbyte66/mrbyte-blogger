@@ -38,4 +38,4 @@ The backend is intentionally unimplemented until the earlier product decisions a
 - Owner-managed nostalgia collections with music and other media: [nostalgia corner](features/nostalgia-corner.md).
 - Separate Studio summary input and a permanent “read full article” link: [article summary](features/article-summary.md).
 
-Anonymous local reading tools now have a first frontend implementation on permanent article pages. Public owner annotation publishing and account sync, the nostalgia corner, and editable article summaries remain planned.
+Anonymous local reading tools now have a first frontend implementation on permanent article pages. Existing article summaries and content can now be edited in the shared Studio page canvas. Public owner annotation publishing/account sync and the nostalgia corner remain planned.

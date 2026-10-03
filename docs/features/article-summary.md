@@ -1,6 +1,6 @@
 # Yazı özeti
 
-Durum: Planlandı; henüz uygulanmadı.
+Durum: Mevcut yazılar için Studio sayfa tuvalinde uygulandı; kayıt bu tarayıcıya özeldir.
 
 ## Amaç ve kapsam
 
@@ -18,4 +18,4 @@ Ziyaretçi, içerik listesinde veya tema içindeki kısa sunumda bu özeti okuya
 
 ## Sonraki kararlar
 
-Özetin zorunluluğu, uzunluk sınırı, boş olduğunda sunum davranışı ve mevcut içeriklere geçiş yöntemi uygulama öncesinde belirlenecek. Otomatik özet üretimi bu talebin kapsamına dahil değildir.
+Özet bağımsız bir metin alanıdır; boş olabilir ve en fazla 4000 karakter kabul eder. Seri bölüm kartları ayrıca gövdenin yaklaşık ilk 200 karakterinden, cümleyi tamamlayarak önizleme üretir. Yeni yazı oluşturma, sunucu yayını ve kalıcı SEO metaverileri backend aşamasında ele alınacak. Otomatik özet üretimi bu talebin kapsamına dahil değildir.

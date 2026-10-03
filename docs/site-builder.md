@@ -46,3 +46,10 @@ This remains a flat composition prototype. Evolve toward reusable theme librarie
 Supported per-block compositions currently include statement/centered/split intros, rows/cards for articles, and band/card quotations. Magazine starts with a centered intro and inset quote card; these choices affect layout while page-role boundaries remain enforced.
 
 The curated character art, background halo, and choreographed scene structure are protected design elements. Theme accent colors apply to intentional UI marks and content presentations, not the halo or the character asset.
+
+
+## Unified page canvas — 2026-10-02
+
+Studio must expose home, article and series pages through one page navigator. Use the same renderers as the visitor site; selecting visible content opens the corresponding properties and selecting properties highlights/scrolls the canvas. Keep desktop navigation, canvas and inspector visible together. Document links bring the target document into Studio.
+
+The current implementation creates/edits independent articles and series. Article title/abstract/body/media/table/code and bounded page presentation are browser-local content records; series content/presentation have the same explicit-save workflow. These edits are independent of homepage block composition and theme Apply. Unsaved document edits stay isolated and require Save/Revert before switching. Arbitrary custom-page creation, media uploads, authenticated server publication, server persistence and server SEO metadata remain future work. New articles need no series membership and are listed newest first.

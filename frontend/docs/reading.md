@@ -18,3 +18,5 @@ Selection remains available while the reader invokes an annotation action. On po
 Anonymous marks remain private to the local browser. They are not owner-public annotations, server-saved records, or an authenticated account feature. Public layers and syncing require separate backend contracts.
 
 Reference: [MDN CSS highlight pseudo-element](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::highlight).
+
+`ReadingTools.contentRevision` triggers anchor re-resolution when a saved article changes in another Studio/reader instance. Clear any stale active selection; retain saved quotes and show the unresolved notice rather than highlighting unrelated replacement text.

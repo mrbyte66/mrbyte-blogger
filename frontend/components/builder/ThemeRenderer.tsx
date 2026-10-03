@@ -4,7 +4,7 @@ import { scrollBehavior } from "../../lib/motion";
 
 import { SlideLink as Link } from "../SlideLink";
 import { useEffect, useRef, useState } from "react";
-import { filterArticles } from "../../lib/content";
+import { useArticles } from "../../lib/articles/use-articles";
 import { blockLabels, type PageBlock, type Theme } from "../../lib/builder/model";
 import { themeAppearance } from "../../lib/builder/appearance";
 import { parseCanvasSelection, previewEvents, type CanvasSelection } from "../../lib/builder/preview-protocol";
@@ -13,17 +13,20 @@ import { ThemeToggle } from "../SitePreferences";
 import { Experience } from "../Experience";
 import { SeriesCatalog } from "../series/SeriesCatalog";
 import { useSeriesWorkspace } from "../../lib/series/use-series-workspace";
+import { DocumentPreview } from "./DocumentPreview";
+import { documentEvent, navigateEvent, parseDocumentDraft, targetFromLink, type DocumentDraft } from "../../lib/builder/document-protocol";
 import { useProgressiveItems } from "../../lib/use-progressive-items";
 
 type ArticlesBlock = Extract<PageBlock, { kind: "articles" }>;
 function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolean }) {
-  const items = filterArticles(block.category);
+  const { articles } = useArticles();
+  const items = articles.filter((item) => block.category === "Tümü" || item.category === block.category);
   const progressive = block.loading === "progressive";
   const feed = useProgressiveItems({ total: progressive ? items.length : 0, listKey: `${block.id}-${block.category}` });
   const more = progressive && feed.hasMore;
   return <section className="theme-section feed-section" id="yazilar" aria-labelledby={`${block.id}-title`}>
     <div className="section-kicker"><span>01 / DÜŞÜNCELER & NOTLAR</span><span>{String(items.length).padStart(2, "0")} YAZI</span></div>
-    <div className="feed-heading"><h2 id={`${block.id}-title`}>{block.title}</h2><span className="feed-sample">Örnek içerikler</span></div>
+    <div className="feed-heading"><h2 id={`${block.id}-title`}>{block.title}</h2><span className="feed-sample">{items.length} yazı</span></div>
     <div className={`feed-list feed-${block.display}`}>
       {(progressive ? items.slice(0, feed.visible) : items).map((article, index) => <Link className="feed-article" key={article.slug} href={`/yazilar/${article.slug}`} target={preview ? "_blank" : undefined}>
         <span className="feed-index">{String(index + 1).padStart(2, "0")}</span>
@@ -107,11 +110,13 @@ export function PublishedSite() {
 
 export function DraftPreview({ embedded = false }: { embedded?: boolean }) {
   const { workspace, storageError } = useWorkspace();
+  const [document, setDocument] = useState<DocumentDraft | null>(null);
   const [selection, setSelection] = useState<CanvasSelection>({ id: null, request: 0, editing: embedded });
   useEffect(() => {
     if (!embedded) return;
     function receive(event: MessageEvent) {
       if (event.source !== window.parent || event.origin !== window.location.origin) return;
+      if (event.data?.type === documentEvent) { if (event.data.document === null) setDocument(null); else { const parsed = parseDocumentDraft(event.data.document); if (parsed) setDocument(parsed); } }
       const next = parseCanvasSelection(event.data);
       if (next) setSelection(next);
     }
@@ -120,9 +125,16 @@ export function DraftPreview({ embedded = false }: { embedded?: boolean }) {
     return () => window.removeEventListener("message", receive);
   }, [embedded]);
   function select(id: string) { window.parent.postMessage({ type: previewEvents.select, id }, window.location.origin); }
-  return <>
+  return <div onClickCapture={embedded ? (event) => {
+    const node = event.target as HTMLElement;
+    const link = node.closest("a");
+    const articleSlug = node.closest("[data-article]")?.getAttribute("data-article");
+    const seriesSlug = node.closest("[data-series]")?.getAttribute("data-series");
+    const destination = targetFromLink(articleSlug ? `/yazilar/${articleSlug}` : seriesSlug ? `/seriler/${seriesSlug}` : link?.getAttribute("href") ?? "");
+    if (destination) { event.preventDefault(); event.stopPropagation(); window.parent.postMessage({ type: navigateEvent, target: destination }, window.location.origin); }
+  } : undefined}>
     {!embedded && <div className="preview-bar"><Link href="/studio">← Stüdyoya dön</Link><span>TASLAK ÖNİZLEME · {workspace.draft.name}</span><span>Henüz uygulanmadı</span></div>}
     {storageError && <p role="alert" className="preview-warning">{storageError}</p>}
-    <ThemeRenderer theme={workspace.draft} preview selection={embedded ? selection : undefined} onSelect={embedded ? select : undefined} />
-  </>;
+    {document ? <DocumentPreview draft={document} theme={workspace.draft} selection={selection} onSelect={select} /> : <ThemeRenderer theme={workspace.draft} preview selection={embedded ? selection : undefined} onSelect={embedded ? select : undefined} />}
+  </div>;
 }

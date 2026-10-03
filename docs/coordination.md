@@ -11,7 +11,7 @@
 
 The manual visual theme builder has its first local frontend slice. `/studio` edits a separate draft, `/preview` shows that draft, and `/` renders the applied snapshot. Scene, feed and magazine starters use the same articles, with stable `/yazilar/[slug]` routes. Review the editor before specifying backend contracts and persistence. Do not invent APIs or a database around fixture content.
 
-Blog series now have a separate local content workspace, a Studio inspector tab, an optional page block and stable `/seriler/[slug]` routes. Explicit series saves are separate from applying a theme; publication here affects this browser only. Chapter order stays independent of article URLs. Manual completion and guest progress have been removed; account-specific automatic visit history is deferred to real authentication/backend. `docs/features/blog-series.md` owns the accepted scope and deferred extensions.
+Blog series now have a separate local content workspace, a shared Studio page navigator, an optional page block and stable `/seriler/[slug]` routes. Explicit series saves are separate from applying a theme; publication here affects this browser only. Chapter order stays independent of article URLs. Manual completion and guest progress have been removed; account-specific automatic visit history is deferred to real authentication/backend. `docs/features/blog-series.md` owns the accepted scope and deferred extensions.
 
 Two future features are recorded without simulating unavailable account or 3D behavior: a public membership introduction page and a genuinely multi-view, pointer-controlled character with return-to-rest and a dizzy-eye finish. The current single-image character stays unchanged until its asset can support the motion.
 
@@ -56,6 +56,20 @@ Two future features are recorded without simulating unavailable account or 3D be
 - The focused reading-tools suite passes (10 tests), TypeScript passes, and the article page was checked in-browser: annotation controls enable for selected text and disable after the selection is released.
 - Public membership/site introduction requirements are recorded in `docs/features/site-introduction.md`. Pointer-driven 360° character interaction, return-to-rest, and a playful dizzy-eye finish are recorded in `docs/features/character-interaction.md`; the current single-image character remains unchanged until suitable multi-view or 3D artwork exists.
 
+## Unified Studio page editing verification — 2026-10-02
+
+- Studio now opens home, existing article and series pages in a shared canvas workflow. Removed the old disconnected series form; article and series inspectors use visitor renderers and support two-way field selection, content changes and bounded page presentation.
+- Article drafts are isolated until explicit local Save; catalogs, series chapters, scene featured title and article permalinks then consume the shared saved article collection. Series creation, automatic Turkish slugs, chapter membership/order, cover and publication validation remain available beside the canvas. Internal document links keep navigation within Studio; dirty documents require Save/Revert.
+- 125 tests pass across 15 files. The final production build (including TypeScript) passes. Added coverage for live draft messages, trusted selection/navigation, save isolation, storage failure/revert, new-series discard, series authoring through the unified editor, invalid records and reading-mark re-resolution after content edits.
+- Browser checks verified article title live preview, paragraph click opening its inspector, revert, article-to-series navigation, series selection and a 390px Studio with no horizontal overflow. Mobile canvas selection scrolls to the matching inspector. Browser verification edits were reverted without saving; no theme was applied.
+- This remains a local prototype: only existing article routes are editable. New arbitrary article/custom-page creation, server publication/authentication, real media uploads and dynamic server metadata remain deferred. Article text revisions preserve saved reading quotes, marking unresolved anchors instead of painting unrelated text.
+
 ## Change protocol
 
 Record decisions that affect both projects here. Keep visual details in `frontend/docs/design.md`, frontend implementation guidance in `frontend/docs/frontend.md`, and backend decisions in `backend/docs/`. Give parallel contributors non-overlapping file ownership and ask them to update the appropriate guide when a decision changes.
+
+## 2026-10-03 — Unified page navigation and independent articles
+
+Replaced separate home/article/series selectors with one searchable PageNavigator including New article/New series. New independent articles receive title-derived editable ASCII permalinks, collision protection and explicit local save. Saved articles appear first in shared visitor feeds and resolve through dynamic article routes; series membership is optional and supports these records later. Existing fixture collections remain compatible. Shared Studio header/canvas chrome remains consistent. Backend publication/authentication and server SEO for browser-local articles remain future work.
+
+Verification: 129 tests passed, production build including TypeScript passed. Browser inspection verified the single page menu on desktop and 390px mobile (no horizontal overflow), new article creation and title-derived permalink. The temporary browser draft was discarded without changing visitor content.

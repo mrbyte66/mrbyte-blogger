@@ -10,7 +10,11 @@ Read `../../docs/site-builder.md` for product scope. This slice is local-only; `
 - `components/builder/PreviewCanvas.tsx`: scaled device preview, source-checked selection bridge and ready handshake.
 - `components/builder/ThemeSettings.tsx`: site-wide appearance forms.
 - `components/builder/ThemeStructure.tsx`: starter choices, ordered page roles and insertion palette.
-- `components/builder/ThemeEditor.tsx`: authoring workflow. Properties use bounded text/enum fields; no raw HTML or executable configuration.
+- `components/builder/SiteEditor.tsx`: shared page navigation, unsaved-edit guard and content save routing.
+- `components/builder/DocumentEditor.tsx`: contextual article/series fields, live draft, explicit local save and discard.
+- `components/builder/DocumentPreview.tsx`: shared visitor page views with field selection and editor-only focus feedback.
+- `lib/builder/document-protocol.ts`: validated article/series preview payloads and internal navigation targets.
+- `components/builder/ThemeEditor.tsx`: homepage authoring workflow. Properties use bounded text/enum fields; no raw HTML or executable configuration.
 - `components/builder/BlockProperties.tsx`: focused, type-specific property forms.
 - `/preview`: isolated draft preview; `/`: applied snapshot; `/yazilar/[slug]`: theme-independent article URLs.
 
@@ -26,12 +30,27 @@ The canvas edit mode captures clicks and keyboard selection before links execute
 
 Appearance CSS is in `app/themes.css`; editor chrome is in `app/studio/studio.css`. Theme accent must reach the curated Experience's local variables too. Typography and surface work on standalone articles; width and spacing primarily control flowing sections.
 
-The Studio keeps the structure list, canvas, and block properties simultaneously visible on desktop. The inspector switches only between block properties and general theme appearance; choosing blocks does not require a structure tab. Avoid scaling a desktop artboard down to unreadable text. Natural canvas width uses scale 1, while phone preview intentionally models a 390px device. Selection from the persistent structure list opens block settings and scrolls the preview into view. Keep status feedback by the canvas rather than buried below long forms.
+The Studio keeps the structure list, canvas, and block properties simultaneously visible on desktop. For the homepage the inspector switches between block properties and general theme appearance; choosing blocks does not require a structure tab. Avoid scaling a desktop artboard down to unreadable text. Natural canvas width uses scale 1, while phone preview intentionally models a 390px device. Selection from the persistent structure list opens block settings and scrolls the preview into view. Keep status feedback by the canvas rather than buried below long forms.
 
 Intro layout and quote display enums are part of the block schema. Version 1 missing those values receives statement/band defaults; explicit unsupported values are rejected. Magazine defaults to centered/card. Character halo color is not an accent customization target.
 
 Starter selection immediately loads the chosen default composition into the draft, even when already selected. No notification or replacement dialog is shown; site name/accent remain. Homepage Apply and explicit Restore stay separate operations.
 
-Series content lives in `lib/series/`, outside theme snapshots. The inspector adds a Seriler area with explicit local save, title/slug/summary/level, visibility, ongoing/completed state and accessible chapter order controls. Selecting another series is blocked until unsaved edits are saved or cancelled; clicking the selected series preserves edits. New titles generate a Turkish-normalized ASCII slug until the owner manually changes it. Shared domain validation rejects duplicate slugs, repeated/cross-series article membership and empty publication. Removing a membership never deletes its article.
+Series content lives in `lib/series/`, outside theme snapshots. The shared page navigator opens each series directly in the canvas; do not reintroduce a disconnected series inspector tab. Contextual fields cover title, slug, summary, cover, level, visibility, ongoing state, chapter order and page presentation. Explicit local save is separate from homepage theme Apply. New series start as unsaved drafts, can be discarded, and cannot publish without a chapter. Shared validation rejects duplicate slugs and repeated/cross-series membership. Removing a membership never deletes its article.
 
 The optional `series` page block has `title` and `display: cards | list`; its source is the shared published series collection. It follows normal body placement rules and can be added once through the palette. Block appearance and chapter content are separate controls; the canvas stays visible while editing either.
+
+
+## Document editing contract
+
+`lib/articles/model.ts` and `use-articles.ts` validate and persist the article collection at `mrbyte:articles:v1`. New independent articles are created through `PageNavigator`, with a title-derived Turkish ASCII slug editable before first save. Collision checks prevent overwriting existing records. Saved articles appear first in visitor lists and can optionally join a series later. Dynamic article routes resolve browser-local records after hydration; server publication and metadata for local records are not implemented. The editor supports separate title/abstract, body paragraph editing/reordering, figure, code, table, metadata and per-article reading width/header alignment. Series support header alignment and card/row chapter presentation. Header/metadata cannot be arbitrarily reordered into article prose.
+
+Use `ArticlePageView`, `ArticleContent` and `SeriesPageView` for both visitor pages and document previews. Preview drafts travel through the existing iframe with expected-source and same-origin validation; they never write visitor records before Save. Invalid drafts keep the last valid canvas visible and disable Save with explicit feedback. Saved article data feeds the scene featured title, writing catalogs, series chapters and permanent article pages through `useArticles`.
+
+`data-edit-field` identifies contextual fields. Pointer selection opens the matching inspector; sidebar selection scrolls/highlights the matching canvas field. On small screens canvas selection scrolls to the inspector. Internal article/series links select that document in Studio instead of escaping the frame. Unsaved document edits block switching until Save/Revert; beforeunload protects accidental refresh/close. New-document discard returns home without creating a record. Storage failures keep edits and never report publication.
+
+Article revisions re-resolve reading annotations against the changed content. Position-based anchors can become unresolved after edits; retained quotes remain recoverable. Stable server-side block IDs/content revisions are still required for production authoring.
+
+## Unified Studio chrome
+
+`StudioHeader` owns the shared identity, page navigation slot, local-save status and contextual actions for homepage and document editors. `PageNavigator` is the single searchable page selector and creation entry point, with grouped homepage/articles/series, Escape/outside dismissal and focus restoration. Do not add separate homepage buttons or competing article/series dropdowns. Structure, live canvas and inspector remain simultaneously visible on desktop. Use consistent compact typography, contextual selection and a single local-save explanation; empty status regions must not consume canvas height. Keep restore/save/apply semantics distinct. `CanvasToolbar` groups edit/browse and device controls identically across all page types. Mobile navigation wraps without horizontal overflow.
