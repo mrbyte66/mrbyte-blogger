@@ -1,4 +1,5 @@
 import { articles as fixtures, type Article } from "../content";
+import { insertChapterByCreation, sortArticlesByDate } from "../articles/metadata";
 import { parseArticles, validateArticle } from "../articles/model";
 import { initialSeries, upgradeDemoSeries, validateSeries, type BlogSeries } from "../series/model";
 
@@ -11,7 +12,7 @@ export const initialContent: ContentWorkspace = { articles: fixtures, series: in
 export type ContentStatus = "draft" | "published" | "archived" | "trashed";
 export const statusLabels: Record<ContentStatus, string> = { draft: "Taslak", published: "Yayında", archived: "Arşiv", trashed: "Çöp kutusu" };
 export function articleStatus(article: Article): ContentStatus { return article.status ?? "published"; }
-export function publicArticles(articles: readonly Article[]): Article[] { return articles.filter((a) => articleStatus(a) === "published"); }
+export function publicArticles(articles: readonly Article[]): Article[] { return sortArticlesByDate(articles.filter((a) => articleStatus(a) === "published")); }
 export function publicSeries(series: readonly BlogSeries[], articles: readonly Article[]): BlogSeries[] {
   const visible = new Set(publicArticles(articles).map((a) => a.slug));
   return series.filter((s) => s.status === "published").map((s) => ({ ...s, articleSlugs: s.articleSlugs.filter((slug) => visible.has(slug)) })).filter((s) => s.articleSlugs.length > 0);
@@ -55,7 +56,8 @@ export function writeContent(next: ContentWorkspace, previous: ContentWorkspace)
   return checked;
 }
 export function saveArticleRecord(current: ContentWorkspace, article: Article, creating: boolean, seriesId?: string | null): ContentWorkspace {
-  const checked = validateArticle(article);
+  const previous = current.articles.find((a) => a.slug === article.slug);
+  const checked = validateArticle(!creating && previous ? { ...article, createdAt: previous.createdAt } : article);
   if (!checked || (articleStatus(checked) === "published" && !checked.paragraphs.some((p) => p.trim()))) throw new Error("Yayınlamak için başlık ve en az bir paragraf gerekli.");
   const exists = current.articles.some((a) => a.slug === checked.slug);
   if (creating && exists) throw new Error("Bu kalıcı bağlantı başka bir yazıya ait. Farklı bir bağlantı seç.");
@@ -63,7 +65,7 @@ export function saveArticleRecord(current: ContentWorkspace, article: Article, c
   if (seriesId && !current.series.some((s) => s.id === seriesId && s.status !== "trashed")) throw new Error("Seçilen seri bulunamadı.");
   const series = seriesId === undefined ? current.series : current.series.map((s) => {
     if (s.id === seriesId) {
-      const articleSlugs = s.articleSlugs.includes(checked.slug) ? s.articleSlugs : [...s.articleSlugs, checked.slug];
+      const articleSlugs = insertChapterByCreation(s.articleSlugs, checked, current.articles);
       const status = s.status === "draft" && articleSlugs.length === 1 && articleStatus(checked) === "published" ? "published" as const : s.status;
       return { ...s, articleSlugs, status };
     }

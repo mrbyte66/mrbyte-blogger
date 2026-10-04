@@ -6,6 +6,9 @@ export type Article = {
   status?: "draft" | "published" | "archived" | "trashed";
   title: string;
   category: Exclude<Topic, "Tümü">;
+  categories?: readonly Exclude<Topic, "Tümü">[];
+  createdAt?: string;
+  publishedAt?: string;
   eyebrow: string;
   excerpt: string;
   minutes: number;
@@ -30,7 +33,7 @@ export function articleBodyPreview(article: Article, maxLength = 200): string {
 }
 
 // Editorial fixtures, explicitly labeled in the interface. Not published user content.
-export const articles: readonly Article[] = [
+const editorialFixtures: readonly Article[] = [
   {
     slug: "yapay-zeka-ile-dusunmek",
     title: "Yapay zekâ ile düşünmek",
@@ -196,8 +199,15 @@ export const articles: readonly Article[] = [
   },
 ];
 
+export const articles: readonly Article[] = editorialFixtures.map((article, index) => ({
+  ...article,
+  categories: [article.category],
+  createdAt: new Date(Date.UTC(2026, 7, index + 1)).toISOString(),
+  publishedAt: new Date(Date.UTC(2026, 9, 4 - index)).toISOString().slice(0, 10),
+}));
+
 export function filterArticles(topic: Topic): readonly Article[] {
-  return topic === "Tümü" ? articles : articles.filter((article) => article.category === topic);
+  return topic === "Tümü" ? articles : articles.filter((article) => (article.categories ?? [article.category]).includes(topic));
 }
 
 export function findArticle(slug: string): Article | undefined {

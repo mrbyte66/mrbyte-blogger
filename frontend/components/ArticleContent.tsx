@@ -1,4 +1,5 @@
 "use client";
+import { articleCategories, articleDate, formatArticleDate } from "../lib/articles/metadata";
 
 import { SlideLink } from "./SlideLink";
 import { useState } from "react";
@@ -27,7 +28,7 @@ export function ArticleContent({ article, fullPage = false, preview = false }: {
   return <><article className={`article-view article-heading-${article.presentation?.heading ?? "left"}`} data-edit-field="body">
     <p className="eyebrow" data-edit-field="meta">{article.eyebrow}</p>
     <Heading id="panel-title" data-edit-field="title">{article.title}</Heading>
-    {article.presentation?.showMeta !== false && <div className="article-meta" data-edit-field="meta"><span>{article.category}</span><span>{article.minutes} dk okuma</span></div>}
+    {article.presentation?.showMeta !== false && <div className="article-meta" data-edit-field="meta"><span>{articleCategories(article).join(" · ")}</span><time dateTime={articleDate(article)}>{formatArticleDate(article)}</time><span>{article.minutes} dk okuma</span></div>}
     <p className="article-lead" data-edit-field="excerpt" data-reading-anchor="excerpt">{article.excerpt}</p>
     {article.paragraphs.map((paragraph, index) => <div key={index}>
       <p data-edit-field={`paragraph-${index}`} data-reading-anchor={`paragraph-${index}`}>{paragraph}</p>

@@ -14,7 +14,7 @@ describe("theme composition and publication boundaries", () => {
     applied.draft.blocks[0].id = "later-edit";
     expect(applied.applied.blocks[0].id).not.toBe("later-edit");
     expect(JSON.stringify(articles)).toBe(originalContent);
-    expect(JSON.stringify(applied.applied)).not.toContain(articles[0].slug);
+    expect(JSON.stringify(applied.applied)).not.toContain(articles[0].excerpt);
   });
   it("restores the applied snapshot without sharing mutable block objects", () => {
     const workspace = { ...createWorkspace(), draft: createTheme("feed") };

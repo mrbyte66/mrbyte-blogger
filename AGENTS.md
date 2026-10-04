@@ -17,6 +17,7 @@ This repository contains separate frontend and backend applications.
 | Blog series and chapter journeys | `docs/features/blog-series.md` |
 | Public membership introduction | `docs/features/site-introduction.md` |
 | Interactive character rotation | `docs/features/character-interaction.md` |
+| Scene featured writing/series and future member recommendations | `docs/features/personalized-recommendations.md` |
 | Frontend implementation/design/tests | `frontend/AGENTS.md` |
 | Backend implementation/API/domain/tests | `backend/AGENTS.md` |
 

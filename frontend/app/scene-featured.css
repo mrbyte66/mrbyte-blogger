@@ -1,0 +1,52 @@
+.scene-featured { position: absolute; left: 8.6%; right: 8.6%; bottom: 125px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; z-index: 3; pointer-events: none; }
+.scene-feature-card { width: min(34%, 340px); min-height: 82px; display: flex; align-items: center; gap: 18px; padding: 18px 20px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 5px; text-align: left; background: #f7f9f045; backdrop-filter: blur(16px); color: var(--ink); pointer-events: auto; transition: background .18s, border-color .18s; }
+.scene-feature-card:hover { background: #f7f9f075; border-color: var(--muted); }
+.theme-dark .scene-feature-card { background: #1a262065; }
+.theme-dark .scene-feature-card:hover { background: #1a2620a0; }
+.scene-feature-copy { min-width: 0; }
+.scene-feature-label { display: block; font: 10px/1.4 var(--mono); letter-spacing: .035em; color: var(--muted); margin-bottom: 7px; }
+.scene-feature-title { display: block; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.scene-feature-arrow { margin-left: auto; flex-shrink: 0; font-size: 21px; }
+.scene-feature-series { margin-left: auto; }
+.character-caption.caption-with-featured-series { display: none; }
+@media (min-width: 1600px) { .scene-featured { left: 12%; right: 10%; } }
+@media (max-height: 700px) and (min-width: 901px) { .scene-featured { bottom: 91px; } }
+@media (max-width: 900px) {
+  .scene-featured { left: 6%; right: 6%; bottom: 62px; gap: 10px; }
+  .scene-feature-card { width: 100%; min-height: 76px; padding: 12px; gap: 8px; }
+  .scene-feature-label { font-size: 9px; margin-bottom: 5px; }
+  .scene-feature-title { font-size: 12px; }
+  .scene-feature-arrow { font-size: 16px; }
+  .experience:has(.scene-featured) .scene-navigation { bottom: 161px; }
+}
+
+@media (max-width: 600px) {
+  .experience .scene-navigation { padding:10px 4px; grid-template-columns:1fr 1fr 1.2fr; }
+  .experience .destination { min-width:0; padding:7px 8px; gap:0; justify-content:center; }
+  .experience .destination-copy { min-width:0; }
+  .experience .destination-label { white-space:nowrap; font-size:15px; }
+  .experience .destination-number, .theme-site .experience .destination-plus { display:none; }
+}
+
+.scene-card-groups { display:grid; gap:16px; margin-top:20px; }
+.scene-card-settings { border:1px solid var(--line); border-radius:16px; padding:18px; background:color-mix(in srgb,var(--surface) 35%,transparent); transition:border-color .2s,background .2s; }
+.scene-card-settings h3 { font-size:15px; margin:0 0 18px; font-weight:600; }
+.scene-card-settings .studio-field:last-child { margin-bottom:0; }
+.scene-card-settings.is-selected { border-color:var(--ink); background:color-mix(in srgb,var(--surface) 70%,transparent); }
+/* Independent card roll/pitch keeps the glass panels floating over the scene. */
+.motion-on .scene-feature-card { animation:featured-drift 8.4s ease-in-out infinite; transform-origin:50% 50%; will-change:transform; }
+.motion-on .scene-feature-series { animation-duration:10.2s; animation-delay:-4.1s; }
+@keyframes featured-drift {
+  0%,100% { transform:perspective(850px) translate3d(-2px,1px,0) rotateX(4deg) rotateY(-6deg) rotateZ(-1deg); }
+  25% { transform:perspective(850px) translate3d(1px,-3px,0) rotateX(-3deg) rotateY(-1deg) rotateZ(.35deg); }
+  50% { transform:perspective(850px) translate3d(2px,1px,0) rotateX(-4deg) rotateY(6deg) rotateZ(1deg); }
+  75% { transform:perspective(850px) translate3d(-1px,3px,0) rotateX(3deg) rotateY(1deg) rotateZ(-.35deg); }
+}
+.canvas-editing .scene-feature-card, .scene-feature-card:focus-visible { animation-play-state:paused; }
+.motion-off .scene-feature-card { will-change:auto; }
+.canvas-editing .experience :is(.destination,.scene-controls button,.wordmark,.skip-link) { cursor:default; }
+@media (prefers-reduced-motion:reduce) { .motion-on .scene-feature-card { animation:none; } }
+
+.canvas-editing .experience .destination { pointer-events:none; }
+.canvas-editing .experience .destination:hover .destination-plus { transform:none; }
+.canvas-editing .experience .destination-plus { opacity:.5; }

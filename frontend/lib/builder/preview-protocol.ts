@@ -15,3 +15,6 @@ export function parseCanvasSelection(data: unknown): CanvasSelection | null {
   if (message.type !== previewEvents.selection || !(message.id === null || isBlockId(message.id)) || typeof message.request !== "number" || !Number.isSafeInteger(message.request) || message.request < 0 || typeof message.editing !== "boolean") return null;
   return { id: message.id, request: message.request, editing: message.editing };
 }
+
+export type SceneField = "featured-article" | "featured-series";
+export function isSceneField(value: unknown): value is SceneField { return value === "featured-article" || value === "featured-series"; }

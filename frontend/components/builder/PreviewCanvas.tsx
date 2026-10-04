@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Workspace } from "../../lib/builder/model";
-import { isBlockId, previewEvents, type CanvasSelection } from "../../lib/builder/preview-protocol";
+import { isBlockId, isSceneField, type SceneField, previewEvents, type CanvasSelection } from "../../lib/builder/preview-protocol";
 
 import { documentEvent, navigateEvent, parseStudioTarget, isDocumentField, type DocumentDraft, type StudioTarget } from "../../lib/builder/document-protocol";
 
@@ -12,7 +12,7 @@ type Props = {
   mobile: boolean;
   workspace: Workspace;
   selection: CanvasSelection;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, field?: SceneField) => void;
 };
 
 export function PreviewCanvas({ mobile, workspace, selection, onSelect, document = null, onNavigate }: Props) {
@@ -39,9 +39,14 @@ export function PreviewCanvas({ mobile, workspace, selection, onSelect, document
   useEffect(() => {
     function receive(event: MessageEvent) {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
-      if (event.data?.type === navigateEvent) { const target = parseStudioTarget(event.data.target); if (target) current.current.onNavigate?.(target); }
+      if (event.data?.type === navigateEvent && !current.current.selection.editing) { const target = parseStudioTarget(event.data.target); if (target) current.current.onNavigate?.(target); }
       if (event.data?.type === previewEvents.ready) { setLoaded(true); synchronize(); }
-      if (event.data?.type === previewEvents.select && isBlockId(event.data.id) && (current.current.document ? isDocumentField(event.data.id) : current.current.workspace.draft.blocks.some((block) => block.id === event.data.id))) current.current.onSelect(event.data.id);
+      if (event.data?.type === previewEvents.select && isBlockId(event.data.id) && (current.current.document ? isDocumentField(event.data.id) : current.current.workspace.draft.blocks.some((block) => block.id === event.data.id))) {
+        const field = event.data.field;
+        const scene = current.current.workspace.draft.blocks.find((block) => block.id === event.data.id)?.kind === "scene";
+        if (scene && isSceneField(field)) current.current.onSelect(event.data.id, field);
+        else current.current.onSelect(event.data.id);
+      }
     }
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);

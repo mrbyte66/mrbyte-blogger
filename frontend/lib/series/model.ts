@@ -1,6 +1,5 @@
 import { findArticle } from "../content";
 
-export const SERIES_LEVELS = ["Başlangıç", "Orta", "İleri", "Her seviye"] as const;
 export type BlogSeries = {
   id: string;
   slug: string;
@@ -8,7 +7,6 @@ export type BlogSeries = {
   summary: string;
   coverImage?: string;
   presentation?: { heading: "left" | "center"; chapterStyle: "cards" | "rows" };
-  level: typeof SERIES_LEVELS[number];
   status: "draft" | "published" | "archived" | "trashed";
   ongoing: boolean;
   articleSlugs: string[];
@@ -17,7 +15,7 @@ export type BlogSeries = {
 const originalDemoSeries: BlogSeries = {
   id: "series-ai-development", slug: "yapay-zeka-ile-yazilim", title: "YZ ile düşün, yaz ve geliştir",
   summary: "Yapay zekâ ile düşünmekten, anlaşılır ve bakımı kolay kod yazmaya uzanan örnek bir okuma yolu.",
-  level: "Başlangıç", status: "published", ongoing: true,
+  status: "published", ongoing: true,
   articleSlugs: ["yapay-zeka-ile-dusunmek", "iyi-kodun-sessizligi"],
 };
 export const initialSeries: readonly BlogSeries[] = [
@@ -27,10 +25,10 @@ export const initialSeries: readonly BlogSeries[] = [
     "kod-incelemesinde-yapay-zeka", "kucuk-projeyi-yayinlamak"],
   },
   { id: "series-reading-notes", slug: "kitaplarin-ardindan", title: "Kitapların ardından",
-    summary: "Bir cümlenin açtığı düşünceden yeni bir okuma notuna.", level: "Her seviye",
+    summary: "Bir cümlenin açtığı düşünceden yeni bir okuma notuna.",
     status: "published", ongoing: true, articleSlugs: ["satir-aralarinda"] },
   { id: "series-curiosity", slug: "merak-defteri", title: "Merak defteri",
-    summary: "Kültür, gündelik hayat ve öğrenmek üzerine kısa duraklar.", level: "Her seviye",
+    summary: "Kültür, gündelik hayat ve öğrenmek üzerine kısa duraklar.",
     status: "published", ongoing: true, articleSlugs: ["merak-bir-aliskanlik"] },
 ];
 /** Upgrade only the original untouched demonstration. Never add fixtures to an author's collection. */
@@ -44,7 +42,7 @@ export function upgradeDemoSeries(series: BlogSeries[]): BlogSeries[] {
   return untouched ? initialSeries.map((entry) => ({ ...entry, articleSlugs: [...entry.articleSlugs] })) : series;
 }
 export function createSeries(): BlogSeries {
-  return { id: `series-${crypto.randomUUID()}`, slug: "", title: "", summary: "", level: "Başlangıç", status: "draft", ongoing: true, articleSlugs: [] };
+  return { id: `series-${crypto.randomUUID()}`, slug: "", title: "", summary: "", status: "draft", ongoing: true, articleSlugs: [] };
 }
 export function seriesValidationError(value: unknown, articleSlugs?: readonly string[]): string | null {
   if (!Array.isArray(value) || value.length > 100) return "En fazla 100 seri kaydedebilirsin.";
@@ -58,7 +56,7 @@ export function seriesValidationError(value: unknown, articleSlugs?: readonly st
     if (typeof s.summary !== "string" || s.summary.length > 1000) return "Seri açıklaması en fazla 1000 karakter olabilir.";
     if (s.presentation && (!["left", "center"].includes(s.presentation.heading) || !["cards", "rows"].includes(s.presentation.chapterStyle))) return "Seri sayfa düzeni geçersiz.";
     if (!isValidSeriesCoverImage(s.coverImage)) return "Kapak görseli için site içi bir yol veya HTTPS bağlantısı kullan.";
-    if (!SERIES_LEVELS.includes(s.level as BlogSeries["level"]) || !["draft", "published", "archived", "trashed"].includes(s.status ?? "") || typeof s.ongoing !== "boolean") return "Seri seviyesi ve yayın durumunu seç.";
+    if (!["draft", "published", "archived", "trashed"].includes(s.status ?? "") || typeof s.ongoing !== "boolean") return "Seri yayın durumunu seç.";
     if (!Array.isArray(s.articleSlugs) || s.articleSlugs.length > 200 || (s.status === "published" && !s.articleSlugs.length)) return "Yayınlanan seride en az bir bölüm olmalı.";
     for (const slug of s.articleSlugs) {
       if (typeof slug !== "string" || !(articleSlugs ? articleSlugs.includes(slug) : findArticle(slug))) return "Bölümleri mevcut yazılardan seç.";
@@ -71,7 +69,7 @@ export function seriesValidationError(value: unknown, articleSlugs?: readonly st
 }
 export function validateSeries(value: unknown, articleSlugs?: readonly string[]): BlogSeries[] | null {
   if (seriesValidationError(value, articleSlugs)) return null;
-  return (value as BlogSeries[]).map(({ id, slug, title, summary, coverImage, presentation, level, status, ongoing, articleSlugs }) => ({ id, slug, title, summary, ...(coverImage === undefined ? {} : { coverImage }), ...(presentation ? { presentation: { ...presentation } } : {}), level, status, ongoing, articleSlugs: [...articleSlugs] }));
+  return (value as BlogSeries[]).map(({ id, slug, title, summary, coverImage, presentation, status, ongoing, articleSlugs }) => ({ id, slug, title, summary, ...(coverImage === undefined ? {} : { coverImage }), ...(presentation ? { presentation: { ...presentation } } : {}), status, ongoing, articleSlugs: [...articleSlugs] }));
 }
 export function isValidSeriesCoverImage(value: unknown): value is string | undefined {
   if (value === undefined) return true;

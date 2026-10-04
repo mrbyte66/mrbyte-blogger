@@ -1,11 +1,11 @@
 # Üye kitaplığı ve kaydedilen yazılar
 
-Durum: Üye görünümü için ön yüz prototipi uygulandı. Gerçek giriş ve hesap verileri henüz yok; kayıtlar bu tarayıcıda tutulur. Üye önizlemesi varsayılan olarak açıktır; Kaydedilenler sayfasındaki önizleme açıklamasından misafir görünümüne geçilebilir.
+Durum: Üye görünümü için ön yüz prototipi uygulandı. Gerçek giriş ve hesap verileri henüz yok; kayıtlar bu tarayıcıda tutulur. Üye önizlemesi varsayılan olarak açıktır; Kitaplığım sayfasındaki önizleme açıklamasından misafir görünümüne geçilebilir.
 
 - Üye görünümünde yazı kartları, seri bölüm kartları, alternatif tema akışları ve ortak okuma araç çubuğunda kaydet simgesi bulunur. Kaydetmek yazıyı açmaz; kart açma ve kaydetme ayrı erişilebilir kontrollerdir.
-- İlk kaydetme varsayılan “Kaydedilenler” kategorisine gider. Kullanıcı aynı menüden mevcut kategoriyi seçebilir veya örneğin “Türk edebiyatı” adlı bir kategori oluşturup taşıyabilir. Yazı başına tek kayıt vardır; kategori değiştirmek toplamı artırmaz.
-- Kartların altında ayrı kategori/kaldırma satırı bulunmaz; bu işlemler ortak yer imi menüsündedir. Kategori seçimi “Taşı” ile uygulanır; mevcut kayıt taşındığında listedeki sırası korunur.
-- `/kaydedilenler` kişisel kitaplık ekranıdır. Kategorilerle filtreleme, oluşturma, yeniden adlandırma, yazıları taşıma ve kaydı kaldırma sunulur. Varsayılan kategori değiştirilemez. Bir kategori kaldırıldığında yazıları varsayılan kategoriye taşınır.
+- İlk kaydetme varsayılan “Genel” koleksiyonuna gider. Kullanıcı aynı menüden mevcut koleksiyonyi seçebilir veya örneğin “Türk edebiyatı” adlı bir koleksiyon oluşturup taşıyabilir. Yazı başına tek kayıt vardır; koleksiyon değiştirmek toplamı artırmaz.
+- Kartların altında ayrı koleksiyon/kaldırma satırı bulunmaz; bu işlemler ortak yer imi menüsündedir. Koleksiyon seçimi “Taşı” ile uygulanır; mevcut kayıt taşındığında listedeki sırası korunur.
+- `/kaydedilenler` kişisel kitaplık ekranıdır. Koleksiyonlerle filtreleme, oluşturma, yeniden adlandırma, yazıları taşıma ve kaydı kaldırma sunulur. Varsayılan koleksiyon değiştirilemez. Bir koleksiyon kaldırıldığında yazıları varsayılan koleksiyonye taşınır.
 - Yayından kaldırılan yazının kaydı sessizce silinmez; erişilemiyor açıklaması ve kaldırma seçeneği sunulur.
 - Kartlar ve okuma alanında kaydetme sayısı görünür. Prototip yalnız bu tarayıcıdaki demo üyenin kaydını 0/1 olarak gösterir; açıklama ipucu bunu belirtir. Gerçek tüm ziyaretçi toplamı henüz yoktur. Misafir görünümünde sayı salt okunurdur, kaydet düğmesi yoktur.
 - Kayıtlar içerik/tema verisinden ayrıdır; Studio bunları veya toplamları düzenleyemez. Önizlemede kaydet kontrolleri salt okunurdur.
@@ -13,8 +13,14 @@ Durum: Üye görünümü için ön yüz prototipi uygulandı. Gerçek giriş ve 
 
 ## Backend sözleşmesinde netleştirilecekler
 
-Sunucu gerçek oturumdan üye kimliğini belirlemeli; istemcinin gönderdiği kullanıcı kimliğine güvenmemeli. Kitaplık, kategori ve kayıt yönetimi sadece sahibine açık olmalı. Başka üyelerin listeleri/kategori isimleri hiçbir ziyaretçi API’sinde görünmemeli. Tarayıcıdaki üye önizlemesi güvenlik/kimlik doğrulama sağlamaz.
+Sunucu gerçek oturumdan üye kimliğini belirlemeli; istemcinin gönderdiği kullanıcı kimliğine güvenmemeli. Kitaplık, koleksiyon ve kayıt yönetimi sadece sahibine açık olmalı. Başka üyelerin listeleri/koleksiyon isimleri hiçbir ziyaretçi API’sinde görünmemeli. Tarayıcıdaki üye önizlemesi güvenlik/kimlik doğrulama sağlamaz.
 
-Üye/yazı çifti benzersiz olmalı. Kaydetme hedef durumu idempotent olmalı; yinelenen/eşzamanlı istekler toplamı iki kez artırmamalı. Toplam, yazıyı kaydeden farklı üyelerin sayısıdır. Kategori taşıma toplamı değiştirmez; kaydı kaldırma toplamı düşürür. Ortak sayılar ayrı salt okunur ziyaretçi uç noktasından gelir, kişisel kitaplık ayrıntılarıyla birleştirilmez.
+Üye/yazı çifti benzersiz olmalı. Kaydetme hedef durumu idempotent olmalı; yinelenen/eşzamanlı istekler toplamı iki kez artırmamalı. Toplam, yazıyı kaydeden farklı üyelerin sayısıdır. Koleksiyon taşıma toplamı değiştirmez; kaydı kaldırma toplamı düşürür. Ortak sayılar ayrı salt okunur ziyaretçi uç noktasından gelir, kişisel kitaplık ayrıntılarıyla birleştirilmez.
 
-Üyelik avantajları tanıtımında kişisel kitaplık ve kategoriler de açıklanacak. Browser-local prototipten hesabına taşıma ileride kullanıcı tercihine bağlı olmalı.
+Üyelik avantajları tanıtımında kişisel kitaplık ve koleksiyonlar de açıklanacak. Browser-local prototipten hesabına taşıma ileride kullanıcı tercihine bağlı olmalı.
+
+## Minimal kayıt menüsü
+
+Kişisel gruplar “Koleksiyon” olarak adlandırılır; yazının konu kategorileriyle karışmaz. Kitaplığın adı “Kitaplığım”, varsayılan koleksiyon “Genel”dir. Eski varsayılan isim okuma sırasında dönüştürülür; kayıtlar, koleksiyon kimlikleri ve sıraları korunur. Önceden “Genel” adlı özel koleksiyon varsa ismi benzersiz bir “Genel (2)” ekiyle ayrılır, kayıtları yerinde kalır.
+
+Menü önce koleksiyon seçimi, açık “Taşı” işlemi ve kitaplık/kaldırma bağlantısını gösterir. Yeni koleksiyon formu yalnız “Yeni koleksiyon” açıldığında görünür ve adı alanına klavye odağı taşınır. Seçim taslaktır; “Taşı” öncesinde veriler değişmez.

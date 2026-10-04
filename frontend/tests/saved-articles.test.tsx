@@ -22,6 +22,13 @@ describe("private member collection model", () => {
     expect(() => deleteCollection(initial, "saved")).toThrow();
     expect(() => createCollection(categorized, "TÜRK EDEBİYATI", "other")).toThrow();
   });
+  it("migrates the default name without losing records or custom collection references", () => {
+    const legacy = { version: 1, collections: [{ id: "saved", name: "Kaydedilenler" }, { id: "general", name: "Genel" }], entries: [{ slug: articles[0].slug, collectionId: "general" }] };
+    const migrated = parseLibrary(JSON.stringify(legacy));
+    expect(migrated.collections).toEqual([{ id: "saved", name: "Genel" }, { id: "general", name: "Genel (2)" }]);
+    expect(migrated.entries).toEqual(legacy.entries);
+    expect(parseLibrary(JSON.stringify(migrated))).toEqual(migrated);
+  });
   it("preserves card order when moving an existing record", () => {
     let library = saveArticle(saveArticle(emptyLibrary(), articles[0].slug), articles[1].slug);
     library = createCollection(library, "Yapay Zeka", "ai");
@@ -42,14 +49,17 @@ describe("member bookmark controls", () => {
     expect(open).not.toHaveBeenCalled();
     expect(container.querySelector("button button")).toBeNull();
     expect(JSON.parse(localStorage.getItem(savedKey)!).entries[0].collectionId).toBe("saved");
-    fireEvent.change(screen.getByLabelText("Yeni kategori"), { target: { value: "Kişisel gelişim" } });
+    expect(screen.queryByLabelText("Koleksiyon adı")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Yeni koleksiyon" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Koleksiyon adı"));
+    fireEvent.change(screen.getByLabelText("Koleksiyon adı"), { target: { value: "Kişisel gelişim" } });
     fireEvent.click(screen.getByRole("button", { name: "Oluştur ve taşı" }));
     const data = parseLibrary(localStorage.getItem(savedKey));
     expect(data.entries).toHaveLength(1);
     expect(data.collections[1].name).toBe("Kişisel gelişim");
     expect(data.entries[0].collectionId).toBe(data.collections[1].id);
     fireEvent.click(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` }));
-    fireEvent.change(screen.getByLabelText("Kategori", { exact: true }), { target: { value: "saved" } });
+    fireEvent.change(screen.getByLabelText("Koleksiyon", { exact: true }), { target: { value: "saved" } });
     expect(parseLibrary(localStorage.getItem(savedKey)).entries[0].collectionId).toBe(data.collections[1].id);
     fireEvent.click(screen.getByRole("button", { name: "Taşı" }));
     expect(parseLibrary(localStorage.getItem(savedKey)).entries[0].collectionId).toBe("saved");
@@ -73,7 +83,8 @@ describe("member bookmark controls", () => {
     expect(screen.getByRole("alert")).toBeTruthy();
     act(() => { localStorage.removeItem(savedKey); window.dispatchEvent(new StorageEvent("storage", { key: savedKey })); });
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("quota", "QuotaExceededError"); });
-    fireEvent.change(screen.getByLabelText("Yeni kategori"), { target: { value: "Başka kategori" } });
+    fireEvent.click(screen.getByRole("button", { name: "Yeni koleksiyon" }));
+    fireEvent.change(screen.getByLabelText("Koleksiyon adı"), { target: { value: "Başka kategori" } });
     fireEvent.click(screen.getByRole("button", { name: "Oluştur ve taşı" }));
     expect(screen.getByRole("alert").textContent).toContain("Kaydedilemedi");
     expect(localStorage.getItem(savedKey)).toBeNull();

@@ -13,7 +13,7 @@ export function SavedProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     function load() {
       try { setLibrary(parseLibrary(localStorage.getItem(savedKey))); setError(""); }
-      catch { setError("Kaydedilenler okunamadı. Mevcut kayıt değiştirilmedi."); }
+      catch { setError("Kitaplık okunamadı. Mevcut kayıt değiştirilmedi."); }
       setReady(true);
     }
     function sync(event: StorageEvent) { if (event.key === savedKey || event.key === null) load(); }
@@ -31,7 +31,7 @@ export function SavedProvider({ children }: { children: ReactNode }) {
     save: (slug, collectionId = defaultCollectionId) => change((current) => saveArticle(current, slug, collectionId)),
     remove: (slug) => change((current) => ({ ...current, entries: current.entries.filter((entry) => entry.slug !== slug) })),
     create: (name, slug) => change((current) => { const id = crypto.randomUUID(); const next = createCollection(current, name, id); return slug ? saveArticle(next, slug, id) : next; }),
-    rename: (id, name) => change((current) => { if (id === defaultCollectionId) throw new Error("Varsayılan kategori yeniden adlandırılamaz."); const base = { ...current, collections: current.collections.filter((collection) => collection.id !== id) }; const created = createCollection({ ...base, entries: [] }, name, id); return { ...created, entries: current.entries }; }),
+    rename: (id, name) => change((current) => { if (id === defaultCollectionId) throw new Error("Varsayılan koleksiyon yeniden adlandırılamaz."); const base = { ...current, collections: current.collections.filter((collection) => collection.id !== id) }; const created = createCollection({ ...base, entries: [] }, name, id); return { ...created, entries: current.entries }; }),
     deleteCategory: (id) => change((current) => deleteCollection(current, id)),
   };
   return <Context.Provider value={value}>{children}</Context.Provider>;

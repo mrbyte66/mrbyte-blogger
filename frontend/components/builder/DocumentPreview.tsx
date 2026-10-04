@@ -17,10 +17,13 @@ export function DocumentPreview({ draft, theme, selection, onSelect }: { draft: 
   }, [selection.id, selection.request, selection.editing]);
   return <div ref={root} className={selection.editing ? "document-editing" : ""} onClickCapture={(event) => {
     const node = event.target as HTMLElement;
-    const link = node.closest("a");
-    const destination = link && targetFromLink(link.getAttribute("href") ?? "");
-    if (destination) { event.preventDefault(); event.stopPropagation(); window.parent.postMessage({ type: navigateEvent, target: destination }, window.location.origin); return; }
-    if (!selection.editing) return;
+    if (!selection.editing) {
+      const link = node.closest("a");
+      const destination = link && targetFromLink(link.getAttribute("href") ?? "");
+      if (destination) { event.preventDefault(); event.stopPropagation(); window.parent.postMessage({ type: navigateEvent, target: destination }, window.location.origin); }
+      return;
+    }
+    event.preventDefault(); event.stopPropagation();
     const field = node.closest("[data-edit-field]")?.getAttribute("data-edit-field");
     if (field) { event.preventDefault(); event.stopPropagation(); onSelect(field); }
   }}>

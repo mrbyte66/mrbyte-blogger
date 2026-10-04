@@ -1,4 +1,5 @@
 "use client";
+import { articleCategories } from "../lib/articles/metadata";
 
 import { useEffect, useRef, useState, type Dispatch, type PointerEvent } from "react";
 import { topics } from "../lib/content";
@@ -42,7 +43,7 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
   const article = displayedNavigation.articleSlug ? articles.find((item) => item.slug === displayedNavigation.articleSlug) : undefined;
   const canGoBack = !!article || !!displayedNavigation.seriesSlug;
   const viewKey = `${displayedNavigation.section}:${displayedNavigation.articleSlug ?? displayedNavigation.seriesSlug ?? displayedNavigation.writingView ?? "articles"}`;
-  const filtered = articles.filter((item) => displayedNavigation.topic === "Tümü" || item.category === displayedNavigation.topic);
+  const filtered = articles.filter((item) => displayedNavigation.topic === "Tümü" || articleCategories(item).includes(displayedNavigation.topic));
   const feed = useProgressiveItems({ total: filtered.length, listKey: displayedNavigation.topic, contextKey: viewKey });
   useEdgeElasticity(scrollArea, viewKey);
   const swipe = useRef<{ x: number; y: number; time: number; pointerId: number } | null>(null);

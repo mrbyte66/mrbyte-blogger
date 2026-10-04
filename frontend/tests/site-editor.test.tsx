@@ -41,6 +41,7 @@ describe("page editing and visitor content", () => {
     expect(screen.queryByLabelText("Özet / abstract")).toBeNull();
     message({ type: previewEvents.select, id: "excerpt" });
     expect(screen.getByLabelText("Özet / abstract")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Gezin" }));
     message({ type: navigateEvent, target: { kind: "series", slug: initialSeries[0].slug } });
     expect(screen.getByLabelText("Seri başlığı")).toBeTruthy();
   });

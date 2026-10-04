@@ -133,3 +133,19 @@ Active followers now queue on the owner Web Lock, so takeover also works if clos
 ## Background audio recovery — 2026-10-03
 
 Fixed denied/error owners retaining the Web Lock and forwarding continuation clicks to the wrong document. Blocked/error owners release ownership; explicit recovery runs in the clicked tab. Fixed stale local media position/track on reacquisition and pending takeover cleanup. Five-tab regression plus stale-media test added. Browser: owner closed at 13.4s, unrelated site visited, Studio resume played at 13.77s with other audio paused; Studio then closed at 31.84s, original tab recovered at 32.09s. Browser required a gesture on both transfers; this is recovery, not a promise of uninterrupted background playback. 159 tests, TypeScript and production build passed.
+
+## 4 October 2026 — Editorial metadata and curated scene cards
+- Removed series difficulty labels and legacy field from normalized records. Added multiple article categories, editable calendar dates, descending public writing order and immutable creation timestamps. Series keep Studio chapter order, with creation-order insertion for new membership.
+- Refined bookmark controls with the default `Genel` collection, `Kitaplığım` naming and an optional new-collection form; existing records/order migrate safely.
+- Preserved glass scene cards, removed bracket ornament, added optional selected series card and independent Studio visibility/content choices. Future member recommendations are defined in `features/personalized-recommendations.md`.
+- Verified 170 unit/interaction tests, TypeScript and production build. Browser verified dated writing/chapter cards, reduced bookmark popover, Studio metadata controls and desktop/390px scene layout. Mobile navigation labels now fit on one line. Data remains browser-local prototype content; member personalization is planned.
+
+## 4 October 2026 — Scene editor interaction fixes
+- Embedded live drafts now render directly from validated parent messages; article/series visibility changes appear immediately. Edit-mode capture selects the related card settings instead of navigating; parent navigation is guarded by browse mode. Non-editable scene controls stay passive.
+- Article and series settings use separate highlighted groups. Featured cards float subtly when motion is enabled, pausing for editing, hover/focus and reduced-motion preferences.
+- Verified live show/hide and card selection in the browser, plus 173 tests, TypeScript and production build. Previous requested changes remain uncommitted alongside these fixes.
+
+### Featured-card motion refinement
+The original 3px/0.2° animation was running in the browser but visually too faint. Replaced it with independent, slow perspective pitch/yaw/roll on the two glass cards. Hover no longer pauses their drift. Character breathing remains unchanged; editing/focus and reduced-motion behavior remain protected.
+
+Verified two changing `matrix3d` transforms in the public homepage and confirmed both become `none` when motion is disabled, then restored motion. All 173 tests, TypeScript and production build passed.

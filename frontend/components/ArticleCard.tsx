@@ -1,4 +1,5 @@
 "use client";
+import { articleCategories, articleDate, formatArticleDate } from "../lib/articles/metadata";
 
 import type { Article } from "../lib/content";
 import { articleDraftCover } from "../lib/catalog-covers";
@@ -14,7 +15,7 @@ export function ArticleCard({ article, onOpen, chapter, excerpt = article.excerp
   const content = <>
     <span className="article-card-visual"><CatalogCover fallback={articleDraftCover(article)} />{chapter !== undefined && <span className="article-chapter-label">{String(chapter).padStart(2, "0")} · Bölüm</span>}</span>
     <span className="article-card-main">
-      <span className="article-category">{article.category}</span>
+      <span className="article-card-metadata"><span className="article-category">{articleCategories(article).join(" · ")}</span><time dateTime={articleDate(article)}>{formatArticleDate(article)}</time></span>
       <span className="article-card-title">{article.title}</span>
       <span className="article-excerpt">{excerpt}</span>
     </span>

@@ -20,6 +20,14 @@ describe("series publishing and ordered membership", () => {
     expect(seriesValidationError([{ ...saved[0], articleSlugs: [] }])).toContain("en az bir bölüm");
     expect(validateSeries([{ ...saved[0], status: "draft", articleSlugs: [] }])).not.toBeNull();
   });
+  it("accepts legacy levels while removing them from normalized series", () => {
+    const legacy = fixture().map((entry, index) => ({ ...entry, level: index === 0 ? "Başlangıç" : "Her seviye" }));
+    const normalized = validateSeries(legacy);
+    expect(normalized).toEqual(fixture());
+    expect(normalized?.every((entry) => !("level" in entry))).toBe(true);
+    const original = [{ ...legacy[0], articleSlugs: legacy[0].articleSlugs.slice(0, 2) }];
+    expect(upgradeDemoSeries(validateSeries(original)!)).toEqual(initialSeries);
+  });
   it("keeps draft series private and chapter order stable", () => {
     const saved = fixture();
     expect(publishedSeries([{ ...saved[0], status: "draft" }])).toEqual([]);
@@ -91,6 +99,19 @@ describe("example content and migration", () => {
     const custom = renderHook(useSeriesWorkspace);
     expect(custom.result.current.series).toEqual(edited);
     expect(JSON.parse(localStorage.getItem(seriesKey)!)).toEqual(edited);
+  });
+});
+describe("series metadata and chapter layout", () => {
+  it("renders editorial chapter order without difficulty labels", () => {
+    const slugs = ["iyi-kodun-sessizligi", "yapay-zeka-ile-dusunmek", "problemi-once-tanimlamak"];
+    const { container } = render(<SeriesCatalog series={[{ ...fixture()[0], articleSlugs: slugs }]} selectedSeriesSlug={initialSeries[0].slug} />);
+    expect(screen.queryByText("Başlangıç")).toBeNull();
+    expect(screen.queryByText("Her seviye")).toBeNull();
+    const cards = [...container.querySelectorAll(".series-chapters > li .article-card-title")];
+    expect(cards.map((card) => card.textContent)).toEqual(slugs.map((slug) => articles.find((article) => article.slug === slug)?.title));
+    expect(screen.getByText("01 · Bölüm")).toBeTruthy();
+    expect(screen.getByText("02 · Bölüm")).toBeTruthy();
+    expect(screen.getByText("03 · Bölüm")).toBeTruthy();
   });
 });
 describe("series article navigation", () => {

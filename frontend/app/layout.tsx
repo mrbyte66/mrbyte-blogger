@@ -7,6 +7,8 @@ import "./transitions.css";
 import "./engagement.css";
 import "./saved.css";
 import "./audio.css";
+import "./editorial-metadata.css";
+import "./scene-featured.css";
 import { AmbientAudioProvider, AmbientAudioToggle } from "../components/audio/AmbientAudio";
 import { SavedProvider } from "../components/saved/SavedProvider";
 import { RouteMotion } from "../components/SlideLink";

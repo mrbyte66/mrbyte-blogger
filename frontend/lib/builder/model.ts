@@ -14,7 +14,7 @@ type Base<K extends BlockKind> = { id: string; kind: K };
 export type PageBlock =
   | Base<"header">
   | (Base<"intro"> & { title: string; description: string; eyebrow: string; layout: IntroLayout })
-  | (Base<"scene"> & { title: string; emphasis: string; description: string })
+  | (Base<"scene"> & { title: string; emphasis: string; description: string; featuredArticleSlug: string; showFeaturedArticle: boolean; featuredSeriesSlug: string; showFeaturedSeries: boolean })
   | (Base<"articles"> & { title: string; category: Topic; display: "rows" | "cards"; loading: "all" | "progressive" })
   | (Base<"series"> & { title: string; display: "cards" | "list" })
   | (Base<"quote"> & { text: string; attribution: string; display: QuoteDisplay })
@@ -66,7 +66,7 @@ export function createBlock(kind: BlockKind, id: string): PageBlock {
   switch (kind) {
     case "header": return { kind, id };
     case "intro": return { kind, id, layout: "statement", eyebrow: "KOD, KELİME VE ARADAKİLER", title: "Merakın kaynak kodu.", description: "Yazılım, yapay zekâ ve satır aralarında kalan düşünceler. Bir geliştiricinin açık defteri." };
-    case "scene": return { kind, id, title: "Kod yazarım.", emphasis: "Bazen de satır.", description: "Yazılım, edebiyat ve\nikisinin arasında bir insan." };
+    case "scene": return { kind, id, title: "Kod yazarım.", emphasis: "Bazen de satır.", description: "Yazılım, edebiyat ve\nikisinin arasında bir insan.", featuredArticleSlug: "yapay-zeka-ile-dusunmek", showFeaturedArticle: true, featuredSeriesSlug: "yapay-zeka-ile-yazilim", showFeaturedSeries: true };
     case "articles": return { kind, id, title: "Açık defter", category: "Tümü", display: "rows", loading: "progressive" };
     case "series": return { kind, id, title: "Seriler", display: "cards" };
     case "quote": return { kind, id, display: "band", text: "Bir sorunun peşinden gitmek de bir başlangıçtır.", attribution: "Kişisel not" };
@@ -194,12 +194,15 @@ function record(value: unknown): value is Record<string, unknown> {
 function text(value: unknown, max = 2000): value is string {
   return typeof value === "string" && value.length <= max;
 }
+function validFeaturedSlug(value: unknown): value is string {
+  return typeof value === "string" && value.length <= 100 && (value === "" || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value));
+}
 function validBlock(value: unknown): value is PageBlock {
   if (!record(value) || !text(value.id, 80) || !/^[a-zA-Z0-9-]+$/.test(value.id)) return false;
   switch (value.kind) {
     case "header": return true;
     case "intro": return text(value.title, 160) && text(value.description) && text(value.eyebrow, 120) && typeof value.layout === "string" && ["statement", "centered", "split"].includes(value.layout);
-    case "scene": return text(value.title, 160) && text(value.emphasis, 160) && text(value.description);
+    case "scene": return text(value.title, 160) && text(value.emphasis, 160) && text(value.description) && validFeaturedSlug(value.featuredArticleSlug) && validFeaturedSlug(value.featuredSeriesSlug) && typeof value.showFeaturedArticle === "boolean" && typeof value.showFeaturedSeries === "boolean";
     case "articles": return text(value.title, 160) && topics.some((topic) => topic === value.category) && typeof value.display === "string" && ["rows", "cards"].includes(value.display) && typeof value.loading === "string" && ["all", "progressive"].includes(value.loading);
     case "series": return text(value.title, 160) && typeof value.display === "string" && ["cards", "list"].includes(value.display);
     case "quote": return text(value.text) && text(value.attribution, 120) && typeof value.display === "string" && ["band", "card"].includes(value.display);
@@ -217,6 +220,7 @@ function parseTheme(value: unknown): Theme | null {
   // Version 1 records predate block variants. Default missing fields, but validate supplied values.
   const migratedBlocks = value.blocks.map((block: unknown) => {
     if (!record(block)) return block;
+    if (block.kind === "scene") return { ...block, featuredArticleSlug: block.featuredArticleSlug === undefined ? "yapay-zeka-ile-dusunmek" : block.featuredArticleSlug, showFeaturedArticle: block.showFeaturedArticle === undefined ? true : block.showFeaturedArticle, featuredSeriesSlug: block.featuredSeriesSlug === undefined ? "yapay-zeka-ile-yazilim" : block.featuredSeriesSlug, showFeaturedSeries: block.showFeaturedSeries === undefined ? true : block.showFeaturedSeries };
     if (block.kind === "intro" && block.layout === undefined) return { ...block, layout: "statement" };
     if (block.kind === "quote" && block.display === undefined) return { ...block, display: "band" };
     return block;
