@@ -29,4 +29,4 @@ Kimlik bilgileri `frontend/.env.local` içindedir ve Git dışında tutulur. Şi
 
 ## Profil avatarları
 
-V1, mevcut tema renkleriyle altı hazır avatar seçeneği sunar; seçim profil ve hesap menüsünde görünür, aynı tarayıcıdaki sekmelere eşitlenir. Üyelik ve şifre sıfırlama ekranlarında şifre tekrarı eşleşmelidir. V2’de kullanıcı kendi profil fotoğrafını yükleyebilir; dosya boyutu/türü, depolama ve güvenli yükleme backend aşamasında tasarlanacak.
+V1, mevcut tema renkleriyle 60 hazır avatar seçeneği sunar; seçim profil ve hesap menüsünde görünür, aynı tarayıcıdaki sekmelere eşitlenir. Üyelik ve şifre sıfırlama ekranlarında şifre tekrarı eşleşmelidir. V2’de kullanıcı kendi profil fotoğrafını yükleyebilir; dosya boyutu/türü, depolama ve güvenli yükleme backend aşamasında tasarlanacak.

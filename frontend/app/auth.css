@@ -178,3 +178,9 @@ html[data-theme=light] .surface-night .account-danger { color:#944c5b; border-co
 .panel-account-actions { margin-left:auto; display:flex; align-items:center; gap:14px; flex-shrink:0; }
 .panel-account-actions .close-button { margin-left:0; }
 @media(max-width:480px) { .panel-account-actions { gap:8px; } }
+
+:root { --avatar-wash-0:#dce8df; --avatar-wash-1:#dce4eb; --avatar-wash-2:#ece3d5; --avatar-wash-3:#e9dfe2; --avatar-wash-4:#dce9e8; --avatar-wash-5:#e3e0ee; }
+.profile-avatar[data-avatar] { background:color-mix(in srgb,var(--avatar-wash) 58%,var(--surface)); }
+.avatar-options { display:grid; grid-template-columns:repeat(8,minmax(40px,48px)); gap:12px; max-height:260px; overflow-y:auto; overscroll-behavior:contain; padding:5px 5px 8px; scrollbar-color:var(--muted) transparent; scrollbar-width:thin; }
+.avatar-options label { width:44px; height:44px; }
+@media(max-width:640px) { .avatar-options { grid-template-columns:repeat(6,minmax(36px,48px)); gap:10px; max-height:230px; } .avatar-options label { width:42px; height:42px; } }
