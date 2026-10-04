@@ -1,4 +1,5 @@
 "use client";
+import { useAuth } from "../auth/AuthProvider";
 import { useEffect, useId, useRef, useState } from "react";
 import { EngagementIcon } from "../EngagementIcon";
 import { SlideLink } from "../SlideLink";
@@ -6,6 +7,7 @@ import { useSavedLibrary } from "./SavedProvider";
 
 export function SaveArticleButton({ slug, title, preview = false }: { slug: string; title: string; preview?: boolean }) {
   const { library, ready, member, error, save, remove, create } = useSavedLibrary();
+  const auth = useAuth();
   const saved = library.entries.find((entry) => entry.slug === slug);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -22,8 +24,9 @@ export function SaveArticleButton({ slug, title, preview = false }: { slug: stri
   }, []);
   useEffect(() => { if (!member || preview) setOpen(false); }, [member, preview]);
   useEffect(() => { if (creating) nameInput.current?.focus(); }, [creating]);
-  const countTitle = "Üye önizlemesi: yalnız bu tarayıcıdaki kayıt. Ortak kaydetme toplamı sunucu bağlantısıyla gelecek.";
-  if (preview || !member) return <span className="save-count" aria-label={`${saved ? 1 : 0} kaydetme`} title={countTitle}><EngagementIcon kind="save" />{saved ? 1 : 0}</span>;
+  const countTitle = "Demo hesap: yalnız bu tarayıcıdaki kayıt. Ortak kaydetme toplamı sunucu bağlantısıyla gelecek.";
+  if (preview) return <span className="save-count" aria-label={`${saved ? 1 : 0} kaydetme`} title={countTitle}><EngagementIcon kind="save" />{saved ? 1 : 0}</span>;
+  if (!member) return <button className="save-article-button auth-locked" type="button" aria-label={`Giriş yap ve yazıyı kaydet: ${title}`} title="Giriş yapman gerekiyor" onClick={() => auth.openAuth()}><EngagementIcon kind="save" /><span className="visually-hidden">Giriş yapman gerekiyor</span></button>;
   return <div className="save-control" ref={container} onKeyDown={(event) => { if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); trigger.current?.focus(); } }}>
     <button ref={trigger} className="save-article-button" type="button" aria-label={`${saved ? "Kaydı yönet" : "Yazıyı kaydet"}: ${title}`} aria-pressed={!!saved} aria-expanded={open} aria-controls={id} disabled={!ready} title={countTitle} aria-description={`${saved ? 1 : 0} kaydetme. ${countTitle}`} onClick={() => { if (!saved) save(slug); setCollectionId(saved?.collectionId ?? "saved"); setCreating(false); setName(""); setOpen(!open); }}><EngagementIcon kind="save" /><span>{saved ? 1 : 0}</span></button>
     {open && <div id={id} className="save-popover" role="region" aria-label="Kaydı düzenle">
@@ -38,5 +41,5 @@ export function SaveArticleButton({ slug, title, preview = false }: { slug: stri
 }
 export function SavedLibraryLink() {
   const { member } = useSavedLibrary();
-  return member ? <SlideLink className="saved-library-link" href="/kaydedilenler" aria-label="Kitaplığım" title="Kitaplığım · üye önizlemesi"><EngagementIcon kind="save" /></SlideLink> : null;
+  return member ? <SlideLink className="saved-library-link" href="/kaydedilenler" aria-label="Kitaplığım" title="Kitaplığım"><EngagementIcon kind="save" /></SlideLink> : null;
 }

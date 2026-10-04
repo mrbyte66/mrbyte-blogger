@@ -23,7 +23,7 @@ Independent Next.js App Router application using React, TypeScript, and CSS. Kee
 - `lib/reactions/use-claps.ts`: validated independent browser-local reactions; same-tab and cross-tab synchronization. No counts in authored content records.
 - `lib/reactions/use-views.ts`: validated browser-local article view totals and first-visible-card impressions. Full reader entries count once per mount; Studio previews do not count. These totals are not site-wide analytics.
 - `components/ArticleEngagement.tsx` and `ClapCount.tsx`: shared modal/permalink toggle/sharing and read-only totals across cards. Studio preview disables actions. See `../../docs/features/claps-and-sharing.md` for the server boundary.
-- `components/saved/` and `lib/saved/model.ts`: prototype member context, validated private browser-local article collections, card/reader bookmark controls and `/kaydedilenler` management. The root provider owns synchronization; Studio has read-only counts. Replace the mock membership and local adapter with authenticated backend endpoints later.
+- `components/saved/` and `lib/saved/model.ts`: demo-authenticated member context, validated per-account browser-local article collections, card/reader bookmark controls and `/kaydedilenler` management. The root provider owns synchronization; Studio has read-only counts. Replace the mock membership and local adapter with authenticated backend endpoints later.
 - `components/CatalogCover.tsx` and `lib/catalog-covers.ts`: shared decorative cover renderer and explicit local prototype artwork mappings; real provider matching belongs to the planned backend feature.
 - `components/Character.tsx`: original character, screen masking, and ambient wrapper.
 - `components/MonitorFace.tsx`: animated eye gaze and blinking.
@@ -40,3 +40,5 @@ Keep metadata and static layout separate from interactive client components. Use
 
 ## Editorial metadata
 Articles have multiple `categories`; legacy `category` is retained as the primary cover fallback. Old single-category records normalize on read without losing content. `createdAt` is immutable; `publishedAt` is an editable calendar date, initially the creation day. Cards and reading views share Turkish date formatting without timezone shifts. Public writing lists sort newest date first; series use stored chapter order, regardless of date edits. Adding a chapter inserts by creation time while preserving existing relative order. Existing demo articles carry deterministic sample dates; unknown legacy articles use 30 September 2026 as a migration fallback, never the time of each read.
+
+Membership/session, account screens and the narrow server-side Studio login gate are owned by `docs/auth.md`.

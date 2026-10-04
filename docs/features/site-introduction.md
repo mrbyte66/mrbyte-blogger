@@ -19,7 +19,7 @@ Help visitors understand the site's writing, reading tools and future membership
 
 Personal notes, highlights and history belong to the signed-in member. They are private by default and do not become public annotations. Public annotation sharing, if ever added, requires a separate explicit publish action. Moving browser-local notes into an account requires the visitor's choice.
 
-This page does not expose owner-only Studio controls. Authentication, account storage, synchronization, membership status and any sign-up flow need real backend contracts before implementation.
+This page does not expose owner-only Studio controls. The frontend-only demo sign-up and account flows now exist; real authentication, account storage and device synchronization still require backend contracts. V1 members cannot write posts or enter Studio.
 
 ## Design and acceptance
 

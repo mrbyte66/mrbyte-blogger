@@ -1,17 +1,28 @@
+import type { ReactNode } from "react";
+import { AuthProvider, useAuth } from "../components/auth/AuthProvider";
+import { sessionKey, profilesKey, sessionDuration } from "../lib/auth/model";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SavedLibraryPage } from "../components/saved/SavedLibraryPage";
 import { ArticleCard } from "../components/ArticleCard";
-import { SavedProvider, useSavedLibrary } from "../components/saved/SavedProvider";
+import { SavedProvider as LibraryProvider, useSavedLibrary } from "../components/saved/SavedProvider";
 import { SaveArticleButton } from "../components/saved/SaveArticleButton";
 import { articles } from "../lib/content";
-import { createCollection, deleteCollection, emptyLibrary, parseLibrary, saveArticle, savedKey } from "../lib/saved/model";
+import { createCollection, deleteCollection, emptyLibrary, parseLibrary, saveArticle, savedKey as baseSavedKey } from "../lib/saved/model";
 
-beforeEach(() => localStorage.clear());
+const savedKey = `${baseSavedKey}:test-member`;
+function SavedProvider({ children }: { children: ReactNode }) { return <AuthProvider><LibraryProvider>{children}</LibraryProvider></AuthProvider>; }
+beforeEach(() => {
+ localStorage.clear();
+ const profile = { id: "test-member", name: "Üye", email: "member@example.com", verified: true, googleConnected: false, role: "member" };
+ localStorage.setItem(profilesKey, JSON.stringify([profile]));
+ localStorage.setItem(sessionKey, JSON.stringify({ version: 1, profile, startedAt: Date.now(), expiresAt: Date.now() + sessionDuration }));
+});
 afterEach(() => vi.restoreAllMocks());
 function Controls() {
-  const { setMember, library, deleteCategory } = useSavedLibrary();
-  return <><button onClick={() => setMember(false)}>Misafir</button><button onClick={() => deleteCategory(library.collections[1]?.id)}>Kategori sil</button></>;
+  const { library, deleteCategory } = useSavedLibrary();
+  const { signOut } = useAuth();
+  return <><button onClick={signOut}>Misafir</button><button onClick={() => deleteCategory(library.collections[1]?.id)}>Kategori sil</button></>;
 }
 describe("private member collection model", () => {
   it("uses one record per article and moves deleted categories to the default", () => {
@@ -73,7 +84,7 @@ describe("member bookmark controls", () => {
     expect(parseLibrary(localStorage.getItem(savedKey)).entries).toEqual([]);
     fireEvent.click(screen.getByRole("button", { name: "Misafir" }));
     expect(screen.queryByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` })).toBeNull();
-    expect(screen.getByLabelText("0 kaydetme")).toBeTruthy();
+    expect(screen.getByRole("button", { name: `Giriş yap ve yazıyı kaydet: ${articles[0].title}` })).toBeTruthy();
   });
   it("preserves malformed data and reports write failures", () => {
     localStorage.setItem(savedKey, "broken");
@@ -100,12 +111,26 @@ describe("member bookmark controls", () => {
 describe("private library guest preview", () => {
   it("hides saved articles and collection names when membership preview is disabled", () => {
     localStorage.setItem(savedKey, JSON.stringify(saveArticle(createCollection(emptyLibrary(), "Özel kategori", "private"), articles[0].slug, "private")));
-    render(<SavedProvider><SavedLibraryPage /></SavedProvider>);
+    render(<SavedProvider><SavedLibraryPage /><Controls /></SavedProvider>);
     expect(screen.getByRole("button", { name: "Özel kategori 1" })).toBeTruthy();
-    fireEvent.click(screen.getByText("Önizleme hakkında"));
-    fireEvent.click(screen.getByLabelText("Üye görünümünü göster"));
+    fireEvent.click(screen.getByRole("button", { name: "Misafir" }));
     expect(screen.queryByRole("button", { name: "Özel kategori 1" })).toBeNull();
     expect(screen.queryByText(articles[0].title)).toBeNull();
     expect(parseLibrary(localStorage.getItem(savedKey)).entries).toHaveLength(1);
   });
+});
+
+it("searches the member library and sorts explicitly without changing stored order", () => {
+ const library = saveArticle(saveArticle(emptyLibrary(), articles[0].slug), articles[1].slug);
+ localStorage.setItem(savedKey, JSON.stringify(library));
+ const { container } = render(<SavedProvider><SavedLibraryPage /></SavedProvider>);
+ fireEvent.change(screen.getByLabelText("Kitaplıkta ara"), { target: { value: articles[0].title } });
+ expect(container.querySelectorAll(".saved-item")).toHaveLength(1);
+ fireEvent.change(screen.getByLabelText("Kitaplıkta ara"), { target: { value: "no-match-1234" } });
+ expect(screen.getByRole("heading", { name: "Aradığın satır henüz burada değil." })).toBeTruthy();
+ fireEvent.click(screen.getByRole("button", { name: "Aramayı temizle" }));
+ fireEvent.change(screen.getByLabelText("Sıralama"), { target: { value: "title" } });
+ const titles = Array.from(container.querySelectorAll(".saved-item .article-card-title")).map(el => el.textContent);
+ expect(titles).toEqual([articles[0].title, articles[1].title].sort((a,b) => a.localeCompare(b,"tr")));
+ expect(parseLibrary(localStorage.getItem(savedKey)).entries).toEqual(library.entries);
 });

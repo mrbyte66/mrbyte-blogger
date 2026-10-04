@@ -1,13 +1,13 @@
 # Üye kitaplığı ve kaydedilen yazılar
 
-Durum: Üye görünümü için ön yüz prototipi uygulandı. Gerçek giriş ve hesap verileri henüz yok; kayıtlar bu tarayıcıda tutulur. Üye önizlemesi varsayılan olarak açıktır; Kitaplığım sayfasındaki önizleme açıklamasından misafir görünümüne geçilebilir.
+Durum: Ön yüz demo girişine bağlı kişisel kitaplık uygulandı. Her demo hesabın kayıtları ayrı tutulur; yeni sekmeler oturumu paylaşır. Gerçek hesap ve bulut saklama henüz yok. Üyelik sınırları `membership.md` içindedir.
 
 - Üye görünümünde yazı kartları, seri bölüm kartları, alternatif tema akışları ve ortak okuma araç çubuğunda kaydet simgesi bulunur. Kaydetmek yazıyı açmaz; kart açma ve kaydetme ayrı erişilebilir kontrollerdir.
 - İlk kaydetme varsayılan “Genel” koleksiyonuna gider. Kullanıcı aynı menüden mevcut koleksiyonyi seçebilir veya örneğin “Türk edebiyatı” adlı bir koleksiyon oluşturup taşıyabilir. Yazı başına tek kayıt vardır; koleksiyon değiştirmek toplamı artırmaz.
 - Kartların altında ayrı koleksiyon/kaldırma satırı bulunmaz; bu işlemler ortak yer imi menüsündedir. Koleksiyon seçimi “Taşı” ile uygulanır; mevcut kayıt taşındığında listedeki sırası korunur.
 - `/kaydedilenler` kişisel kitaplık ekranıdır. Koleksiyonlerle filtreleme, oluşturma, yeniden adlandırma, yazıları taşıma ve kaydı kaldırma sunulur. Varsayılan koleksiyon değiştirilemez. Bir koleksiyon kaldırıldığında yazıları varsayılan koleksiyonye taşınır.
 - Yayından kaldırılan yazının kaydı sessizce silinmez; erişilemiyor açıklaması ve kaldırma seçeneği sunulur.
-- Kartlar ve okuma alanında kaydetme sayısı görünür. Prototip yalnız bu tarayıcıdaki demo üyenin kaydını 0/1 olarak gösterir; açıklama ipucu bunu belirtir. Gerçek tüm ziyaretçi toplamı henüz yoktur. Misafir görünümünde sayı salt okunurdur, kaydet düğmesi yoktur.
+- Kartlar ve okuma alanında kaydetme sayısı görünür. Prototip yalnız bu tarayıcıdaki demo üyenin kaydını 0/1 olarak gösterir; açıklama ipucu bunu belirtir. Gerçek tüm ziyaretçi toplamı henüz yoktur. Misafir görünümünde yer imi düşük opaklıkla görünür; tıklamak sade giriş modalını açar.
 - Kayıtlar içerik/tema verisinden ayrıdır; Studio bunları veya toplamları düzenleyemez. Önizlemede kaydet kontrolleri salt okunurdur.
 - Veri sürümlenir, doğrulanır ve sekmeler arasında eşitlenir. Bozuk veya yazılamayan verinin üzerine geçerliymiş gibi yazılmaz; kullanıcıya hata gösterilir.
 
@@ -24,3 +24,5 @@ Sunucu gerçek oturumdan üye kimliğini belirlemeli; istemcinin gönderdiği ku
 Kişisel gruplar “Koleksiyon” olarak adlandırılır; yazının konu kategorileriyle karışmaz. Kitaplığın adı “Kitaplığım”, varsayılan koleksiyon “Genel”dir. Eski varsayılan isim okuma sırasında dönüştürülür; kayıtlar, koleksiyon kimlikleri ve sıraları korunur. Önceden “Genel” adlı özel koleksiyon varsa ismi benzersiz bir “Genel (2)” ekiyle ayrılır, kayıtları yerinde kalır.
 
 Menü önce koleksiyon seçimi, açık “Taşı” işlemi ve kitaplık/kaldırma bağlantısını gösterir. Yeni koleksiyon formu yalnız “Yeni koleksiyon” açıldığında görünür ve adı alanına klavye odağı taşınır. Seçim taslaktır; “Taşı” öncesinde veriler değişmez.
+
+Kitaplık araçları: başlık, özet, konu ve koleksiyon adına göre yerel arama; kaydetme sırası (varsayılan), yayın tarihi ve alfabetik sıralama. Sıralama yalnız görünümü etkiler; kayıtların saklanan sırası değişmez. Sonuç sayısı, aramayı temizleme ve ilk kayıt için kısa keşfet/sakla/düzenle rehberi vardır.

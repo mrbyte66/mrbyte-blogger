@@ -149,3 +149,15 @@ Fixed denied/error owners retaining the Web Lock and forwarding continuation cli
 The original 3px/0.2° animation was running in the browser but visually too faint. Replaced it with independent, slow perspective pitch/yaw/roll on the two glass cards. Hover no longer pauses their drift. Character breathing remains unchanged; editing/focus and reduced-motion behavior remain protected.
 
 Verified two changing `matrix3d` transforms in the public homepage and confirmed both become `none` when motion is disabled, then restored motion. All 173 tests, TypeScript and production build passed.
+
+## 2026-10-04 — Membership UI and protected Studio entry
+
+Integrated theme-aligned login/register/Google demo, recovery/reset/verification views, native login modal, avatar navigation and `/hesap` profile/security/connections/session/deletion sections. Root demo identity synchronizes across tabs and expires; passwords are never stored. Bookmarks and annotations are scoped to the demo member, guest notes remain separate, and old bookmark import requires explicit choice. Member navigation exposes no Studio or writing tools.
+
+User requested a real username/password gate while preserving `/studio`. Added narrowly scoped server-side credential verification, salted scrypt environment hash, signed eight-hour HttpOnly cookie, login throttling and server checks on both Studio and preview. Actual local credentials are in ignored `.env.local`, not source/docs. Spring Boot membership/business backend remains unimplemented. V2 multi-author portal, follows and possible comments are documented in `docs/features/membership.md`.
+
+Verification: 28 test files / 187 tests passed; TypeScript check and production build passed. Final targeted auth, account-scoped reading and Studio crypto suite: 14 tests passed. Client bundle inspection found no server password hash/signing secret; Git ignores `.env.local`. Browser checks covered Studio login with the configured credentials, logout returning to the gate, shared member session/logout across two tabs, member menu without Studio, modal registration and responsive account/login surfaces at 390×844 and desktop in light/dark themes. Real member auth/OAuth/email and cross-device data remain explicitly marked as pending. Studio throttling is single-process and will need replacement in the future backend.
+
+### 2026-10-04 — Üyelik ve kitaplık arayüzü tutarlılığı
+
+Tek misafir giriş kontrolü, ortak hesap/kitaplık/kalıcı okuma üst çubuğu, sabit boyutlu giriş-üyelik modalı ve eşleşme doğrulamalı şifre tekrarı eklendi. Hazır profil avatarı hesap menüsünde kullanılır ve demo oturumla sekmelere eşitlenir. Kitaplıkta arama, açık tercihli sıralama, sonuç sayısı ve ilk kayıt rehberi bulunur; saklanan kayıt sırası korunur. Kendi fotoğrafını yükleme V2 notlarına eklendi. Doğrulama: 28 test dosyasında 189 test, TypeScript ve production build başarılı; masaüstü açık/koyu tema ve 390px mobil yerleşim/modal kaydırma tarayıcıda incelendi.

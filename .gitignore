@@ -3,3 +3,7 @@ frontend/node_modules/
 frontend/.next/
 frontend/*.tsbuildinfo
 backend/target/
+
+# Local server credentials; never publish account secrets.
+frontend/.env*
+!frontend/.env.example

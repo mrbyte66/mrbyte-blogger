@@ -1,4 +1,5 @@
 "use client";
+import { AccountMenu } from "./auth/AccountMenu";
 
 import { publicArticles } from "../lib/editorial/store";
 import { useArticles } from "../lib/articles/use-articles";
@@ -32,7 +33,7 @@ export function Experience({ editing = false, siteName = "SATIR", title = "Kod y
   return <section aria-label="Karakterli evren" className={`experience ${dark ? "theme-dark" : "theme-light"} ${motionEnabled ? "motion-on" : "motion-off"} ${navigation.section ? "panel-open" : ""}`}>
     <a tabIndex={editing ? -1 : undefined} aria-disabled={editing || undefined} className="skip-link" href="#scene-navigation">İçeriklere geç</a>
     <div className="stage-texture" aria-hidden="true" />
-    <header className="site-header"><button disabled={editing} className="wordmark" aria-label={`${siteName} ana sahne`} onClick={() => dispatch({ type: "close" })}>{siteName}<span>.</span></button><span className="header-description">KİŞİSEL BİR EVREN</span></header>
+    <header className="site-header"><button disabled={editing} className="wordmark" aria-label={`${siteName} ana sahne`} onClick={() => dispatch({ type: "close" })}>{siteName}<span>.</span></button><span className="header-description">KİŞİSEL BİR EVREN</span>{!editing && <AccountMenu />}</header>
 
     <div className="scene">
       <span className="scene-coordinate" aria-hidden="true">FIG. 001 — İNSAN / MAKİNE</span>

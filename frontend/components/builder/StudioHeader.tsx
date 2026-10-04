@@ -1,3 +1,4 @@
+import { AccountMenu } from "../auth/AccountMenu";
 import type { ReactNode } from "react";
 import { ThemeToggle } from "../SitePreferences";
 
@@ -7,6 +8,6 @@ export function StudioHeader({ navigation, actions, status }: { navigation?: Rea
     <div className="studio-brand"><span className="studio-logo" aria-hidden="true">m<span>↗</span></span><strong>studio</strong></div>
     {navigation}
     <div className="studio-header-state">{status}</div>
-    <div className="studio-top-actions"><ThemeToggle />{actions}</div>
+    <div className="studio-top-actions"><ThemeToggle />{actions}<AccountMenu /></div>
   </header>;
 }

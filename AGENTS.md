@@ -12,6 +12,7 @@ This repository contains separate frontend and backend applications.
 | Planned owner-managed nostalgia corner | `docs/features/nostalgia-corner.md` |
 | Planned editable article summaries | `docs/features/article-summary.md` |
 | Automatic article/series covers and visual cards | `docs/features/automatic-covers.md` |
+| Membership UI, Studio access and V2 portal | `docs/features/membership.md` |
 | Private member bookmarks and collections | `docs/features/saved-articles.md` |
 | Anonymous claps, aggregate counts and article sharing | `docs/features/claps-and-sharing.md` |
 | Blog series and chapter journeys | `docs/features/blog-series.md` |

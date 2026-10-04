@@ -20,3 +20,5 @@ Anonymous marks remain private to the local browser. They are not owner-public a
 Reference: [MDN CSS highlight pseudo-element](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::highlight).
 
 `ReadingTools.contentRevision` triggers anchor re-resolution when a saved article changes in another Studio/reader instance. Clear any stale active selection; retain saved quotes and show the unresolved notice rather than highlighting unrelated replacement text.
+
+Demo members use scoped per-account annotation keys; guests retain the existing browser-local keys. Changing identity remounts the annotation tools and clears prior marks/selection. Guest notes are not silently imported into an account.

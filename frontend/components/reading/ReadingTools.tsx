@@ -1,10 +1,11 @@
 "use client";
 
+import { useAuth } from "../auth/AuthProvider";
 import { scrollBehavior } from "../../lib/motion";
 
 import { useEffect, useRef, useState } from "react";
 import { anchorRange, findAnchor, maxMarks, maxNoteLength, selectionAnchors, type ReadingMark, type ReadingMarkKind, type TextAnchor } from "../../lib/reading/model";
-import { readReadingDocument, writeReadingDocument } from "../../lib/reading/storage";
+import { readReadingDocument, readingStorageKey, writeReadingDocument } from "../../lib/reading/storage";
 
 type HighlightEnvironment = {
   CSS?: { highlights?: { set: (name: string, highlight: unknown) => void; delete: (name: string) => void } };
@@ -13,7 +14,12 @@ type HighlightEnvironment = {
 const highlightNames = { highlight: "mrbyte-reading-highlight", underline: "mrbyte-reading-underline", note: "mrbyte-reading-note" };
 const kindLabels = { highlight: "Fosforlu işaret", underline: "Alt çizgi", note: "Not" };
 
-export function ReadingTools({ articleId, contentRootId, contentRevision = "" }: { articleId: string; contentRootId: string; contentRevision?: string }) {
+export function ReadingTools(props: { articleId: string; contentRootId: string; contentRevision?: string }) {
+  const { session } = useAuth();
+  const memberId = session?.profile.id;
+  return <ScopedReadingTools key={`${props.articleId}:${memberId ?? "guest"}`} {...props} memberId={memberId} />;
+}
+function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", memberId }: { articleId: string; contentRootId: string; contentRevision?: string; memberId?: string }) {
   const [marks, setMarks] = useState<ReadingMark[]>([]);
   const [fragments, setFragments] = useState<TextAnchor[]>([]);
   const [open, setOpen] = useState(false);
@@ -30,10 +36,15 @@ export function ReadingTools({ articleId, contentRootId, contentRevision = "" }:
   const quote = fragments.map((fragment) => fragment.quote).join("\n");
 
   useEffect(() => {
-    const loaded = readReadingDocument(articleId);
-    setMarks(loaded.document.marks); setStorageError(loaded.error); setReady(true);
-    setFragments([]); setWriting(false); setUndo(null); setStatus("");
-  }, [articleId]);
+    function load() {
+      const loaded = readReadingDocument(articleId, memberId);
+      setMarks(loaded.document.marks); setStorageError(loaded.error); setReady(true);
+      setFragments([]); setWriting(false); setUndo(null); setStatus("");
+    }
+    function sync(event: StorageEvent) { if (event.key === readingStorageKey(articleId, memberId) || event.key === null) load(); }
+    load(); window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, [articleId, memberId]);
   useEffect(() => {
     function capture() {
       const root = document.getElementById(contentRootId);
@@ -97,7 +108,7 @@ export function ReadingTools({ articleId, contentRootId, contentRevision = "" }:
   }, [marks, contentRootId, contentRevision]);
 
   function persist(next: ReadingMark[], message: string) {
-    const saved = writeReadingDocument({ version: 1, articleId, marks: next });
+    const saved = writeReadingDocument({ version: 1, articleId, marks: next }, memberId);
     setMarks(next);
     setStorageError(saved ? null : "Tarayıcı kaydı başarısız. Bu değişiklikler sayfa kapanınca kaybolabilir.");
     setStatus(saved ? `${message} Bu tarayıcıya kaydedildi.` : `${message} Yalnızca bu oturumda tutuluyor.`);

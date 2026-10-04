@@ -10,9 +10,10 @@ Read the repository `../AGENTS.md` first. Then consult only the frontend guides 
 | Modular article annotations and local notes | `docs/reading.md` |
 | Optional ambient Mozart playback | `docs/audio.md` |
 | Series, chapter order and future member visit history | `docs/series.md` |
+| Member/login/account UI and server Studio gate | `docs/auth.md` |
 | Test and acceptance criteria | `docs/quality.md` |
 
-This is a Next.js App Router / React / TypeScript application. Keep components focused; content definitions live in `lib/`, screen composition in `components/`, and styling in `app/globals.css`. Do not introduce backend behavior in Next.js route handlers.
+This is a Next.js App Router / React / TypeScript application. Keep components focused; content definitions live in `lib/`, screen composition in `components/`, and styling in `app/globals.css`. Business APIs belong in Spring Boot. The explicitly requested server-side Studio login gate is described in `docs/auth.md`; do not extend it into a membership/content backend.
 
 Run `npm test`, `npm run typecheck`, and `npm run build` from this directory after meaningful changes. Update the owning guide when you change a component contract or design decision.
 
