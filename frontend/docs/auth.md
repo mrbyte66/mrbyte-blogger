@@ -17,3 +17,9 @@ Auth surfaces use applied `themeAppearance`, existing DM Sans typography, border
 Server cookie and browser identity are separate concerns: the former protects Studio delivery; the latter previews member UI. Google buttons never call Google in this slice. Informational member benefits must distinguish local demo features from planned cloud storage and history.
 
 `SitePageHeader` hesap, kitaplık, giriş, Studio girişi ve kalıcı yazı/seri sayfalarında ortak üst çubuktur: aynı içerik sınırı, logo, geri dönüş ve tema kontrolü. `AccountMenu` misafire tek giriş kontrolü sunar; giriş modalı eşit genişlikli sekmeler ve sabit pencere boyutu kullanır. Üyelik/sıfırlamada şifre tekrarı eşleşmeden işlem ilerlemez. `ProfileAvatar` 60 yerel SVG/baş harf seçeneği sunar; opsiyonel `avatar` alanı eski demo profilleriyle uyumludur. Profil fotoğrafı yükleme V2 kapsamındadır.
+
+Account → Bildirimler contains one account-wide publication-email switch. Optional validated `DemoProfile.publicationEmail` defaults to true for legacy profiles. `updateProfile` persists it with the profile/session and the existing cross-tab session synchronization; it is never an article setting. This prototype sends no email. Future server preferences and publication jobs are described in `../../docs/features/publication-scheduling.md`.
+
+Studio owner publication preference is also stored under `mrbyte:studio-preferences:v1`, separately from authentication, so it survives logout and a fresh server-authorized login. This key grants no access. Failed session persistence restores the previous preference.
+
+Shared page-header navigation rules target the direct toolbar (`.site-page-header>nav`), never nested account dropdown navigation. Thus account/library menus retain the same 220px desktop width, 4px gaps and stretched rows as Studio.

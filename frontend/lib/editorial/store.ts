@@ -9,8 +9,8 @@ export const seriesKey = "mrbyte-blogger:series:v1";
 export const contentEvent = "mrbyte:content-updated";
 export type ContentWorkspace = { articles: readonly Article[]; series: readonly BlogSeries[] };
 export const initialContent: ContentWorkspace = { articles: fixtures, series: initialSeries };
-export type ContentStatus = "draft" | "published" | "archived" | "trashed";
-export const statusLabels: Record<ContentStatus, string> = { draft: "Taslak", published: "Yayında", archived: "Arşiv", trashed: "Çöp kutusu" };
+export type ContentStatus = "scheduled" | "draft" | "published" | "archived" | "trashed";
+export const statusLabels: Record<ContentStatus, string> = { scheduled: "Planlandı", draft: "Taslak", published: "Yayında", archived: "Arşiv", trashed: "Çöp kutusu" };
 export function articleStatus(article: Article): ContentStatus { return article.status ?? "published"; }
 export function publicArticles(articles: readonly Article[]): Article[] { return sortArticlesByDate(articles.filter((a) => articleStatus(a) === "published")); }
 export function publicSeries(series: readonly BlogSeries[], articles: readonly Article[]): BlogSeries[] {
@@ -57,8 +57,10 @@ export function writeContent(next: ContentWorkspace, previous: ContentWorkspace)
 }
 export function saveArticleRecord(current: ContentWorkspace, article: Article, creating: boolean, seriesId?: string | null): ContentWorkspace {
   const previous = current.articles.find((a) => a.slug === article.slug);
-  const checked = validateArticle(!creating && previous ? { ...article, createdAt: previous.createdAt } : article);
-  if (!checked || (articleStatus(checked) === "published" && !checked.paragraphs.some((p) => p.trim()))) throw new Error("Yayınlamak için başlık ve en az bir paragraf gerekli.");
+  const record = article.status === "scheduled" ? article : { ...article, scheduledAt: undefined };
+  const checked = validateArticle(!creating && previous ? { ...record, createdAt: previous.createdAt } : record);
+  if (!checked || (["published", "scheduled"].includes(articleStatus(checked)) && !checked.paragraphs.some((p) => p.trim()))) throw new Error("Yayınlamak için başlık ve en az bir paragraf gerekli.");
+  if (articleStatus(checked) === "scheduled" && Date.parse(checked.scheduledAt!) <= Date.now()) throw new Error("Planlamak için gelecekte bir tarih ve saat seç.");
   const exists = current.articles.some((a) => a.slug === checked.slug);
   if (creating && exists) throw new Error("Bu kalıcı bağlantı başka bir yazıya ait. Farklı bir bağlantı seç.");
   if (!creating && !exists) throw new Error("Düzenlenen yazı bulunamadı.");

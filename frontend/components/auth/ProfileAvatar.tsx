@@ -2,11 +2,11 @@ import type { CSSProperties } from "react";
 import type { AvatarStyle } from "../../lib/auth/model";
 export const avatars: { id: AvatarStyle; label: string }[] = [
   { id: "initials", label: "Baş harfler" },
-  { id: "round", label: "Sade portre" },
-  { id: "glasses", label: "Gözlüklü portre" },
-  { id: "curly", label: "Kıvırcık saçlı portre" },
-  { id: "reader", label: "Şapkalı portre" },
-  { id: "robot", label: "Robot portre" },
+  { id: "round", label: "Sade" },
+  { id: "glasses", label: "Gözlüklü" },
+  { id: "curly", label: "Kıvırcık" },
+  { id: "reader", label: "Okur" },
+  { id: "robot", label: "Robot" },
   ...Array.from({ length: 54 }, (_, index) => ({ id: `portrait-${String(index + 1).padStart(2, "0")}` as AvatarStyle, label: `Portre ${String(index + 7).padStart(2, "0")}` })),
 ];
 const legacy = ["round", "glasses", "curly", "reader", "reader", "robot"];

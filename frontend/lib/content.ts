@@ -3,12 +3,13 @@ export type Topic = (typeof topics)[number];
 export type Article = {
   slug: string;
   authored?: boolean;
-  status?: "draft" | "published" | "archived" | "trashed";
+  status?: "scheduled" | "draft" | "published" | "archived" | "trashed";
   title: string;
   category: Exclude<Topic, "Tümü">;
   categories?: readonly Exclude<Topic, "Tümü">[];
   createdAt?: string;
   publishedAt?: string;
+  scheduledAt?: string;
   eyebrow: string;
   excerpt: string;
   minutes: number;

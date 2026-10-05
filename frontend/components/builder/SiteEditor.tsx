@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { Article } from "../../lib/content";
 import { createArticle } from "../../lib/articles/model";
+import { addDemoSchedules } from "../../lib/editorial/demo-schedules";
 import { saveArticleRecord } from "../../lib/editorial/store";
 import { useContentWorkspace } from "../../lib/editorial/use-content-workspace";
 import type { BlogSeries } from "../../lib/series/model";
@@ -44,8 +45,13 @@ export function SiteEditor() {
     const record = createArticle();
     setNewArticle(record); setTarget({ kind: "article", slug: record.slug }); setNotice("");
   }
-  const navigation = <PageNavigator target={target} articles={availableArticles} series={content.series} ready={content.ready} onNavigate={navigate} onCreateArticle={addArticle} />;
+  function createDemoPlans() {
+    if (dirty || newArticle) { setNotice("Demo plan eklemeden önce açık yazını kaydet veya geri al."); return; }
+    if (content.mutate(current => addDemoSchedules(current))) setNotice("Demo planlar hazır. Planlanan yazılar listesinden açıp düzenleyebilirsin.");
+  }
+  const navigation = <PageNavigator target={target} articles={availableArticles} series={content.series} ready={content.ready} onNavigate={navigate} onCreateArticle={addArticle} onCreateDemoPlans={createDemoPlans} />;
   return <div className="studio-site-editor">
+    {target.kind === "home" && content.error && <p role="alert" className="studio-navigation-notice">{content.error}</p>}
     {notice && <p className="studio-navigation-notice" role="status">{notice}</p>}
     {target.kind === "home" ? <ThemeEditor navigation={navigation} onNavigate={navigate} /> : initial ? <DocumentEditor
       navigation={navigation} key={`${target.kind}-${target.slug}`} initial={initial} isNew={!!newArticle}

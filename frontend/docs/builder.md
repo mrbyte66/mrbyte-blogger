@@ -65,3 +65,11 @@ Scene blocks own `featuredArticleSlug`, `showFeaturedArticle`, `featuredSeriesSl
 
 ### Edit-mode interaction isolation
 Embedded preview messages from the trusted parent are authoritative for the live workspace, so scene visibility updates render immediately even when browser storage is unavailable. Edit mode takes priority over article/series navigation: card clicks select the scene block and its `featured-article` / `featured-series` property group. Scene navigation, theme/audio controls and other non-editable scene areas stay passive. Document previews also select editable fields before considering links. Parent navigation messages are accepted only in browse mode. Writer and series card controls have separate groups, with the selected group highlighted and scrolled into view.
+
+## Article publication scheduling
+
+DocumentActions opens the article-only `publication` inspector. `PublicationSchedule` chooses local date/time, shows the browser time zone, and saves an absolute UTC `scheduledAt`. Scheduled articles require prose and a future time. They are excluded by `publicArticles` and published series chapters; there is no client-clock auto-publication. Rescheduling persists explicitly; cancelling saves a draft, and other status transitions clear the plan. Series themselves have no scheduled status. The editable card `publishedAt` date remains separate. Real scheduling/email delivery belongs to Spring Boot; see `../../docs/features/publication-scheduling.md`.
+
+The shared page picker has a dedicated “Planlanan yazılar” view. It excludes series, shows each publication time in the local time zone, and defaults to earliest schedule first. Latest schedule first and Turkish title ordering are explicit alternatives. Searching still narrows this view; choosing a result opens its existing article editor.
+
+`addDemoSchedules` explicitly seeds three future scheduled articles through the normal validation/save path. PageNavigator keeps its planned filter open to display the new records. Fixed demo slugs prevent duplicates or overwriting edited examples; unsaved editor changes block seeding. No automatic seed, publication timer or email is introduced.

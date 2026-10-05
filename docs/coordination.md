@@ -161,3 +161,27 @@ Verification: 28 test files / 187 tests passed; TypeScript check and production 
 ### 2026-10-04 — Üyelik ve kitaplık arayüzü tutarlılığı
 
 Tek misafir giriş kontrolü, ortak hesap/kitaplık/kalıcı okuma üst çubuğu, sabit boyutlu giriş-üyelik modalı ve eşleşme doğrulamalı şifre tekrarı eklendi. Hazır profil avatarı hesap menüsünde kullanılır ve demo oturumla sekmelere eşitlenir. Kitaplıkta arama, açık tercihli sıralama, sonuç sayısı ve ilk kayıt rehberi bulunur; saklanan kayıt sırası korunur. Kendi fotoğrafını yükleme V2 notlarına eklendi. Doğrulama: 28 test dosyasında 189 test, TypeScript ve production build başarılı; masaüstü açık/koyu tema ve 390px mobil yerleşim/modal kaydırma tarayıcıda incelendi.
+
+## 2026-10-05 — Yayın planı ve genel e-posta tercihi
+
+Studio yazı işlemlerine “Yayını planla” ve tarih/saat içeren Yayın planı alanı eklendi. UTC zaman doğrulanır; eksik içerik/geçmiş zaman reddedilir. Planlanan yazı kamu listelerinden ve seri bölümlerinden gizlenir; yeniden planlama, iptal ve anında yayınlama akışları aynı kaydetme yolunu kullanır. Hesap → Bildirimler anahtarı yazarın bütün yazıları için ortak `publicationEmail` tercihidir. Demo profilleri/oturumları sekmeler arasında mevcut altyapıyla eşitlenir; Studio sahibinin tercihi çıkış sonrasında da ayrı, yetki vermeyen bir tercihle korunur.
+
+Prototip gerçek zamanlı yayın veya e-posta göndermez; bu sınır UI ve `docs/features/publication-scheduling.md` içinde belirtilmiştir. Spring Boot kalıcı zamanlama, yayın sonrası idempotent mail işi ve V2 yazar yetkisi gereksinimleri kaydedildi.
+
+Doğrulama: 30 dosyada 194 test, TypeScript ve production build başarılı. Yeni testler zaman doğrulaması, görünürlük/seri filtrelemesi, zaman temizleme, genel tercih uyumluluğu ve tarih seçme/iptal etkileşimini kapsar. Bildirim anahtarı masaüstü ve 390px mobil tarayıcıda incelendi; kapat/aç geri bildirimi doğrulandı ve açık tercih geri yüklendi. Studio editörü sunucu giriş kapısı nedeniyle bu oturumda tarayıcıdan açılmadı; tarih alanı bileşen etkileşim testiyle doğrulandı.
+
+### Yayın planlarını topluca görme ve hesap menüsü tutarlılığı
+
+Studio sayfa seçicisine Planlanan yazılar filtresi, en yakın/en uzak yayın tarihi ve Türkçe başlık sıralaması eklendi. Satırlar yerel yayın tarih/saatini gösterir; seri kayıtları bu filtrede görünmez. Arama, boş durum ve ilgili yazı düzenleyicisine geçiş korunur. Header'ın bütün alt `nav` öğelerini etkileyen CSS kuralı doğrudan araç çubuğuyla sınırlandı; hesap/kitaplık dropdown artık Studio ile aynı 4px aralık ve satır hizasını kullanır.
+
+Doğrulama: 31 dosyada 196 test, TypeScript ve production build başarılı. Yeni bileşen testleri filtre, sıralama, boş durum ve düzenleyiciye yönlendirmeyi kapsar. Hesap ve kitaplık menüleri masaüstünde ölçüldü (220px, 4px aralık) ve 390px mobil kitaplık görünümü incelendi; viewport geri yüklendi.
+
+### Açık tercihli yayın planı demosu
+
+Planlanan yazılar görünümüne “Demo planlar oluştur” eklendi. Tek işlemle 1/3/7 gün sonrasına üç bağımsız örnek yazı mevcut kaydetme/doğrulama yolundan eklenir; liste açık kalır. Sabit örnek bağlantıları tekrar üretimi ve düzenlenmiş örnekleri ezmeyi önler. Kaydedilmemiş yazı/draft varken ekleme engellenir. Örnekler normal yazılar gibi düzenlenebilir, plan iptal edilebilir veya kaldırılabilir. Gerçek zamanlı yayın ve mail hâlâ backend kapsamıdır.
+
+Doğrulama: 32 dosyada 198 test, TypeScript ve production build başarılı. Yeni testler üç tarih, geçerli kayıt, yayın listesinin değişmemesi, tekrar/ezme koruması ve demo oluştururken plan listesinin açık kalmasını kapsar. Bu değişiklikte Studio tarayıcı akışı çalıştırılmadı; bileşen/store testleri kullanıldı.
+
+## 2026-10-05 — Üye okuma rozetleri, istatistikler ve kilitli yazılar (ürün notu)
+
+Üyelerin kendi profilinde okuyucu seviyesine göre rozet/ilerleme görebilmesi ve sahibin üyeler/yazılar için metrik, tarih aralığı ve kırılım seçerek karşılaştırmalı tablo hazırlayabilmesi yapılacaklara eklendi. Yazı görüntülenme, alkış, kaydetme, cihaz türü ve ölçüm kuralları tanımlanacak okuma süresi olası metriklerdir. Kişisel okuma verisinin sınırsız biçimde yöneticiye açılması varsayılmadı; toplu rapor, veri minimizasyonu ve mahremiyet kararları önkoşuldur. Ayrıca önce yalnızca sahibin erişeceği kilitli yazılar ve bu içeriğin sunucu/API/arama/medya/önizleme/cache katmanlarında korunması not edildi. Üye özel yazıları V2 için ayrı karardır. Özellikler henüz uygulanmadı; ayrıntılar `docs/features/reader-progress-and-analytics.md` ve `docs/features/private-articles.md` içinde.

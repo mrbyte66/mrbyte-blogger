@@ -24,6 +24,8 @@ Kimlik bilgileri `frontend/.env.local` içindedir ve Git dışında tutulur. Şi
 - Herkesin birbirinin yayımlanan yazılarını görebildiği ortak portal.
 - İlgi alanlarına göre yazar takip etme, kişisel yazı/seri önerileri ve akış.
 - Başkalarının yazılarını özel kitaplıkta saklama.
+- Üyenin kendi okuma ilerlemesini ve sonradan tanımlanacak okur rozetlerini yalnızca kendi profilinde görmesi. Üyeler başkalarının özel kitaplık, not, okuma geçmişi veya ayrıntılı oturum verisini göremez. Kurallar: `reader-progress-and-analytics.md`.
+- Üyelerin kilitli/özel yazı özelliği ayrı bir ürün ve erişim kararıyla sonradan açılabilir; V1 kapsamı yalnızca site sahibi içindir.
 - Yorum özelliğinin ayrıca değerlendirilmesi: moderasyon, kötüye kullanım, bildirim ve gizlilik kapsamı.
 - Yazar izinleri, içerik sahipliği ve ortak portal veri modeli backend tasarımında ayrı karar olacaktır. V1'e bunları varsayarak karmaşık altyapı ekleme.
 

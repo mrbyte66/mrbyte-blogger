@@ -8,10 +8,11 @@ type AuthContext = {
   session: DemoSession | null; ready: boolean; error: string;
   openAuth: (screen?: AuthScreen) => void; closeAuth: () => void;
   enterDemo: (email: string, name?: string, google?: boolean) => boolean;
-  updateProfile: (patch: Partial<Pick<DemoProfile, "name" | "avatar" | "verified" | "googleConnected">>) => boolean;
+  updateProfile: (patch: Partial<Pick<DemoProfile, "name" | "avatar" | "publicationEmail" | "verified" | "googleConnected">>) => boolean;
   enterOwnerDemo: () => boolean; signOut: () => void; deleteAccount: () => boolean; notify: (message: string) => void;
 };
 const fallback: AuthContext = { session: null, ready: false, error: "", openAuth: () => {}, closeAuth: () => {}, enterDemo: () => false, updateProfile: () => false, enterOwnerDemo: () => false, signOut: () => {}, deleteAccount: () => false, notify: () => {} };
+const ownerPreferencesKey = "mrbyte:studio-preferences:v1";
 const Context = createContext<AuthContext>(fallback);
 export function useAuth() { return useContext(Context); }
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -37,8 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function persist(next: DemoSession) {
     let previousProfiles: string | null = null;
     let wroteProfiles = false;
+    let previousOwnerPreferences: string | null = null;
+    let wroteOwnerPreferences = false;
     try {
-      if (next.profile.role !== "owner") {
+      if (next.profile.role === "owner") {
+        previousOwnerPreferences = localStorage.getItem(ownerPreferencesKey);
+        localStorage.setItem(ownerPreferencesKey, JSON.stringify({ publicationEmail: next.profile.publicationEmail ?? true }));
+        wroteOwnerPreferences = true;
+      } else {
         previousProfiles = localStorage.getItem(profilesKey);
         const profiles = readProfiles(previousProfiles);
         localStorage.setItem(profilesKey, JSON.stringify([...profiles.filter(p => p.id !== next.profile.id), next.profile]));
@@ -46,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       localStorage.setItem(sessionKey, JSON.stringify(next)); setSession(next); setError(""); return true;
     } catch {
+      if (wroteOwnerPreferences) {
+        try { if (previousOwnerPreferences === null) localStorage.removeItem(ownerPreferencesKey); else localStorage.setItem(ownerPreferencesKey, previousOwnerPreferences); } catch { /* Report failed persistence. */ }
+      }
       if (wroteProfiles) {
         try { if (previousProfiles === null) localStorage.removeItem(profilesKey); else localStorage.setItem(profilesKey, previousProfiles); } catch { /* Report failure; never claim a successful session. */ }
       }
@@ -65,13 +75,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   function enterOwnerDemo() {
     const startedAt = Date.now();
-    return persist({ version: 1, profile: { id: "site-owner-demo", name: "Site sahibi", email: "owner-demo@example.com", verified: true, googleConnected: false, role: "owner" }, startedAt, expiresAt: startedAt + 8 * 60 * 60 * 1000 });
+    let publicationEmail = true;
+    try { const preferences = JSON.parse(localStorage.getItem(ownerPreferencesKey) ?? "null"); if (typeof preferences?.publicationEmail === "boolean") publicationEmail = preferences.publicationEmail; } catch { /* Use the compatible default for an invalid preference. */ }
+    return persist({ version: 1, profile: { publicationEmail, id: "site-owner-demo", name: "Site sahibi", email: "owner-demo@example.com", verified: true, googleConnected: false, role: "owner" }, startedAt, expiresAt: startedAt + 8 * 60 * 60 * 1000 });
   }
   async function signOut() {
     try { if (session?.profile.role === "owner") await logoutStudio(); localStorage.removeItem(sessionKey); setSession(null); setScreen(null); setError(""); setToast("Çıkış yapıldı"); }
     catch { setError("Çıkış tüm sekmelere uygulanamadı. Tekrar dene."); }
   }
-  function updateProfile(patch: Partial<Pick<DemoProfile, "name" | "avatar" | "verified" | "googleConnected">>) {
+  function updateProfile(patch: Partial<Pick<DemoProfile, "name" | "avatar" | "publicationEmail" | "verified" | "googleConnected">>) {
     let current: DemoSession | null;
     try { current = parseSession(localStorage.getItem(sessionKey)); } catch { setError("Oturum okunamadı."); return false; }
     if (!current || current.profile.id !== session?.profile.id || (patch.name !== undefined && (!patch.name.trim() || patch.name.trim().length > 80))) return false;

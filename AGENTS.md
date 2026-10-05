@@ -12,10 +12,13 @@ This repository contains separate frontend and backend applications.
 | Planned owner-managed nostalgia corner | `docs/features/nostalgia-corner.md` |
 | Planned editable article summaries | `docs/features/article-summary.md` |
 | Automatic article/series covers and visual cards | `docs/features/automatic-covers.md` |
+| Article publication scheduling and author email preferences | `docs/features/publication-scheduling.md` |
 | Membership UI, Studio access and V2 portal | `docs/features/membership.md` |
 | Private member bookmarks and collections | `docs/features/saved-articles.md` |
 | Anonymous claps, aggregate counts and article sharing | `docs/features/claps-and-sharing.md` |
 | Blog series and chapter journeys | `docs/features/blog-series.md` |
+| Future reader badges and configurable owner analytics | `docs/features/reader-progress-and-analytics.md` |
+| Owner-only private/locked articles and access rules | `docs/features/private-articles.md` |
 | Public membership introduction | `docs/features/site-introduction.md` |
 | Interactive character rotation | `docs/features/character-interaction.md` |
 | Scene featured writing/series and future member recommendations | `docs/features/personalized-recommendations.md` |

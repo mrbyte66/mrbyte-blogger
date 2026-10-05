@@ -40,3 +40,6 @@ The backend is intentionally unimplemented until the earlier product decisions a
 - Separate Studio summary input and a permanent “read full article” link: [article summary](features/article-summary.md).
 
 Anonymous local reading tools now have a first frontend implementation on permanent article pages. Existing article summaries and content can now be edited in the shared Studio page canvas. Public owner annotation publishing/account sync and the nostalgia corner remain planned.
+
+- Owner-only hidden/locked writing with server-enforced privacy: [private articles](features/private-articles.md).
+- Member reading badges/profile progress and configurable owner analytics: [reader progress and analytics](features/reader-progress-and-analytics.md).

@@ -289,3 +289,5 @@ pre { font: 12px/1.9 var(--mono); overflow-x: auto; padding: 8px 20px 16px; tab-
 .panel-swipe-edge { position:absolute; left:0; top:68px; bottom:48px; width:24px; touch-action:pan-y; display:flex; align-items:center; justify-content:center; user-select:none; }
 .panel-swipe-edge>span { background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:0 12px 12px 0; padding:6px 4px; font:25px/1 Arial,sans-serif; pointer-events:none; }
 @media(max-width:900px) { .panel-topbar { gap:14px; } .panel-back { font-size:13px; gap:7px; } .panel-swipe-edge { top:64px; } }
+.publication-schedule { display:grid; gap:12px; }
+.publication-schedule .property-note { margin:0; }

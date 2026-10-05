@@ -330,3 +330,5 @@ html[data-theme=dark] .studio .studio-state.status-published { color:#bee69d; }h
 
 .inline-series-anchor,.document-studio .studio-preview { scroll-margin-top:100px; }
 @media(max-width:860px) { .inline-series-anchor,.document-studio .studio-preview { scroll-margin-top:16px; } }
+
+.page-menu-list time { display:block; margin-top:4px; font-size:12px; color:var(--muted); font-weight:400; }
