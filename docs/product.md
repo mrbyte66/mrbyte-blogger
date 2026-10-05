@@ -30,6 +30,8 @@ Content types can expand over time: articles, notes, projects/demos, quotes, poe
 
 The backend is intentionally unimplemented until the earlier product decisions are ready.
 
+For the categorized, consolidated checklist of shipped prototype work, remaining V1 scope, membership V1, V2, and later ideas, see [the project roadmap](roadmap.md).
+
 ## Planned extensions
 
 - Content-matched online covers for articles and series, with larger visual writing cards and editable Studio defaults: [automatic covers](features/automatic-covers.md).

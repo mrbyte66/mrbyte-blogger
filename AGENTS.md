@@ -5,6 +5,7 @@ This repository contains separate frontend and backend applications.
 | Task | Read first |
 | --- | --- |
 | Product direction and accepted decisions | `docs/product.md` |
+| Consolidated categorized project roadmap | `docs/roadmap.md` |
 | Cross-project coordination and decisions | `docs/coordination.md` |
 | Theme system and visual builder scope | `docs/site-builder.md` |
 | Local reading tools and future annotation layers | `docs/features/reading-tools.md` |
