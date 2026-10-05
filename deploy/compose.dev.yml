@@ -1,0 +1,33 @@
+# Local development dependencies only (not production). Start from the repository root:
+#   docker compose -f deploy/compose.dev.yml up -d
+# Ports are bound to 127.0.0.1; credentials below are throwaway local values.
+name: satir-dev
+
+services:
+  postgres:
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_DB: satir
+      POSTGRES_USER: satir
+      POSTGRES_PASSWORD: ${DEV_DB_PASSWORD:-satir-dev}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale-provider=icu --icu-locale=tr-TR --locale=C
+    ports:
+      - "127.0.0.1:${DEV_DB_PORT:-5432}:5432"
+    volumes:
+      - satir-dev-postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U satir -d satir"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Catches every e-mail locally (verification, password reset, publication notices).
+  # Inbox UI: http://localhost:8025 — nothing is delivered to real addresses.
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  satir-dev-postgres:

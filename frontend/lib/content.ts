@@ -1,6 +1,16 @@
 export const topics = ["Tümü", "Yazılım", "Edebiyat", "Kültür"] as const;
 export type Topic = (typeof topics)[number];
 export type Article = {
+  /** Server identity and optimistic-lock version (absent until the article is saved to the API). */
+  id?: string;
+  version?: number;
+  visibility?: "public" | "private";
+  /** Stable server block IDs aligned with paragraphs/figure/code/table, kept across edits. */
+  blockIds?: { paragraphs: string[]; figure?: string; code?: string; table?: string };
+  /** Studio only: the series this article belongs to. */
+  seriesId?: string | null;
+  /** Server-stored cover image (media URL), when one was chosen. */
+  coverUrl?: string;
   slug: string;
   authored?: boolean;
   status?: "scheduled" | "draft" | "published" | "archived" | "trashed";

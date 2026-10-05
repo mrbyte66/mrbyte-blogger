@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { AuthProvider, useAuth } from "../components/auth/AuthProvider";
-import { sessionKey, profilesKey, sessionDuration } from "../lib/auth/model";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fakeBackend, settle } from "./support/fake-backend";
+import { MemorySite, siteWrapper } from "./support/memory-site";
+import { act, fireEvent, render as baseRender, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SavedLibraryPage } from "../components/saved/SavedLibraryPage";
 import { ArticleCard } from "../components/ArticleCard";
@@ -11,21 +12,23 @@ import { articles } from "../lib/content";
 import { createCollection, deleteCollection, emptyLibrary, parseLibrary, saveArticle, savedKey as baseSavedKey } from "../lib/saved/model";
 
 const savedKey = `${baseSavedKey}:test-member`;
-function SavedProvider({ children }: { children: ReactNode }) { return <AuthProvider><LibraryProvider>{children}</LibraryProvider></AuthProvider>; }
+const Site = siteWrapper(new MemorySite());
+function SavedProvider({ children }: { children: ReactNode }) { return <Site><AuthProvider><LibraryProvider>{children}</LibraryProvider></AuthProvider></Site>; }
+/** Renders and waits until the server session (fake backend) has been read. */
+async function render(ui: React.ReactElement) { const result = baseRender(ui); await act(settle); return result; }
+async function click(element: HTMLElement) { await act(async () => { fireEvent.click(element); await settle(); }); }
 beforeEach(() => {
  localStorage.clear();
- const profile = { id: "test-member", name: "Üye", email: "member@example.com", verified: true, googleConnected: false, role: "member" };
- localStorage.setItem(profilesKey, JSON.stringify([profile]));
- localStorage.setItem(sessionKey, JSON.stringify({ version: 1, profile, startedAt: Date.now(), expiresAt: Date.now() + sessionDuration }));
+ fakeBackend({ signedIn: { id: "test-member", name: "Üye", email: "member@example.com" } });
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function Controls() {
   const { library, deleteCategory } = useSavedLibrary();
   const { signOut } = useAuth();
-  return <><button onClick={signOut}>Misafir</button><button onClick={() => deleteCategory(library.collections[1]?.id)}>Kategori sil</button></>;
+  return <><button onClick={() => void signOut()}>Misafir</button><button onClick={() => deleteCategory(library.collections[1]?.id)}>Kategori sil</button></>;
 }
 describe("private member collection model", () => {
-  it("uses one record per article and moves deleted categories to the default", () => {
+  it("uses one record per article and moves deleted categories to the default", async () => {
     const initial = saveArticle(emptyLibrary(), articles[0].slug);
     const categorized = saveArticle(createCollection(initial, "Türk edebiyatı", "literature"), articles[0].slug, "literature");
     expect(categorized.entries).toEqual([{ slug: articles[0].slug, collectionId: "literature" }]);
@@ -33,20 +36,20 @@ describe("private member collection model", () => {
     expect(() => deleteCollection(initial, "saved")).toThrow();
     expect(() => createCollection(categorized, "TÜRK EDEBİYATI", "other")).toThrow();
   });
-  it("migrates the default name without losing records or custom collection references", () => {
+  it("migrates the default name without losing records or custom collection references", async () => {
     const legacy = { version: 1, collections: [{ id: "saved", name: "Kaydedilenler" }, { id: "general", name: "Genel" }], entries: [{ slug: articles[0].slug, collectionId: "general" }] };
     const migrated = parseLibrary(JSON.stringify(legacy));
     expect(migrated.collections).toEqual([{ id: "saved", name: "Genel" }, { id: "general", name: "Genel (2)" }]);
     expect(migrated.entries).toEqual(legacy.entries);
     expect(parseLibrary(JSON.stringify(migrated))).toEqual(migrated);
   });
-  it("preserves card order when moving an existing record", () => {
+  it("preserves card order when moving an existing record", async () => {
     let library = saveArticle(saveArticle(emptyLibrary(), articles[0].slug), articles[1].slug);
     library = createCollection(library, "Yapay Zeka", "ai");
     const moved = saveArticle(library, articles[0].slug, "ai");
     expect(moved.entries.map((entry) => entry.slug)).toEqual(library.entries.map((entry) => entry.slug));
   });
-  it("rejects duplicate entries and orphan categories", () => {
+  it("rejects duplicate entries and orphan categories", async () => {
     const saved = saveArticle(emptyLibrary(), articles[0].slug);
     expect(() => parseLibrary(JSON.stringify({ ...saved, entries: [...saved.entries, ...saved.entries] }))).toThrow();
     expect(() => parseLibrary(JSON.stringify({ ...saved, entries: [{ slug: articles[0].slug, collectionId: "missing" }] }))).toThrow();
@@ -55,7 +58,7 @@ describe("private member collection model", () => {
 describe("member bookmark controls", () => {
   it("saves without opening the article, persists categories and supports removal", async () => {
     const open = vi.fn();
-    const { container, unmount } = render(<SavedProvider><ArticleCard article={articles[0]} onOpen={open} /></SavedProvider>);
+    const { container, unmount } = await render(<SavedProvider><ArticleCard article={articles[0]} onOpen={open} /></SavedProvider>);
     fireEvent.click(screen.getByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` }));
     expect(open).not.toHaveBeenCalled();
     expect(container.querySelector("button button")).toBeNull();
@@ -75,20 +78,20 @@ describe("member bookmark controls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Taşı" }));
     expect(parseLibrary(localStorage.getItem(savedKey)).entries[0].collectionId).toBe("saved");
     unmount();
-    render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} /><Controls /></SavedProvider>);
+    await render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} /><Controls /></SavedProvider>);
     await waitFor(() => expect(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Kategori sil" }));
     expect(parseLibrary(localStorage.getItem(savedKey)).entries[0].collectionId).toBe("saved");
     fireEvent.click(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` }));
     fireEvent.click(screen.getByRole("button", { name: "Kaydı kaldır" }));
     expect(parseLibrary(localStorage.getItem(savedKey)).entries).toEqual([]);
-    fireEvent.click(screen.getByRole("button", { name: "Misafir" }));
+    await click(screen.getByRole("button", { name: "Misafir" }));
     expect(screen.queryByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` })).toBeNull();
     expect(screen.getByRole("button", { name: `Giriş yap ve yazıyı kaydet: ${articles[0].title}` })).toBeTruthy();
   });
-  it("preserves malformed data and reports write failures", () => {
+  it("preserves malformed data and reports write failures", async () => {
     localStorage.setItem(savedKey, "broken");
-    render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} /></SavedProvider>);
+    await render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} /></SavedProvider>);
     fireEvent.click(screen.getByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` }));
     expect(localStorage.getItem(savedKey)).toBe("broken");
     expect(screen.getByRole("alert")).toBeTruthy();
@@ -100,8 +103,8 @@ describe("member bookmark controls", () => {
     expect(screen.getByRole("alert").textContent).toContain("Kaydedilemedi");
     expect(localStorage.getItem(savedKey)).toBeNull();
   });
-  it("never allows Studio preview to save", () => {
-    render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} preview /></SavedProvider>);
+  it("never allows Studio preview to save", async () => {
+    await render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} preview /></SavedProvider>);
     expect(screen.queryByRole("button")).toBeNull();
     expect(localStorage.getItem(savedKey)).toBeNull();
   });
@@ -109,21 +112,21 @@ describe("member bookmark controls", () => {
 
 
 describe("private library guest preview", () => {
-  it("hides saved articles and collection names when membership preview is disabled", () => {
+  it("hides saved articles and collection names when membership preview is disabled", async () => {
     localStorage.setItem(savedKey, JSON.stringify(saveArticle(createCollection(emptyLibrary(), "Özel kategori", "private"), articles[0].slug, "private")));
-    render(<SavedProvider><SavedLibraryPage /><Controls /></SavedProvider>);
+    await render(<SavedProvider><SavedLibraryPage /><Controls /></SavedProvider>);
     expect(screen.getByRole("button", { name: "Özel kategori 1" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Misafir" }));
+    await click(screen.getByRole("button", { name: "Misafir" }));
     expect(screen.queryByRole("button", { name: "Özel kategori 1" })).toBeNull();
     expect(screen.queryByText(articles[0].title)).toBeNull();
     expect(parseLibrary(localStorage.getItem(savedKey)).entries).toHaveLength(1);
   });
 });
 
-it("searches the member library and sorts explicitly without changing stored order", () => {
+it("searches the member library and sorts explicitly without changing stored order", async () => {
  const library = saveArticle(saveArticle(emptyLibrary(), articles[0].slug), articles[1].slug);
  localStorage.setItem(savedKey, JSON.stringify(library));
- const { container } = render(<SavedProvider><SavedLibraryPage /></SavedProvider>);
+ const { container } = await render(<SavedProvider><SavedLibraryPage /></SavedProvider>);
  fireEvent.change(screen.getByLabelText("Kitaplıkta ara"), { target: { value: articles[0].title } });
  expect(container.querySelectorAll(".saved-item")).toHaveLength(1);
  fireEvent.change(screen.getByLabelText("Kitaplıkta ara"), { target: { value: "no-match-1234" } });

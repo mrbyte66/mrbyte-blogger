@@ -8,9 +8,9 @@ import type { StudioTarget } from "../../lib/builder/document-protocol";
 type Props = {
   target: StudioTarget; articles: readonly Article[]; series: readonly BlogSeries[];
   ready: boolean; onNavigate: (target: StudioTarget) => void;
-  onCreateArticle: () => void; onCreateDemoPlans?: () => void;
+  onCreateArticle: () => void;
 };
-export function PageNavigator({ target, articles, series, ready, onNavigate, onCreateArticle, onCreateDemoPlans }: Props) {
+export function PageNavigator({ target, articles, series, ready, onNavigate, onCreateArticle }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"active" | "scheduled" | "archived" | "trashed">("active");
@@ -45,7 +45,7 @@ export function PageNavigator({ target, articles, series, ready, onNavigate, onC
       <div className="page-menu-create"><button disabled={!ready} onClick={() => create(onCreateArticle)}>＋ Yeni yazı</button></div>
       <label className="page-menu-filter"><span>Göster</span><select aria-label="İçerik görünümü" value={view} onChange={(e) => setView(e.target.value as typeof view)}><option value="active">Aktif içerikler</option><option value="scheduled">Planlanan yazılar</option><option value="archived">Arşiv</option><option value="trashed">Çöp kutusu</option></select></label>
       {view === "scheduled" && <label className="page-menu-filter"><span>Sırala</span><select aria-label="Yayın planı sıralaması" value={scheduleSort} onChange={e => setScheduleSort(e.target.value as typeof scheduleSort)}><option value="nearest">En yakın yayın önce</option><option value="farthest">En uzak yayın önce</option><option value="title">Başlık · A–Z</option></select></label>}
-      {view === "scheduled" && onCreateDemoPlans && <div className="page-menu-create"><button disabled={!ready} onClick={onCreateDemoPlans}>＋ Demo planlar oluştur</button></div>}
+      
       <div className="page-menu-list">
         {view === "active" && matches("Ana sayfa") && <button className="page-menu-home" aria-current={target.kind === "home" ? "page" : undefined} onClick={() => choose({ kind: "home" })}><span>Ana sayfa<small>Site tasarımı ve genel tema</small></span><span aria-hidden="true">↗</span></button>}
         {filteredSeries.length > 0 && <section aria-label="Seriler"><h2>Seriler <span>{filteredSeries.length}</span></h2>{filteredSeries.map((item) => <button key={item.id} aria-current={target.kind === "series" && target.slug === item.slug ? "page" : undefined} onClick={() => choose({ kind: "series", slug: item.slug })}><span>{item.title}</span>{item.status !== "published" && <small>{statusLabels[item.status]}</small>}</button>)}</section>}

@@ -2,6 +2,8 @@ import { findArticle } from "../content";
 
 export type BlogSeries = {
   id: string;
+  /** Server optimistic-lock version (Studio only). */
+  version?: number;
   slug: string;
   title: string;
   summary: string;
@@ -31,16 +33,6 @@ export const initialSeries: readonly BlogSeries[] = [
     summary: "Kültür, gündelik hayat ve öğrenmek üzerine kısa duraklar.",
     status: "published", ongoing: true, articleSlugs: ["merak-bir-aliskanlik"] },
 ];
-/** Upgrade only the original untouched demonstration. Never add fixtures to an author's collection. */
-export function upgradeDemoSeries(series: BlogSeries[]): BlogSeries[] {
-  if (series.length !== 1) return series;
-  const current = series[0];
-  const untouched = !current.coverImage && !current.presentation && Object.entries(originalDemoSeries).every(([key, value]) => {
-    const saved = current[key as keyof BlogSeries];
-    return Array.isArray(value) ? Array.isArray(saved) && value.length === saved.length && value.every((slug, i) => slug === saved[i]) : value === saved;
-  });
-  return untouched ? initialSeries.map((entry) => ({ ...entry, articleSlugs: [...entry.articleSlugs] })) : series;
-}
 export function createSeries(): BlogSeries {
   return { id: `series-${crypto.randomUUID()}`, slug: "", title: "", summary: "", status: "draft", ongoing: true, articleSlugs: [] };
 }
@@ -69,7 +61,7 @@ export function seriesValidationError(value: unknown, articleSlugs?: readonly st
 }
 export function validateSeries(value: unknown, articleSlugs?: readonly string[]): BlogSeries[] | null {
   if (seriesValidationError(value, articleSlugs)) return null;
-  return (value as BlogSeries[]).map(({ id, slug, title, summary, coverImage, presentation, status, ongoing, articleSlugs }) => ({ id, slug, title, summary, ...(coverImage === undefined ? {} : { coverImage }), ...(presentation ? { presentation: { ...presentation } } : {}), status, ongoing, articleSlugs: [...articleSlugs] }));
+  return (value as BlogSeries[]).map(({ id, version, slug, title, summary, coverImage, presentation, status, ongoing, articleSlugs }) => ({ id, ...(version === undefined ? {} : { version }), slug, title, summary, ...(coverImage === undefined ? {} : { coverImage }), ...(presentation ? { presentation: { ...presentation } } : {}), status, ongoing, articleSlugs: [...articleSlugs] }));
 }
 export function isValidSeriesCoverImage(value: unknown): value is string | undefined {
   if (value === undefined) return true;

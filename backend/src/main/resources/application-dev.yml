@@ -1,0 +1,29 @@
+# Local development only. Uses deploy/compose.dev.yml (PostgreSQL + Mailpit) with throwaway credentials.
+spring:
+  datasource:
+    password: ${DB_PASSWORD:satir-dev}
+  mail:
+    # Mailpit catches every message; open http://localhost:8025 to read them.
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
+server:
+  forward-headers-strategy: none
+  servlet:
+    session:
+      cookie:
+        name: satir-session-dev
+        secure: false
+
+satir:
+  site:
+    public-origin: ${PUBLIC_SITE_ORIGIN:http://localhost:3000}
+  mail:
+    from: ${SATIR_MAIL_FROM:noreply@satir.localhost}
+  flyway:
+    mode: migrate
+  security:
+    rate-limit-key: ${SATIR_RATE_LIMIT_KEY:dev-only-rate-limit-key-not-for-production}

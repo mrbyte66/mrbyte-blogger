@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { articles } from "../lib/content";
 import { createArticle, validateArticle } from "../lib/articles/model";
 import { articleCategories, insertChapterByCreation, isArticleDate } from "../lib/articles/metadata";
-import { initialContent, publicArticles, saveArticleRecord } from "../lib/editorial/store";
+import { publicArticles } from "../lib/editorial/store";
 import { ArticleProperties } from "../components/builder/ArticleProperties";
 
 describe("article categories and dates", () => {
@@ -19,11 +19,9 @@ describe("article categories and dates", () => {
     const now = new Date(2026, 9, 4, 14);
     expect(createArticle(now)).toMatchObject({ publishedAt: "2026-10-04", createdAt: now.toISOString() });
   });
-  it("sorts writing by editable date while keeping chapter order and immutable creation time", () => {
-    const next = saveArticleRecord(initialContent, { ...articles[1], publishedAt: "2027-01-01", createdAt: "2030-01-01T00:00:00.000Z" }, false);
-    expect(publicArticles(next.articles)[0].slug).toBe(articles[1].slug);
-    expect(next.articles[1].createdAt).toBe(articles[1].createdAt);
-    expect(next.series[0].articleSlugs).toEqual(initialContent.series[0].articleSlugs);
+  it("sorts visitor writing by its editable display date", () => {
+    const next = articles.map((a, i) => i === 1 ? { ...a, publishedAt: "2027-01-01" } : a);
+    expect(publicArticles(next)[0].slug).toBe(articles[1].slug);
   });
   it("inserts an older chapter without rearranging existing manual order", () => {
     const slugs = [articles[2].slug, articles[1].slug];

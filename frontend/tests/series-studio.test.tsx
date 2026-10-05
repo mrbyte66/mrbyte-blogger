@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SiteEditor } from "../components/builder/SiteEditor";
 import { articles } from "../lib/content";
 import { addBlock, applyDraft, createWorkspace, parseWorkspace } from "../lib/builder/model";
-import { initialSeries, validateSeries } from "../lib/series/model";
-import { seriesKey } from "../lib/series/use-series-workspace";
+import { initialSeries } from "../lib/series/model";
+import { MemorySite, renderWithSite } from "./support/memory-site";
 const previousScroll = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
 vi.mock("../components/Experience", () => ({ Experience: () => <div>Scene</div> }));
 beforeEach(() => {
@@ -14,44 +14,44 @@ beforeEach(() => {
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); if (previousScroll) Object.defineProperty(Element.prototype, "scrollIntoView", previousScroll); else Reflect.deleteProperty(Element.prototype, "scrollIntoView"); });
-function storedSeries() { return validateSeries(JSON.parse(localStorage.getItem(seriesKey)!))!; }
 function openFirst() { selectPage(initialSeries[0].title); }
 function section(name: string) { fireEvent.click(screen.getByRole("button", { name })); }
-function save() { fireEvent.click(screen.getByRole("button", { name: "Sayfayı kaydet ↗" })); }
+async function save() { await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Sayfayı kaydet ↗" })); }); }
+const studio = (site = new MemorySite()) => { renderWithSite(<SiteEditor />, { site, mode: "studio" }); return site; };
+
 describe("series authoring beside the canvas", () => {
-  it("creates a series below an article canvas with a Turkish slug and then edits its chapters", () => {
-    localStorage.setItem(seriesKey, JSON.stringify([initialSeries[0], initialSeries[2]]));
-    render(<SiteEditor />);
+  it("creates a series below an article canvas with a Turkish slug and then edits its chapters", async () => {
+    const site = studio(new MemorySite({ series: [initialSeries[0], initialSeries[2]].map((s) => ({ ...s })) }));
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
     fireEvent.click(screen.getByRole("button", { name: /Yeni yazı/ }));
     fireEvent.change(screen.getByLabelText("Yazının serisi"), { target: { value: "new" } });
     fireEvent.change(screen.getByLabelText("Yeni seri başlığı"), { target: { value: "Şiir ve kültür" } });
     expect((screen.getByLabelText("Yeni seri bağlantısı") as HTMLInputElement).value).toBe("siir-ve-kultur");
-    fireEvent.click(screen.getByRole("button", { name: "Seriyi kaydet" }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Seriyi kaydet" })); });
     expect(screen.queryByLabelText("Yeni seri başlığı")).toBeNull();
-    expect(storedSeries().at(-1)).toMatchObject({ title: "Şiir ve kültür", slug: "siir-ve-kultur", status: "draft", articleSlugs: [] });
+    expect(site.series.at(-1)).toMatchObject({ title: "Şiir ve kültür", slug: "siir-ve-kultur", status: "draft", articleSlugs: [] });
     fireEvent.click(screen.getByRole("button", { name: "Değişiklikleri geri al" }));
     selectPage(/Şiir ve kültür/);
     section("Bölümler");
     const picker = screen.getByLabelText("Bölüm ekle");
     expect(within(picker).getByRole("option", { name: /Yapay zekâ ile düşünmek/ }).hasAttribute("disabled")).toBe(true);
     fireEvent.change(picker, { target: { value: "satir-aralarinda" } });
-    save();
-    expect(storedSeries().at(-1)?.articleSlugs).toEqual(["satir-aralarinda"]);
+    await save();
+    expect(site.series.at(-1)?.articleSlugs).toEqual(["satir-aralarinda"]);
   });
-  it("reorders and removes membership without deleting articles or changing saved data before Save", () => {
-    render(<SiteEditor />); openFirst(); section("Bölümler");
+  it("reorders and removes membership without deleting articles or changing server data before Save", async () => {
+    const site = studio(); openFirst(); section("Bölümler");
     fireEvent.click(screen.getByRole("button", { name: "Bölüm 2 yukarı" }));
-    expect(localStorage.getItem(seriesKey)).toBeNull();
-    save();
-    expect(storedSeries()[0].articleSlugs.slice(0, 2)).toEqual(["iyi-kodun-sessizligi", "yapay-zeka-ile-dusunmek"]);
+    expect(site.series[0].articleSlugs.slice(0, 2)).toEqual(initialSeries[0].articleSlugs.slice(0, 2));
+    await save();
+    expect(site.series[0].articleSlugs.slice(0, 2)).toEqual(["iyi-kodun-sessizligi", "yapay-zeka-ile-dusunmek"]);
     fireEvent.click(within(screen.getAllByRole("listitem")[0]).getByRole("button", { name: "Seriden çıkar" }));
-    save();
-    expect(storedSeries()[0].articleSlugs).not.toContain("iyi-kodun-sessizligi");
-    expect(articles.find((a) => a.slug === "iyi-kodun-sessizligi")).toBeTruthy();
+    await save();
+    expect(site.series[0].articleSlugs).not.toContain("iyi-kodun-sessizligi");
+    expect(site.article("iyi-kodun-sessizligi")).toBeTruthy();
   });
   it("keeps invalid inline links unsaved and discards the form without affecting the writing draft", () => {
-    render(<SiteEditor />);
+    const site = studio();
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
     fireEvent.click(screen.getByRole("button", { name: /Yeni yazı/ }));
     fireEvent.change(screen.getByLabelText("Yazı başlığı"), { target: { value: "Korunan yazım" } });
@@ -59,19 +59,22 @@ describe("series authoring beside the canvas", () => {
     fireEvent.change(screen.getByLabelText("Yeni seri başlığı"), { target: { value: "Yeni seri" } });
     fireEvent.change(screen.getByLabelText("Yeni seri bağlantısı"), { target: { value: "Türkçe Link!" } });
     expect(screen.getByRole("button", { name: "Seriyi kaydet" }).hasAttribute("disabled")).toBe(true);
-    expect(localStorage.getItem(seriesKey)).toBeNull();
+    expect(site.calls).not.toContain("create series");
     fireEvent.click(screen.getByRole("button", { name: "Vazgeç" }));
     expect(screen.queryByLabelText("Yeni seri başlığı")).toBeNull();
     expect((screen.getByLabelText("Yazı başlığı") as HTMLInputElement).value).toBe("Korunan yazım");
     fireEvent.click(screen.getByRole("button", { name: "Değişiklikleri geri al" }));
   });
-  it("saves cover images and presentation in the shared page editor", () => {
-    render(<SiteEditor />); openFirst(); section("Kapak görseli");
-    fireEvent.change(screen.getByLabelText("Kapak görseli"), { target: { value: "/assets/ai-series.jpg" } });
+  it("uploads a cover image and saves presentation in the shared page editor", async () => {
+    const site = studio(); openFirst(); section("Kapak görseli");
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "kapak.png", { type: "image/png" });
+    await act(async () => { fireEvent.change(screen.getByLabelText("Kapak görseli yükle"), { target: { files: [file] } }); });
+    expect(site.calls).toContain("upload kapak.png");
     section("Sayfa düzeni");
     fireEvent.change(screen.getByLabelText("Bölüm görünümü"), { target: { value: "rows" } });
-    save();
-    expect(storedSeries()[0]).toMatchObject({ coverImage: "/assets/ai-series.jpg", presentation: { chapterStyle: "rows", heading: "left" } });
+    await save();
+    expect(site.series[0].coverImage).toMatch(/^\/api\/v1\/media\/[0-9a-f-]{36}$/);
+    expect(site.series[0].presentation).toEqual({ chapterStyle: "rows", heading: "left" });
   });
 });
 
@@ -88,6 +91,7 @@ describe("series block contract", () => {
     expect(parseWorkspace(JSON.stringify(createWorkspace()))).toEqual(createWorkspace());
     if (block.kind === "series") (block as { display: string }).display = "invalid";
     expect(parseWorkspace(JSON.stringify(workspace))).toBeNull();
+    expect(articles.length).toBeGreaterThan(0);
   });
 });
 

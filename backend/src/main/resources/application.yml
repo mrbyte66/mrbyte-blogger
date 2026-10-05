@@ -1,0 +1,98 @@
+# Production-safe defaults. Secrets come from the environment / mounted secret files, never from this file.
+spring:
+  application:
+    name: satir-backend
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:satir}
+    username: ${DB_USER:satir}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:8}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    # The app only validates on start; `migrate` is an explicit command (see SatirApplication).
+    validate-on-migrate: true
+  session:
+    timeout: 2h          # anonymous (CSRF-only) sessions; authenticated sessions get role-specific limits
+    jdbc:
+      initialize-schema: never
+      cleanup-cron: "0 */10 * * * *"
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  mvc:
+    problemdetails:
+      enabled: false     # GlobalExceptionHandler renders every problem response
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+  # SMTP is enabled only when SPRING_MAIL_HOST (and SATIR_MAIL_FROM) are provided by the environment;
+  # SPRING_MAIL_PORT/USERNAME/PASSWORD and SPRING_MAIL_PROPERTIES_MAIL_SMTP_* configure the provider.
+  mail:
+    properties:
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: native
+  error:
+    include-stacktrace: never
+    include-message: never
+  servlet:
+    session:
+      cookie:
+        name: __Host-satir-session
+        secure: true
+        http-only: true
+        same-site: lax
+        path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+satir:
+  site:
+    # Trusted canonical origin for links in mail/SEO; never derived from the Host header.
+    public-origin: ${PUBLIC_SITE_ORIGIN:http://localhost:3000}
+    time-zone: ${APP_TIME_ZONE:Europe/Istanbul}
+    # Deployment gate: production indexing needs this AND the owner's site setting.
+    indexing-enabled: ${INDEXING_ENABLED:false}
+  media:
+    root: ${SATIR_MEDIA_ROOT:./data/media}
+  mail:
+    from: ${SATIR_MAIL_FROM:}
+  jobs:
+    enabled: true
+  flyway:
+    mode: validate
+  security:
+    # HMAC key for abuse-bucket keys. Required; supply via SATIR_RATE_LIMIT_KEY (>= 32 chars).
+    rate-limit-key: ${SATIR_RATE_LIMIT_KEY:}
+  session:
+    owner-idle: 30m
+    owner-absolute: 8h
+    member-idle: 7d
+    member-absolute: 30d
+
+logging:
+  level:
+    org.springframework.security: INFO

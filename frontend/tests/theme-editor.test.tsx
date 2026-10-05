@@ -1,14 +1,17 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeEditor } from "../components/builder/ThemeEditor";
 import { createTheme, createWorkspace, parseWorkspace } from "../lib/builder/model";
 import { previewEvents } from "../lib/builder/preview-protocol";
-import { workspaceKey } from "../lib/builder/use-workspace";
+import { MemorySite, renderWithSite } from "./support/memory-site";
+import { ApiError } from "../lib/api/http";
 
 const originalScroll = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+let site: MemorySite;
 beforeEach(() => {
   localStorage.clear();
+  site = new MemorySite();
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false })));
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
@@ -20,7 +23,9 @@ afterEach(() => {
   else Reflect.deleteProperty(Element.prototype, "scrollIntoView");
 });
 
-function savedWorkspace() { return parseWorkspace(localStorage.getItem(workspaceKey)!); }
+/** The theme workspace as the (in-memory) server stores it. */
+function savedWorkspace() { return parseWorkspace(JSON.stringify(site.workspace)); }
+function render(ui: React.ReactElement) { return renderWithSite(ui, { site, mode: "studio" }); }
 function editorStatus() { return document.querySelector(".studio-status")!.textContent; }
 function receive(frame: HTMLIFrameElement, data: unknown, origin = window.location.origin, source: MessageEventSource | null = frame.contentWindow) {
   act(() => { window.dispatchEvent(new MessageEvent("message", { data, origin, source })); });
@@ -57,7 +62,7 @@ describe("visual theme authoring", () => {
     const user = userEvent.setup();
     const workspace = createWorkspace();
     workspace.draft.blocks = [];
-    localStorage.setItem(workspaceKey, JSON.stringify(workspace));
+    site.workspace = workspace;
     render(<ThemeEditor />);
     expect(screen.getByRole("complementary", { name: "Sayfa yapısını düzenle" })).toBeTruthy();
     expect(screen.queryByLabelText("Site adı")).toBeNull();
@@ -80,7 +85,7 @@ describe("visual theme authoring", () => {
     expect(savedWorkspace()?.applied.siteName).toBe("SATIR");
     await user.click(screen.getByRole("button", { name: /Temayı uygula/ }));
     expect(savedWorkspace()?.applied.siteName).toBe("MRBYTE");
-    expect(editorStatus()).toContain("bu tarayıcıda uygulandı");
+    expect(editorStatus()).toContain("Tema uygulandı");
   });
 
   it("adds body sections, preserves the scene boundary and reorders only the body", async () => {
@@ -168,7 +173,7 @@ describe("visual theme authoring", () => {
     const user = userEvent.setup();
     render(<ThemeEditor />);
     await user.click(screen.getByRole("button", { name: "Açık defter başlangıç düzeni" }));
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("Quota exceeded"); });
+    site.failNext = new ApiError(503, "SERVICE_UNAVAILABLE", "Sunucu şu anda yanıt veremiyor.");
     await user.click(screen.getByRole("button", { name: /Temayı uygula/ }));
     expect(editorStatus()).toContain("Tema uygulanamadı");
     expect(savedWorkspace()?.applied).toEqual(createWorkspace().applied);
@@ -177,7 +182,7 @@ describe("visual theme authoring", () => {
 
   it("links list selection to the canvas and accepts canvas selection only from its own trusted frame", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(workspaceKey, JSON.stringify({ ...createWorkspace(), draft: createTheme("feed") }));
+    site.workspace = { ...createWorkspace(), draft: createTheme("feed") };
     render(<ThemeEditor />);
     const frame = screen.getByTitle("Taslak tema canlı önizleme") as HTMLIFrameElement;
     const post = vi.spyOn(frame.contentWindow!, "postMessage");

@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
+import { renderWithSite as render } from "./support/memory-site";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SeriesCatalog } from "../components/series/SeriesCatalog";
 import { initialSeries } from "../lib/series/model";

@@ -1,7 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "../auth/AuthProvider";
-import { parseSession, sessionKey } from "../../lib/auth/model";
 import { createCollection, defaultCollectionId, deleteCollection, emptyLibrary, parseLibrary, saveArticle, savedKey, type SavedLibrary } from "../../lib/saved/model";
 
 type MemberLibrary = { library: SavedLibrary; ready: boolean; member: boolean; error: string; importLegacy: () => boolean; save: (slug: string, collectionId?: string) => boolean; remove: (slug: string) => boolean; create: (name: string, slug?: string) => boolean; rename: (id: string, name: string) => boolean; deleteCategory: (id: string) => boolean };
@@ -29,7 +28,6 @@ export function SavedProvider({ children }: { children: ReactNode }) {
   function change(update: (current: SavedLibrary) => SavedLibrary): boolean {
     if (!ready || !member || !storageKey || loadedId !== ownerId) return false;
     try {
-      if (parseSession(localStorage.getItem(sessionKey))?.profile.id !== ownerId) throw new Error("Oturum değişti. Yeniden giriş yap.");
       const next = parseLibrary(JSON.stringify(update(parseLibrary(localStorage.getItem(storageKey)))));
       localStorage.setItem(storageKey, JSON.stringify(next)); setLibrary(next); setError(""); return true;
     } catch (cause) { setError(cause instanceof Error && !(cause instanceof DOMException) && !(cause instanceof SyntaxError) && !cause.message.startsWith("Invalid") ? cause.message : "Kaydedilemedi. Mevcut kayıt değiştirilmedi."); return false; }

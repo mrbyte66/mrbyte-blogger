@@ -22,7 +22,7 @@ Two future features are recorded without simulating unavailable account or 3D be
 - Theme creation means manually selecting, arranging, and configuring blocks. AI theme generation is not requested for the initial version.
 - Content and public URLs must survive theme changes; theme support covers structure and interactions as well as colors.
 - `docs/site-builder.md` owns the shared theme/builder requirements.
-- Backend application code has not started.
+- Backend implementation follows `backend-architecture.md` slices; status lives in `backend/README.md`.
 
 ## Verification — 2026-10-02
 
@@ -193,3 +193,21 @@ Kullanıcı yönü kesinleştirdi: ayrı Next.js/React/TypeScript frontend, Java
 Önerilen temel: aynı origin reverse proxy, Spring Session JDBC, revision'lı içerik ve ayrı kart tarihi/gerçek yayın anı, transaction içinde planlı yayın+outbox, owner-only özel erişim, V1'de no-store içerik/medya ve server-rendered SEO. Üyelik Studio/yazarlık yetkisi vermez. Slug kimlik yerine geçmez; kişisel veriler oturum sahibine sınırlandırılır.
 
 Açık kararlar: roadmap/özellik belgeleri arasında rozet ve ileri raporların V1/V2 konumu; yayındaki Save ve seri explicit activation ayrıntıları; yeniden yayın maili; anonim clap kimlik süresi/birleştirme; veri saklama süreleri; domain/mail/Google/kapak/backup sağlayıcı ayarları. Mimari belgesindeki Ü1–Ü11 varsayımları uygulanmadan önce görünür biçimde değerlendirilmelidir. Eski series/builder belgelerindeki difficulty ve yalnız fixture içerik ifadeleri güncel kodla uyuşmuyor; difficulty geri eklenmeyecek. Yeni gerçek backend tamamlanmış olarak işaretlenmedi.
+
+## 2026-10-05 — Backend dilim 1: temel altyapı ve owner oturumu
+
+`backend/` altında Java 25 + Spring Boot 4.1.1 Maven projesi (Maven Wrapper 3.9.16) oluşturuldu. Flyway V1–V3: Spring Session JDBC şeması, `app_user`/`password_credential`/`user_preference` (tek OWNER kısmi unique index, owner doğrulanmış olmalı, username yalnız owner), `auth_rate_bucket`, `audit_event`. Uç noktalar: `GET /api/v1/auth/csrf`, `POST /auth/login`, `GET /auth/session`, `POST /auth/session/renew`, `POST /auth/logout`, `GET /me`; makinece okunur sözleşme `backend/docs/openapi.yaml`. Owner yalnız `bootstrap-owner` operatör komutuyla oluşturulur; parola argüman/env yerine dosya veya stdin'den alınır. `migrate` ayrı komuttur; uygulama başlangıçta yalnız şemayı doğrular.
+
+Güvenlik: Argon2id, opak HttpOnly/SameSite=Lax oturum cookie'si (`__Host-satir-session`, dev'de `satir-session-dev`), login/logout dahil CSRF, girişte session ID ve CSRF rotasyonu, owner 30dk/8sa ve üye 7g/30g süreleri, her istekte hesabın DB'den yeniden okunması, HMAC'lı DB hız sınırı (5/15dk tanımlayıcı, 30/15dk istemci), bilinmeyen JSON alanına 422, allowlist dışı her rota reddedilir, API yanıtları `no-store` + `X-Robots-Tag: noindex`.
+
+Varsayım: mail altyapısı (dilim 4) gelene kadar operatörün bootstrap işlemi owner e-posta doğrulaması sayılır. Docker bu makinede yoktu (WSL2/Hyper-V kapalı); entegrasyon testleri `SATIR_TEST_JDBC_URL` ile yerel taşınabilir PostgreSQL 18.4 üzerinde koşturuldu, Testcontainers yolu Docker kurulunca otomatik devreye girer.
+
+Doğrulama: 43 test (unit, ArchUnit, PostgreSQL entegrasyon) geçti, atlanan yok. Studio kuralı bilerek gevşetildiğinde iki erişim testi kırıldı (mutasyon kontrolü). Paketlenmiş JAR ile temiz DB'de `migrate`, tekrar `migrate` (no-op), `bootstrap-owner` (başarılı), ikinci owner/eksik argüman (exit 1) ve parolanın loglara yazılmadığı doğrulandı; dev sunucusunda health `UP`, CSRF→owner username girişi→`/auth/session`→`/me` curl ile denendi. Frontend henüz Spring oturumuna bağlanmadı: Studio geçici Next cookie kapısıyla korunmaya devam ediyor; bir sonraki adım bu kapıyı `/api/v1/auth/session` ile değiştirmek ve Next `/api` proxy'sini eklemek.
+
+## 2026-10-06 — Backend dilim 2–5 ve frontend bağlantısı
+
+Backend: editorial (yazı/sürüm/kategori/seri/slug geçmişi, durum makinesi, özel yazı), site/tema (taslak-uygula-geri yükle, UUID referanslar), medya (yeniden kodlanan JPEG/PNG, yalnız kamu içeriğinde sunulan `/media/{id}`, Pexels araması), yayın (15 sn zamanlayıcı, transactional outbox, SMTP, tercih kontrolü) ve üyelik (kayıt/doğrulama/sıfırlama/yeniden doğrulama/profil/e-posta değişikliği/Google/oturumlar/silme) uygulandı. Ayrıntı ve sapmalar `backend/README.md` içinde.
+
+Frontend: `components/data/SiteData.tsx` ziyaretçi için sunucuda çekilen yayınlanmış içeriği, Studio için API işlemlerini sağlar; mevcut hook'lar aynı arayüzü korur. Yazı/seri sayfaları içerik ve metadata'yı sunucuda üretir (canonical, OG, JSON-LD, eski slug 308, gizli içerik 404), `sitemap.xml`/`robots.txt` backend kapısına bağlıdır. Next Studio cookie kapısı ve demo üyelik kaldırıldı; Studio ve hesap ekranları Spring oturumunu kullanır. Kitaplık, notlar, alkış ve görüntülenme hâlâ tarayıcı-yerel (dilim 6–7).
+
+Doğrulama: backend testleri Docker'daki PostgreSQL 18.4 üzerinde; frontend 30 dosyada 190 test, typecheck ve production build. Uçtan uca: Compose (PostgreSQL+Mailpit), temiz DB'ye 9 migration, owner bootstrap, Studio girişi, arayüzden yazı oluşturup yayımlama, JS'siz SSR HTML/metadata kontrolü, yayın mailinin ve kayıt doğrulama postasının Mailpit'e düşmesi, doğrulama bağlantısının açık onayla tüketilmesi, hesap oturum listesi.

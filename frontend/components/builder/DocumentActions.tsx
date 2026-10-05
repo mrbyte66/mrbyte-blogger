@@ -15,6 +15,6 @@ export function DocumentActions({ status, disabled, canPublish, onSave, onSchedu
     <button disabled={disabled} onClick={() => act("draft")}>{status === "trashed" || status === "archived" ? "Taslağa geri yükle" : "Taslak olarak kaydet"}</button>
     {status !== "archived" && status !== "trashed" && <button disabled={disabled} onClick={() => act("archived")}>Arşivle</button>}
     {status !== "trashed" && <button className="document-trash" disabled={disabled} onClick={() => act("trashed")}>Sil · çöp kutusuna taşı</button>}
-    <p>Arşiv ve çöp kutusu ziyaretçiden gizlenir. İçerikler geri yüklenebilir. İşlemler bu aşamada yalnızca bu tarayıcıda kaydedilir.</p>
+    <p>Arşiv ve çöp kutusu ziyaretçiden gizlenir. İçerikler geri yüklenebilir; kalıcı silme yoktur.</p>
   </div></details>;
 }

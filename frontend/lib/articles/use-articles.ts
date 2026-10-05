@@ -1,12 +1,6 @@
 "use client";
-import type { Article } from "../content";
-import { saveArticleRecord } from "../editorial/store";
-import { useContentWorkspace } from "../editorial/use-content-workspace";
-export { articleStorageKey } from "../editorial/store";
+import { useContent } from "../../components/data/SiteData";
 export function useArticles() {
-  const { articles, ready, error, mutate } = useContentWorkspace();
-  function save(article: Article, creating = false, seriesId?: string | null) {
-    return mutate((current) => saveArticleRecord(current, article, creating, seriesId));
-  }
-  return { articles, ready, error, save };
+  const { articles, ready, error } = useContent();
+  return { articles, ready, error };
 }
