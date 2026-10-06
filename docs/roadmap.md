@@ -96,6 +96,7 @@ Ayrıntılar: [çok yazarlı üyelik](features/membership.md), [kişiselleştiri
 
 ### Okuma ve yazı deneyimi
 
+- [ ] Yazıları PDF olarak dışa aktarma özelliği ekle. Bu işlemi yalnızca sisteme kayıtlı, giriş yapmış üyeler yapabilsin; dışa aktarma mevcut yazı erişim kurallarına tabi olsun.
 - [ ] Sahibin herkese açık yazar notları/açıklamaları için ayrı ve açık yayımlama katmanı.
 - [ ] Okuma araçlarını panel/sahne okumasına da uyarlama; ek kalem/renk ve not dışa aktarma kararları.
 - [ ] Seri ve içerik önerilerini üyenin gerçek okuma ilgisine göre kişiselleştirme.
