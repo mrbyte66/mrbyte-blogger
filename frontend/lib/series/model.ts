@@ -1,6 +1,15 @@
 import { findArticle } from "../content";
 
 export type BlogSeries = {
+  cover?: import("../api/studio").ArticleRecord["cover"];
+  seo?: import("../api/studio").ArticleRecord["seo"];
+  serverAttribution?: import("../api/content").Attribution|null;
+  serverVersion?: number;
+  serverRecord?: import("../api/studio").SeriesRecord;
+  serverPublished?: boolean;
+  chapterCount?: number;
+  serverStats?: { views: number; claps: number; saves: number };
+  serverChapters?: readonly import("../content").Article[];
   id: string;
   slug: string;
   title: string;

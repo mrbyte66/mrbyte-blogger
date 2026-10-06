@@ -1,5 +1,6 @@
 "use client";
 
+import {SeriesResume} from "../reading/SeriesResume";
 import { SlideLink as Link } from "../SlideLink";
 import PlainLink from "next/link";
 import { articleBodyPreview } from "../../lib/content";
@@ -8,8 +9,10 @@ import { publicArticles, publicSeries } from "../../lib/editorial/store";
 import { useArticles } from "../../lib/articles/use-articles";
 import { useProgressiveItems } from "../../lib/use-progressive-items";
 import { ArticleCard } from "../ArticleCard";
+import { EngagementIcon } from "../EngagementIcon";
 import { ClapCount } from "../ClapCount";
 import { ViewCount } from "../ViewCount";
+import {CoverAttribution} from "../api/CoverAttribution";
 import { CatalogCover } from "../CatalogCover";
 import { seriesDraftCover } from "../../lib/catalog-covers";
 import "../../app/series.css";
@@ -25,8 +28,10 @@ type Props = {
 };
 export function SeriesCatalog({ series, selectedSeriesSlug, onOpenSeries, onOpenArticle, chapterLimit, onChapterLimitChange, preview = false }: Props) {
   const { articles: storedArticles } = useArticles();
-  const articles = preview ? storedArticles : publicArticles(storedArticles);
-  const visible = preview ? series : publicSeries(series, storedArticles);
+  const extras = series.flatMap(s => s.serverChapters ?? []);
+  const merged = [...storedArticles.filter(a => !extras.some(e => e.slug === a.slug)), ...extras];
+  const articles = preview ? merged : publicArticles(merged);
+  const visible = preview ? series : publicSeries(series, merged);
   const selected = visible.find((s) => s.slug === selectedSeriesSlug);
   const chapters = useProgressiveItems({ total: selected?.articleSlugs.length ?? 0, listKey: selectedSeriesSlug ?? "", limit: chapterLimit, onLimitChange: onChapterLimitChange });
   function articleAction(slug: string, label: React.ReactNode, className?: string) {
@@ -39,7 +44,8 @@ export function SeriesCatalog({ series, selectedSeriesSlug, onOpenSeries, onOpen
       <div data-edit-field="meta" className="series-meta"><span>{selected.articleSlugs.length} bölüm</span><span>{selected.ongoing ? "Yeni bölümler gelecek" : "Tamamlanmış seri"}</span></div>
       {onOpenSeries ? <h2 id="panel-title" tabIndex={-1}>{selected.title}</h2> : <h1 data-edit-field="title">{selected.title}</h1>}<p data-edit-field="summary" className="series-summary">{selected.summary}</p>
       <div data-edit-field="cover" className="series-detail-cover"><CatalogCover src={selected.coverImage} fallback={seriesDraftCover(selected)} /></div>
-      <div className="series-start-actions">{selected.articleSlugs.length > 0 && articleAction(selected.articleSlugs[0], "İlk bölümden başla", "series-primary")}</div>
+      <CoverAttribution value={selected.serverAttribution}/>
+      <div className="series-start-actions">{!preview&&<SeriesResume series={selected} onOpen={onOpenArticle}/>}{selected.articleSlugs.length > 0 && articleAction(selected.articleSlugs[0], "İlk bölümden başla", "series-primary")}</div>
       <ol data-edit-field="chapters" className="series-chapters article-list">{selected.articleSlugs.slice(0, chapters.visible).map((slug, index) => {
         const article = articles.find((item) => item.slug === slug);
         if (!article) return null;
@@ -51,7 +57,7 @@ export function SeriesCatalog({ series, selectedSeriesSlug, onOpenSeries, onOpen
   }
   return <div className="series-catalog">{!visible.length ? <p className="series-empty">Henüz yayınlanmış seri yok. Yeni okuma yolları burada yer alacak.</p> : visible.map((s) => {
     const artwork = <CatalogCover src={s.coverImage} fallback={seriesDraftCover(s)} />;
-    const content = <><span className="series-card-visual">{artwork}</span><span className="series-card-content"><span className="series-meta"><span>{s.articleSlugs.length} bölüm</span><ViewCount slugs={s.articleSlugs} series /><ClapCount slugs={s.articleSlugs} series /></span><strong>{s.title}</strong><span className="series-summary">{s.summary}</span><span className="series-card-footer"><span>{s.ongoing ? "Devam eden seri" : "Tamamlanmış seri"}</span><span>Seriyi keşfet ↗</span></span></span></>;
+    const content = <><span className="series-card-visual">{artwork}</span><span className="series-card-content"><span className="series-meta"><span>{s.chapterCount ?? s.articleSlugs.length} bölüm</span>{s.serverStats ? <><span className="view-count" aria-label={`${s.serverStats.views} görüntülenme`}><EngagementIcon kind="view" />{s.serverStats.views}</span><span className="clap-count" aria-label={`${s.serverStats.claps} alkış`}><EngagementIcon kind="clap" />{s.serverStats.claps}</span></>:<><ViewCount slugs={s.articleSlugs} series /><ClapCount slugs={s.articleSlugs} series /></>}</span><strong>{s.title}</strong><span className="series-summary">{s.summary}</span><span className="series-card-footer"><span>{s.ongoing ? "Devam eden seri" : "Tamamlanmış seri"}</span><span>Seriyi keşfet ↗</span></span></span></>;
     return onOpenSeries ? <button type="button" key={s.id} className="series-card" data-series={s.slug} onClick={() => onOpenSeries(s.slug)}>{content}</button> : <PlainLink key={s.id} className="series-card" href={`/seriler/${s.slug}`}>{content}</PlainLink>;
   })}</div>;
 }

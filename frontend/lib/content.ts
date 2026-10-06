@@ -1,12 +1,25 @@
 export const topics = ["Tümü", "Yazılım", "Edebiyat", "Kültür"] as const;
 export type Topic = (typeof topics)[number];
 export type Article = {
+  paragraphIds?: readonly string[];
+  cover?: import("./api/studio").ArticleRecord["cover"];
+  seo?: import("./api/studio").ArticleRecord["seo"];
+  serverAttribution?: import("./api/content").Attribution | null;
+  serverId?: string;
+  serverVersion?: number;
+  serverRecord?: import("./api/studio").ArticleRecord;
+  visibility?: "public" | "private";
+  serverRevisionId?: string;
+  serverDocument?: { schemaVersion: 1; blocks: import("./api/content").Block[] };
+  serverCover?: string;
+  serverStats?: { views: number; claps: number; saves: number };
+  serverSeries?: { id: string; slug: string; title: string; position: number; total: number; previous: { slug: string; title: string } | null; next: { slug: string; title: string } | null } | null;
   slug: string;
   authored?: boolean;
   status?: "scheduled" | "draft" | "published" | "archived" | "trashed";
   title: string;
-  category: Exclude<Topic, "Tümü">;
-  categories?: readonly Exclude<Topic, "Tümü">[];
+  category: string;
+  categories?: readonly string[];
   createdAt?: string;
   publishedAt?: string;
   scheduledAt?: string;

@@ -1,14 +1,88 @@
-# Backend application
+# SATIR backend — implementation in progress
 
-This directory is reserved for the Java 25 LTS and Spring Boot backend. It is intentionally not initialized with application code yet: content models, API shape, authentication and database choice depend on approving the frontend design and page-builder contract first.
+Java **25**, Spring Boot **4.1.1**, PostgreSQL, Maven Wrapper. The V1 implementation is integrated with the existing frontend; **production deployment/provider/container verification remains required**. See [implementation status](../docs/backend-implementation.md) for the exact implemented/pending boundaries.
 
-When implementation starts, use a standard Maven Spring Boot layout here:
+Implemented modules: `identity`, `editorial`, `site`, `media`, `library`, `reading`, `engagement`, `delivery`, shared `platform`. Controllers accept validated command DTOs, services enforce transactions/business rules, repositories own parameterized SQL. PostgreSQL persistence uses Spring JDBC (not H2); this avoids introducing an ORM into the first slices without changing the repository boundaries.
 
-```text
-src/main/java/...
-src/main/resources/application.yml
-src/test/java/...
-pom.xml
+## Local prerequisites and setup
+
+- JDK 25 on `JAVA_HOME`; Maven Wrapper downloads Maven 3.9.11.
+- PostgreSQL 18 and an SMTP development inbox. Docker is required for the Compose alternative.
+- Actual database credentials, random HMAC secret (at least 32 characters), and a base64 32-byte token encryption key. `backend/.env.example` contains placeholders only. Spring does **not** automatically source shell `.env` files; export variables through your local secret manager or supply Spring's external configuration file.
+
+From repository root, after creating an ignored `deploy/.env`:
+
+```sh
+docker compose --env-file deploy/.env -f deploy/compose.dev.yml up -d postgres mailpit
+cd backend
+./mvnw package -DskipTests
 ```
 
-Record domain/API decisions in `docs/` before coding. Keep controllers thin, business behavior in focused services/domain types, persistence behind repositories, and meaningful unit/integration tests alongside the code they verify.
+Database migrations run in a separate process, before application startup:
+
+```sh
+java -Dloader.main=com.satir.platform.MigrationCommand \
+  -cp target/satir-backend-0.1.0-SNAPSHOT.jar \
+  org.springframework.boot.loader.launch.PropertiesLauncher
+```
+
+It reads `DB_URL`, `DB_USER`, `DB_PASSWORD` (or their `_FILE` paths). Use the migration role, then switch to the DML runtime role for the application. Runtime defaults to schema validation and refuses pending migrations. `MIGRATION_MODE=migrate` is used only by disposable integration tests; don't set it for production web startup.
+
+Create the owner interactively (no password in arguments, environment, source or logs):
+
+```sh
+java -Dloader.main=com.satir.identity.OwnerBootstrap \
+  -cp target/satir-backend-0.1.0-SNAPSHOT.jar \
+  org.springframework.boot.loader.launch.PropertiesLauncher
+java -jar target/satir-backend-0.1.0-SNAPSHOT.jar
+```
+
+Bootstrap requires a TTY, refuses a second owner, disables background workers, and treats the provided owner email as operator-verified. Do not import the prototype owner or demo accounts.
+
+Development HTTP requires `COOKIE_SECURE=false` and `SESSION_COOKIE_NAME=satir-session-dev`. Production defaults are Secure/HttpOnly/SameSite=Lax `__Host-satir-session` without Domain. CSRF bootstrap: `GET /api/v1/auth/csrf`; send its token through `X-CSRF-TOKEN` on every unsafe request. Fetch a new token after login/logout. Same-origin reverse proxy is required; CORS isn't opened.
+
+## Verification
+
+`./mvnw verify` requires `SATIR_TEST_DB_URL`, `SATIR_TEST_DB_USER`, `SATIR_TEST_DB_PASSWORD` pointing to a **disposable** PostgreSQL database; tests truncate their own tables. It fails rather than silently skip DB tests.
+
+Convenience scripts:
+
+```sh
+# Separate temporary PostgreSQL cluster; POSTGRES_BIN selects the desired major.
+POSTGRES_BIN=/path/to/postgresql/18/bin scripts/test-postgres.sh
+# Sandbox fallback: creates/removes one randomly named database on a local server.
+POSTGRES_BIN=/path/to/postgresql/bin scripts/test-existing-postgres.sh
+```
+
+The second script uses the current OS database role and localhost:5432. It never truncates an existing user database. Neither script installs or modifies PostgreSQL services. In this development session Docker is absent; verified against PostgreSQL **16.10**, with PostgreSQL **18/Compose verification still pending**.
+
+Integration coverage includes clean Flyway migrations, JDBC session cookies, session fixation/expiry/revocation, CSRF, pending-member restrictions, role reconstruction, mass assignment, private session IDs, optimistic profiles, single-use/expired tokens, outbox failure/retry, draft/private/alias isolation, command deduplication, scheduling and mail preferences. Unit/ArchUnit coverage checks publication rules, block validation and layer boundaries. Test email transport is an explicitly named test bean, not a production fake sender.
+
+Health: internal `/actuator/health/liveness` and `/actuator/health/readiness`. Readiness includes PostgreSQL; do not expose Actuator through the public proxy. `HealthProbe` is a standalone Java container probe. OpenAPI3.1 is generated by scripts/generate-openapi.py and covers implemented controllers; the Markdown contract remains the product authority.
+
+SMTP is configurable via `MAIL_HOST/PORT/FROM/USERNAME/PASSWORD/TLS_REQUIRED`. Missing mail/encryption configuration gives registration/recovery **503**, not fabricated success. Configured operations atomically create hashed tokens and an outbox job; queued is not delivered. Delivery secrets are AES-GCM encrypted and cleared when tokens are consumed. SMTP cannot guarantee exactly-once delivery after a send/crash; stable delivery IDs are supplied. Failed jobs retry with bounded backoff, maximum eight attempts.
+
+## Release gate
+
+Before launch run PostgreSQL18/Docker/production Compose/TLS checks, remote CI, real SMTP/Google/provider acceptance and a consistent DB+media offsite restore/rollback exercise. Local integration and disposable database-role/restore tests do not certify those external gates. No commit or push has been made.
+
+## Frontend integration and acceptance
+
+Frontend and backend are separate applications served under the same origin. Set BACKEND_INTERNAL_URL at both Next build and runtime; rewrites are baked into the build. Production image builds default to http://backend:8080. No credential belongs in NEXT_PUBLIC variables.
+
+```sh
+# From repository root; dedicated acceptance ports, not the user's dev server.
+npm --prefix frontend ci
+npm --prefix frontend test
+npm --prefix frontend run typecheck
+BACKEND_INTERNAL_URL=http://127.0.0.1:18081 npm --prefix frontend run build
+JAVA_HOME=/path/to/jdk25 backend/scripts/test-existing-postgres.sh
+JAVA_HOME=/path/to/jdk25 backend/scripts/test-existing-postgres.sh -Dtest=FrontendAcceptanceIT
+JAVA_HOME=/path/to/jdk25 backend/scripts/verify-database-operations.sh
+python3 -m unittest discover -s backend/scripts/tests
+python3 backend/scripts/generate-openapi.py
+```
+
+The full-stack test starts Spring18081 and built Next18080 itself and removes the disposable database. Its Python legacy-conversion test needs Python3. No production fixture seeding occurs. In CI the PostgreSQL18 service supplies a disposable DB; the workflow runs normal Maven verification then the production Next acceptance separately.
+
+Google uses configured GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET and the canonical /api/v1/auth/google/callback redirect URI. A local RSA/JWKS test issuer verifies the real OIDC filter flow without talking to an external account. COVER_PROVIDER=pexels and PEXELS_API_KEY enable licensed cover search; none returns unavailable. Media/archive roots are private non-symlink directories writable by the service user. See .env.example for optional/configurable secrets and deploy/runbooks/operations.md for the complete VPS sequence and explicit legacy import.

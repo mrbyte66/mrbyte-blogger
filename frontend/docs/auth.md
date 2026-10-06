@@ -1,25 +1,15 @@
 # Frontend membership and Studio access
 
-Owning product scope: `../../docs/features/membership.md`.
+Product scope: `../../docs/features/membership.md`; server contract: `../../docs/api-contract.md`.
 
-- `lib/auth/model.ts`: validated demo profiles/session, expiry, form validation. No password or OAuth tokens in browser storage.
-- `components/auth/AuthProvider.tsx`: root session provider, cross-tab storage/focus/expiry synchronization, profile updates, demo deletion, quiet toast and login dialog.
-- `AuthCard`, `AuthDialog`, `AuthPage`: shared login/register/recovery/verification UI. Native modal provides focus confinement and returns focus to its trigger. Login/register use a short stationary transition and keyboard-operable tabs.
-- `AccountMenu`: guest actions or initials avatar; only the server-established Studio visitor sees the Studio link. Members use `/hesap` and `/kaydedilenler`.
-- `AccountPage`: profile/security/connections/sessions, with separated sections and a confirmed destructive action at the bottom. Browser-wide sessions are not represented as fictitious devices.
-- `SavedProvider`: per-demo-account library and collections; no default signed-in preview. Guest bookmark control requests login, Studio previews remain read-only. Old preview library import is explicit.
-- `ReadingTools`: member-specific scoped remount and storage keys, distinct guest notes; account changes clear prior visible marks and unsaved selection. No automatic guest import.
-- `lib/auth/studio-session.ts` / `app/studio/access.ts`: intentionally narrow server-side Studio access gate authorized by the user. Hashed credentials live in ignored `.env.local`; signed eight-hour HttpOnly/SameSite cookie guards Studio and preview. This is an explicit exception to the no-Next-backend guide; business APIs and real membership still belong to Spring Boot.
-- `StudioSession`: exposes a matching local owner identity to the UI only after the server has authorized the editor. Client role is not authorization.
+- `AuthProvider` loads the actual Spring `/auth/session`, synchronizes through BroadcastChannel/focus/visibility/expiry and clears stale responses after logout/account changes. A successful login must be followed by a successful authenticated-session read. No production demo identity, password or OAuth token is stored in browser storage.
+- `AuthCard`, `AuthDialog`, `AuthPage` preserve the shared themed UI, labels, password confirmation, accessible native modal and short transitions. Register/verify/resend/recovery/reset call real APIs. Token links use fragments, removed from the visible URL; GET does not consume tokens.
+- Google buttons initiate the real configured backend OAuth/OIDC flow. Missing configuration is reported; no fabricated demo login. Linking requires the authenticated user and reauthentication; no automatic email-based merge.
+- `AccountMenu` exposes Studio only for an owner identity returned by the server. Members use `/hesap` and `/kaydedilenler`. Public members cannot create/publish articles.
+- Next Studio/preview pages verify the real backend session before delivery. `StudioSession` refreshes that authority client-side; authorization always remains Spring's responsibility. The old Next credential store/signed Studio cookie implementation was removed.
+- `AccountPage` uses actual versioned profile/avatar/preferences, password/email changes, private session inventory/revocation, linked accounts and confirmed account deletion. Sensitive operations use recent reauthentication; email changes require verification. Global publication-email preference applies to all publications.
+- `SavedProvider` and member `ReadingTools` use private server-scoped data. Account changes clear prior visible records. Anonymous notes remain explicitly local; guest import is optional/confirmed and only acknowledged records are removed locally.
 
-Auth surfaces use applied `themeAppearance`, existing DM Sans typography, border/radius tokens and only a primary accent button. Custom theme colors use the same contrast calculation as other pages. Native dialogs are responsive, touch controls are at least 44px, and reduced motion disables short entrance/spinner effects.
+All auth/account/library/public headers retain the applied palette/typography/radius system. ProfileAvatar offers60 local SVG/initial choices; uploads remain V2. Native modal focus confinement/restoration, visible focus, responsive44px controls and reduced-motion behavior remain required. Private/auth pages have noindex/nofollow and private no-store headers/metadata.
 
-Server cookie and browser identity are separate concerns: the former protects Studio delivery; the latter previews member UI. Google buttons never call Google in this slice. Informational member benefits must distinguish local demo features from planned cloud storage and history.
-
-`SitePageHeader` hesap, kitaplık, giriş, Studio girişi ve kalıcı yazı/seri sayfalarında ortak üst çubuktur: aynı içerik sınırı, logo, geri dönüş ve tema kontrolü. `AccountMenu` misafire tek giriş kontrolü sunar; giriş modalı eşit genişlikli sekmeler ve sabit pencere boyutu kullanır. Üyelik/sıfırlamada şifre tekrarı eşleşmeden işlem ilerlemez. `ProfileAvatar` 60 yerel SVG/baş harf seçeneği sunar; opsiyonel `avatar` alanı eski demo profilleriyle uyumludur. Profil fotoğrafı yükleme V2 kapsamındadır.
-
-Account → Bildirimler contains one account-wide publication-email switch. Optional validated `DemoProfile.publicationEmail` defaults to true for legacy profiles. `updateProfile` persists it with the profile/session and the existing cross-tab session synchronization; it is never an article setting. This prototype sends no email. Future server preferences and publication jobs are described in `../../docs/features/publication-scheduling.md`.
-
-Studio owner publication preference is also stored under `mrbyte:studio-preferences:v1`, separately from authentication, so it survives logout and a fresh server-authorized login. This key grants no access. Failed session persistence restores the previous preference.
-
-Shared page-header navigation rules target the direct toolbar (`.site-page-header>nav`), never nested account dropdown navigation. Thus account/library menus retain the same 220px desktop width, 4px gaps and stretched rows as Studio.
+Runtime APIs are same-origin rewrites to a fixed BACKEND_INTERNAL_URL. HttpOnly cookies are never read by JS. CSRF bootstrap is refreshed after identity changes;401 propagates session-expiry feedback. Production has no fallback granting access on network failure. Legacy validation/demo helper branches exist for isolated tests only, not as authorization.

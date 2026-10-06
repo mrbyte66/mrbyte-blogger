@@ -28,4 +28,4 @@ This repository contains separate frontend and backend applications.
 
 Keep product requirements and cross-application contracts here. Keep frontend design and implementation rules in `frontend/`; backend architecture and test rules belong in `backend/`. Update the document that owns a decision when it changes.
 
-The intended production stack is Next.js/React frontend and Spring Boot/Java 25 LTS backend. Frontend is currently a design prototype. Do not infer API/database contracts from sample content.
+The intended production stack is Next.js/React frontend and Spring Boot/Java 25 LTS backend. Production frontend paths use the documented Spring APIs; fixtures remain for isolated tests and explicit legacy transfer. Do not infer API/database contracts from sample content. See docs/backend-implementation.md for implemented slices and release gates.

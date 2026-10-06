@@ -1,5 +1,9 @@
 "use client";
 
+import {GuestNotesImport} from "./GuestNotesImport";
+import {useArticles} from "../../lib/articles/use-articles";
+import { api } from "../../lib/api/client";
+import { usePublicData } from "../api/PublicDataProvider";
 import { useAuth } from "../auth/AuthProvider";
 import { scrollBehavior } from "../../lib/motion";
 
@@ -14,12 +18,16 @@ type HighlightEnvironment = {
 const highlightNames = { highlight: "mrbyte-reading-highlight", underline: "mrbyte-reading-underline", note: "mrbyte-reading-note" };
 const kindLabels = { highlight: "Fosforlu işaret", underline: "Alt çizgi", note: "Not" };
 
-export function ReadingTools(props: { articleId: string; contentRootId: string; contentRevision?: string }) {
+export function ReadingTools(props: { articleId: string; contentRootId: string; contentRevision?: string; serverRevisionId?: string;legacySlug?:string;serverBlocks?:import("../../lib/api/content").Block[] }) {
   const { session } = useAuth();
-  const memberId = session?.profile.id;
-  return <ScopedReadingTools key={`${props.articleId}:${memberId ?? "guest"}`} {...props} memberId={memberId} />;
+  const serverMode = !!usePublicData();
+  const memberId = session?.profile.verified ? session.profile.id : undefined;
+  return <ScopedReadingTools key={`${props.articleId}:${memberId ?? "guest"}`} {...props} memberId={memberId} serverMode={serverMode} />;
 }
-function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", memberId }: { articleId: string; contentRootId: string; contentRevision?: string; memberId?: string }) {
+function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", memberId, serverRevisionId, serverMode,legacySlug,serverBlocks }: { articleId: string; contentRootId: string; contentRevision?: string; memberId?: string; serverRevisionId?: string; serverMode: boolean;legacySlug?:string;serverBlocks?:import("../../lib/api/content").Block[] }) {
+  const {articles}=useArticles();const article=articles.find(a=>a.serverId===articleId);
+  const [reload,setReload]=useState(0);
+  const [busy, setBusy] = useState(false);
   const [marks, setMarks] = useState<ReadingMark[]>([]);
   const [fragments, setFragments] = useState<TextAnchor[]>([]);
   const [open, setOpen] = useState(false);
@@ -36,15 +44,25 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
   const quote = fragments.map((fragment) => fragment.quote).join("\n");
 
   useEffect(() => {
+    const abort = new AbortController();
+    async function loadServer() {
+      try {
+        if(!serverRevisionId) throw new Error("Yazının tam içeriği henüz yüklenmedi.");
+        const result = await api<{ items: (Omit<ReadingMark,"fragments"> & { revisionId: string; fragments: (Omit<TextAnchor,"anchorId"> & { blockId: string })[] })[] }>(`/me/articles/${articleId}/annotations`, { signal: abort.signal });
+        if(abort.signal.aborted) return;
+        setMarks(result.items.map(mark => ({ ...mark, fragments: mark.fragments.map(f => ({ ...f, anchorId: f.blockId })) }))); setStorageError(null); setReady(true);
+      } catch(error) { if(!abort.signal.aborted) { setMarks([]);setStorageError(error instanceof Error ? error.message : "Notlar yüklenemedi.");setReady(false); } }
+    }
     function load() {
-      const loaded = readReadingDocument(articleId, memberId);
+      if(serverMode && memberId) { void loadServer(); return; }
+      const loaded = readReadingDocument(articleId);
       setMarks(loaded.document.marks); setStorageError(loaded.error); setReady(true);
       setFragments([]); setWriting(false); setUndo(null); setStatus("");
     }
     function sync(event: StorageEvent) { if (event.key === readingStorageKey(articleId, memberId) || event.key === null) load(); }
     load(); window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
-  }, [articleId, memberId]);
+    return () => { abort.abort(); window.removeEventListener("storage", sync); };
+  }, [articleId, memberId, serverMode, serverRevisionId,reload]);
   useEffect(() => {
     function capture() {
       const root = document.getElementById(contentRootId);
@@ -107,21 +125,34 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
     return () => { for (const name of Object.values(highlightNames)) registry?.delete(name); };
   }, [marks, contentRootId, contentRevision]);
 
-  function persist(next: ReadingMark[], message: string) {
-    const saved = writeReadingDocument({ version: 1, articleId, marks: next }, memberId);
-    setMarks(next);
-    setStorageError(saved ? null : "Tarayıcı kaydı başarısız. Bu değişiklikler sayfa kapanınca kaybolabilir.");
-    setStatus(saved ? `${message} Bu tarayıcıya kaydedildi.` : `${message} Yalnızca bu oturumda tutuluyor.`);
+  async function persist(next: ReadingMark[], message: string) {
+    if(busy) return false;
+    if(serverMode && memberId) {
+      setBusy(true);setStorageError(null);
+      try {
+        for(const removed of marks.filter(mark => !next.some(n => n.id === mark.id))) await api(`/me/articles/${articleId}/annotations/${removed.id}`, { method: "DELETE" });
+        for(const added of next.filter(mark => !marks.some(m => m.id === mark.id))) {
+          const revisionId = (added as ReadingMark & { revisionId?: string }).revisionId ?? serverRevisionId;
+          if(!revisionId) throw new Error("Yazının sürümü bulunamadı.");
+          await api(`/me/articles/${articleId}/annotations/${added.id}`, { method: "PUT", creating: true, body: { kind: added.kind, revisionId, fragments: added.fragments.map(({ anchorId, ...fragment }) => ({ ...fragment, blockId: anchorId })), note: added.note } });
+        }
+        setMarks(next);setStatus(`${message} Hesabına kaydedildi.`);return true;
+      } catch(error) {setStorageError(error instanceof Error ? error.message : "Not kaydedilemedi.");return false;}
+      finally {setBusy(false);}
+    }
+    const saved = writeReadingDocument({ version: 1, articleId, marks: next });
+    setMarks(next);setStorageError(saved ? null : "Tarayıcı kaydı başarısız. Bu değişiklikler sayfa kapanınca kaybolabilir.");
+    setStatus(saved ? `${message} Bu tarayıcıya kaydedildi.` : `${message} Yalnızca bu oturumda tutuluyor.`);return saved;
   }
-  function add(kind: ReadingMarkKind) {
+  async function add(kind: ReadingMarkKind) {
     if (!ready || !fragments.length || marks.length >= maxMarks || (kind === "note" && !note.trim())) return;
     const mark: ReadingMark = { id: crypto.randomUUID(), kind, fragments, note: kind === "note" ? note.trim() : "", createdAt: new Date().toISOString() };
-    persist([...marks, mark], `${kindLabels[kind]} eklendi.`);
+    if(!(await persist([...marks, mark], `${kindLabels[kind]} eklendi.`))) return;
     setFragments([]); setNote(""); setWriting(false); setUndo(null);
     window.getSelection()?.removeAllRanges();
   }
-  function remove(mark: ReadingMark, index: number) {
-    persist(marks.filter((item) => item.id !== mark.id), "İşaret kaldırıldı.");
+  async function remove(mark: ReadingMark, index: number) {
+    if(!(await persist(marks.filter((item) => item.id !== mark.id), "İşaret kaldırıldı."))) return;
     setUndo({ mark, index });
   }
   function jump(mark: ReadingMark) {
@@ -132,17 +163,18 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
     paragraph.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     setStatus("Alıntının bulunduğu bölüme gidildi.");
   }
-  const disabled = !ready || fragments.length === 0 || marks.length >= maxMarks;
+  const disabled = busy || !ready || fragments.length === 0 || marks.length >= maxMarks;
   return <aside className={`reading-tools ${open ? "is-open" : ""}`} aria-label="Okuma araçları">
     <div className="reading-toolbar" role="group" aria-label="Metin işaretleme araçları">
-      <button ref={toggle} className="reading-tool reading-toggle" disabled={!ready} aria-expanded={open} aria-controls="reading-notes-panel" onClick={() => setOpen(!open)}><span aria-hidden="true">✎</span><span>{open ? "Kapat" : "Notlar"}<small>{marks.length} kayıt</small></span></button>
+      <button ref={toggle} className="reading-tool reading-toggle" disabled={busy || !ready} aria-expanded={open} aria-controls="reading-notes-panel" onClick={() => setOpen(!open)}><span aria-hidden="true">✎</span><span>{open ? "Kapat" : "Notlar"}<small>{marks.length} kayıt</small></span></button>
       <button className="reading-tool" disabled={disabled} onClick={() => add("highlight")} aria-label="Seçili metni fosforlu kalemle işaretle"><span aria-hidden="true">▰</span><span>Fosforlu</span></button>
       <button className="reading-tool" disabled={disabled} onClick={() => add("underline")} aria-label="Seçili metnin altını çiz"><span aria-hidden="true"><u>U</u></span><span>Altını çiz</span></button>
       <button className="reading-tool" disabled={disabled} onClick={() => { setOpen(true); setWriting(true); setNote(""); }} aria-label="Seçili metne not ekle"><span aria-hidden="true">＋</span><span>Not ekle</span></button>
     </div>
     {!open && <p className="reading-hint">Metin seç, işaretle.</p>}
     {open && <section id="reading-notes-panel" className="reading-panel" aria-label="Bu yazıdaki okuma notların">
-      <header><p className="reading-eyebrow">KİŞİSEL OKUMA ALANI</p><h2>Satır aralarında.</h2><p>Notların bu tarayıcıda sana ait. Site sahibiyle veya diğer okurlarla paylaşılmaz.</p></header>
+      <header><p className="reading-eyebrow">KİŞİSEL OKUMA ALANI</p><h2>Satır aralarında.</h2><p>{serverMode && memberId ? "Notların hesabında sana özel tutulur." : "Notların bu tarayıcıda sana ait."} Site sahibiyle veya diğer okurlarla paylaşılmaz.</p></header>
+      {serverMode&&memberId&&serverRevisionId&&<GuestNotesImport articleId={articleId} revisionId={serverRevisionId} legacySlug={legacySlug ?? article?.slug} blocks={serverBlocks ?? article?.serverDocument?.blocks} onImported={()=>setReload(n=>n+1)}/>}
       {!supported && <p className="reading-availability">Bu tarayıcı metnin üzerinde renk ve çizgi göstermeyi desteklemiyor. İşaretlerin ve notların bu listede kaydedilir.</p>}
       {unresolved > 0 && <p className="reading-availability">{unresolved} işaretin metindeki yeri değişmiş olabilir. Kaydettiğin alıntılar burada korunuyor.</p>}
       {fragments.length > 0 ? <div className="reading-selection"><strong>Seçilen alıntı</strong><blockquote>{quote}</blockquote><button className="reading-text-button" onClick={() => { setFragments([]); setWriting(false); window.getSelection()?.removeAllRanges(); }}>Seçimi temizle</button></div> : <p className="reading-instruction">Yazıdan bir metin seç. Sonra fosforlu kalem, alt çizgi veya not ekle düğmesini kullan.</p>}
@@ -157,8 +189,8 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
         <button className="reading-quote-link" onClick={() => jump(mark)} aria-label={`${index + 1}. alıntının bulunduğu bölüme git`}><q>{mark.fragments.map((fragment) => fragment.quote).join("\n")}</q><span aria-hidden="true">↗</span></button>
         {mark.note && <p className="reading-authored-note">{mark.note}</p>}
       </li>)}</ol>}
-      {undo && <button className="reading-undo" onClick={() => { const restored = [...marks]; restored.splice(undo.index, 0, undo.mark); persist(restored, "Kaldırılan işaret geri alındı."); setUndo(null); }}>Son kaldırmayı geri al ↶</button>}
-      <footer>Hesapsız kullanım · yalnızca bu cihaz/tarayıcı<br />Kalıcı hesap eşitlemesi henüz yok.</footer>
+      {undo && <button className="reading-undo" onClick={async () => { const restored = [...marks]; restored.splice(undo.index, 0, undo.mark); if(await persist(restored, "Kaldırılan işaret geri alındı.")) setUndo(null); }}>Son kaldırmayı geri al ↶</button>}
+      <footer>{serverMode&&memberId?"Hesabında saklanır · yalnızca sana görünür":"Hesapsız kullanım · yalnızca bu cihaz/tarayıcı"}</footer>
     </section>}
     {storageError && <p className="reading-feedback reading-storage-error" role="alert">{storageError}</p>}
     <p className={`reading-feedback ${status ? "has-message" : ""}`} role="status">{status}</p>

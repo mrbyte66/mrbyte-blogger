@@ -28,17 +28,16 @@ export function SiteEditor() {
   const article = target.kind === "article" ? availableArticles.find((a) => a.slug === target.slug) : undefined;
   const series = target.kind === "series" ? content.series.find((s) => s.slug === target.slug) : undefined;
   const initial: DocumentDraft | null = article ? { kind: "article", article } : series ? { kind: "series", series } : null;
+  function finish(saved:DocumentDraft|null) {
+    if(!saved)return null;setNewArticle(null);setNotice("");setTarget(saved.kind==="article"?{kind:"article",slug:saved.article.slug}:{kind:"series",slug:saved.series.slug});return saved;
+  }
   function save(draft: DocumentDraft, seriesId?: string | null) {
-    const saved = content.mutate((current) => draft.kind === "article"
-      ? saveArticleRecord(current, draft.article, !!newArticle, seriesId)
-      : { ...current, series: current.series.map((s) => s.id === draft.series.id ? draft.series : s) });
-    if (!saved) return false;
-    setNewArticle(null); setNotice("");
-    setTarget(draft.kind === "article" ? { kind: "article", slug: draft.article.slug } : { kind: "series", slug: draft.series.slug });
-    return true;
+    if(content.apiMode)return Promise.resolve(content.saveDocument(draft,seriesId)).then(finish);
+    const ok=content.mutate(current=>draft.kind==="article"?saveArticleRecord(current,draft.article,!!newArticle,seriesId):{...current,series:current.series.map(s=>s.id===draft.series.id?draft.series:s)});return finish(ok?draft:null);
   }
   function createInlineSeries(record: BlogSeries) {
-    return content.mutate((current) => ({ ...current, series: [...current.series, record] }));
+    if(!content.apiMode)return content.mutate(current=>({...current,series:[...current.series,record]}))?record:null;
+    return Promise.resolve(content.saveDocument({kind:"series",series:record})).then(result=>result?.kind==="series"?result.series:null);
   }
   function addArticle() {
     if (dirty) { setNotice("Yeni bir yazı açmadan önce düzenlemelerini kaydet veya geri al."); return; }
@@ -49,7 +48,7 @@ export function SiteEditor() {
     if (dirty || newArticle) { setNotice("Demo plan eklemeden önce açık yazını kaydet veya geri al."); return; }
     if (content.mutate(current => addDemoSchedules(current))) setNotice("Demo planlar hazır. Planlanan yazılar listesinden açıp düzenleyebilirsin.");
   }
-  const navigation = <PageNavigator target={target} articles={availableArticles} series={content.series} ready={content.ready} onNavigate={navigate} onCreateArticle={addArticle} onCreateDemoPlans={createDemoPlans} />;
+  const navigation = <PageNavigator target={target} articles={availableArticles} series={content.series} ready={content.ready} onNavigate={navigate} onCreateArticle={addArticle} onCreateDemoPlans={content.apiMode ? undefined : createDemoPlans} />;
   return <div className="studio-site-editor">
     {target.kind === "home" && content.error && <p role="alert" className="studio-navigation-notice">{content.error}</p>}
     {notice && <p className="studio-navigation-notice" role="status">{notice}</p>}

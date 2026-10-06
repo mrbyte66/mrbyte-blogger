@@ -12,8 +12,8 @@ Independent Next.js App Router application using React, TypeScript, and CSS. Kee
 
 ## Component responsibilities
 
-- `lib/content.ts`: typed initial article content; custom browser-local articles live in `lib/articles/` and resolve via dynamic article routes.
-- `lib/articles/`: validated browser-local article records and shared reader/editor synchronization.
+- `lib/content.ts`: typed content/adapters and isolated fixtures; production article routes resolve actual public Spring records.
+- `lib/articles/`: article model validation; production owner writes and reader synchronization use `lib/api/` and server UUID/version identities.
 - `components/builder/SiteEditor.tsx`: homepage/article/series workspace navigation.
 - `lib/navigation.ts`: explicit navigation state transitions.
 - `components/Experience.tsx`: scene composition, preferences, and navigation integration.
@@ -42,3 +42,13 @@ Keep metadata and static layout separate from interactive client components. Use
 Articles have multiple `categories`; legacy `category` is retained as the primary cover fallback. Old single-category records normalize on read without losing content. `createdAt` is immutable; `publishedAt` is an editable calendar date, initially the creation day. Cards and reading views share Turkish date formatting without timezone shifts. Public writing lists sort newest date first; series use stored chapter order, regardless of date edits. Adding a chapter inserts by creation time while preserving existing relative order. Existing demo articles carry deterministic sample dates; unknown legacy articles use 30 September 2026 as a migration fallback, never the time of each read.
 
 Membership/session, account screens and the narrow server-side Studio login gate are owned by `docs/auth.md`.
+
+## Real API integration — 2026-10-06
+
+Root pages load the applied site theme and public catalog from the fixed internal backend, with no fixture fallback. PublicDataProvider identifies production API paths. Browser traffic uses same-origin /api/v1 rewrites and HttpOnly sessions; unsafe requests use backend CSRF. BACKEND_INTERNAL_URL must be set at build and runtime. The backend is the authority for roles, versions, ownership and counts.
+
+Permanent articles/series and paged catalogs are server-rendered; public metadata/canonical/schema.org/sitemap/robots come from the same public-only projections. JSON-LD is escaped. Draft/private/current and alias URLs return404; private/auth pages are dynamic no-store/noindex. SSR GET never records impressions. Visible explicit reader events are separate API writes.
+
+Owner documents preserve UUID block identities and additional block types during edits. Content-save and lifecycle commands are distinct; a partial failure retains the persisted UUID/version/status and reports the failure, allowing retry without duplicate creation. Overlay detail loading never substitutes a stale summary as the full body. Initial homepage feeds link to the complete paged catalogs.
+
+Do not add localStorage success fallbacks or a second Next membership backend. See backend-implementation.md for verified boundaries and external release gates.

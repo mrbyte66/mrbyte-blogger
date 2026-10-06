@@ -74,11 +74,11 @@ export function ThemeEditor({ onNavigate, navigation }: { navigation?: ReactNode
     }
     setConfirmation(null);
   }
-  function apply() {
+  async function apply() {
     if (errors.length || !ready) return;
-    const persisted = save(applyDraft(workspace), true);
+    const persisted = await save(applyDraft(workspace), true);
     setUndo(null);
-    setMessage(persisted ? "Tema bu tarayıcıda uygulandı. Ana sayfada görebilirsin." : "Tema uygulanamadı; tarayıcı kaydı gerekli. Taslağın bu editörde duruyor.");
+    setMessage(persisted ? "Tema uygulandı. Ana sayfada görebilirsin." : "Tema uygulanamadı; bağlantıyı ve hata mesajını kontrol et. Taslağın bu editörde duruyor.");
   }
   function removeSelected() {
     if (!selected) return;
@@ -104,7 +104,7 @@ export function ThemeEditor({ onNavigate, navigation }: { navigation?: ReactNode
       <aside className={`studio-inspector ${selectedId && inspector === "block" ? "inspector-linked" : ""}`} aria-label="Düzenleme özellikleri" ref={properties}>
         <div className="inspector-switch" role="group" aria-label="Özellik türü"><button aria-pressed={inspector === "block"} onClick={() => setInspector("block")}>Blok ayarları</button><button aria-pressed={inspector === "theme"} onClick={() => setInspector("theme")}>Tema tasarımı</button></div>
         <fieldset disabled={!ready} className="inspector-fields">{inspector === "block" ? selected ? <><span className="studio-eyebrow">{selectedId ? "SEÇİLİ BLOK" : "BLOK ÖZELLİKLERİ"}</span><h2>{blockLabels[selected.kind]}</h2><p className="property-summary">{blockDescriptions[selected.kind]}</p><p className="placement-note">{blockPlacementNote(selected.kind)}</p><BlockProperties block={selected} activeSceneField={sceneField} focusRequest={focusRequest} onChange={(block) => edit(replaceBlock(workspace.draft, block))} onManageSeries={() => { if (series[0]) onNavigate?.({ kind: "series", slug: series[0].slug }); }} /><button className="studio-remove" onClick={removeSelected}>Bloğu kaldır −</button></> : <div className="inspector-empty"><span aria-hidden="true">＋</span><h2>Yeni bir bölüm ekle.</h2><p>Son bloğu da kaldırdın. “Blok ekle” ile yeniden başlayabilirsin; ana sayfadaki teman korunuyor.</p><button className="studio-secondary" onClick={() => setPaletteOpen(true)}>Blok paletini aç</button></div> : <><span className="studio-eyebrow">TEMA</span><h2>Görsel kimlik</h2><p className="property-summary">Yalnızca renk değil: yazı karakteri, atmosfer, genişlik ve ritim.</p><ThemeSettings theme={workspace.draft} onChange={edit} /></>}</fieldset>
-        <div className="studio-save-state"><span className="studio-eyebrow">TASLAK & ANA SAYFA</span><p>{!ready ? "Kayıt yükleniyor…" : dirty ? "Şu an taslağı düzenliyorsun. Ana sayfa henüz değişmedi." : "Taslak, bu tarayıcıdaki ana sayfayla aynı."}</p><button disabled={!ready || !dirty} onClick={() => setConfirmation("restore")}>Taslağı uygulanan temaya döndür ↶</button>{undo && <button className="undo-removal" onClick={() => { save({ ...workspace, draft: undo }); setUndo(null); setMessage("Son kaldırılan blok geri geldi."); }}>Son kaldırmayı geri al ↶</button>}{storageError && <p role="alert" className="studio-error">{storageError}</p>}{errors.length > 0 && <ul className="studio-error">{errors.map((error) => <li key={error}>{error}</li>)}</ul>}</div>
+        <div className="studio-save-state"><span className="studio-eyebrow">TASLAK & ANA SAYFA</span><p>{!ready ? "Kayıt yükleniyor…" : dirty ? "Şu an taslağı düzenliyorsun. Ana sayfa henüz değişmedi." : "Taslak, uygulanan ana sayfayla aynı."}</p><button disabled={!ready || !dirty} onClick={() => setConfirmation("restore")}>Taslağı uygulanan temaya döndür ↶</button>{undo && <button className="undo-removal" onClick={() => { save({ ...workspace, draft: undo }); setUndo(null); setMessage("Son kaldırılan blok geri geldi."); }}>Son kaldırmayı geri al ↶</button>}{storageError && <p role="alert" className="studio-error">{storageError}</p>}{errors.length > 0 && <ul className="studio-error">{errors.map((error) => <li key={error}>{error}</li>)}</ul>}</div>
       </aside>
     </div>
     <dialog className="studio-confirm" ref={dialog} aria-labelledby="confirm-title" onCancel={() => setConfirmation(null)}><div><span className="studio-eyebrow">MEVCUT TASLAK DEĞİŞECEK</span><h2 id="confirm-title">Taslağı geri al?</h2><p>Mevcut taslak düzenin ve ayarların, ana sayfada uygulanan temayla değiştirilecek. İçeriklerin ve ana sayfa değişmez; bunun için ayrıca “Temayı uygula” gerekir.</p><div className="confirm-actions"><button className="studio-secondary" onClick={() => setConfirmation(null)}>Vazgeç</button><button className="studio-primary" onClick={confirm}>Taslağı değiştir</button></div></div></dialog>

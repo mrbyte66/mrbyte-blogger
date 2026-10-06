@@ -5,9 +5,11 @@ import { EngagementIcon } from "./EngagementIcon";
 import { SaveArticleButton } from "./saved/SaveArticleButton";
 import { ViewCount } from "./ViewCount";
 import { useClaps } from "../lib/reactions/use-claps";
+import { usePublicData } from "./api/PublicDataProvider";
 
 export function ArticleEngagement({ slug, title, preview = false }: { slug: string; title: string; preview?: boolean }) {
-  const { ready, error, toggle, hasClapped, count } = useClaps();
+  const publicData = usePublicData();
+  const { ready, error, toggle, hasClapped, count } = useClaps(preview ? undefined : slug);
   const [url, setUrl] = useState("");
   const [nativeShare, setNativeShare] = useState(false);
   const [message, setMessage] = useState("");
@@ -33,7 +35,7 @@ export function ArticleEngagement({ slug, title, preview = false }: { slug: stri
   return <section className="article-engagement" aria-label="Yazıya tepki ver ve paylaş">
     <div className="engagement-actions">
       <div className="engagement-views"><ViewCount slugs={[slug]} /><span>görüntülenme</span></div>
-      <button type="button" className="clap-button" title="Alkışlar şimdilik bu tarayıcıda saklanır." aria-pressed={clapped} aria-label={clapped ? "Alkışını geri al" : "Yazıyı alkışla"} disabled={preview || !ready} onClick={() => toggle(slug)}><EngagementIcon kind="clap" /><span>{clapped ? "Alkışladın" : "Alkışla"}</span><span className="clap-total" aria-live="polite">{error ? "—" : count([slug])}</span></button>
+      <button type="button" className="clap-button" title={publicData ? "Alkışın sunucuda kaydedilir." : "Alkışlar şimdilik bu tarayıcıda saklanır."} aria-pressed={clapped} aria-label={clapped ? "Alkışını geri al" : "Yazıyı alkışla"} disabled={preview || !ready} onClick={() => toggle(slug)}><EngagementIcon kind="clap" /><span>{clapped ? "Alkışladın" : "Alkışla"}</span><span className="clap-total" aria-live="polite">{error ? "—" : count([slug])}</span></button>
       <SaveArticleButton slug={slug} title={title} preview={preview} />
       {preview ? <button type="button" className="share-preview" disabled>Paylaş <EngagementIcon kind="share" /></button> : <details ref={menu} className="article-share" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); if (menu.current) { menu.current.open = false; menu.current.querySelector("summary")?.focus(); } } }}>
         <summary>Paylaş <EngagementIcon kind="share" /></summary>

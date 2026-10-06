@@ -1,15 +1,21 @@
 "use client";
+import {CoverPicker} from "./CoverPicker";
+import { MediaUpload } from "./MediaUpload";
+import { usePublicData } from "../api/PublicDataProvider";
 import type { Article } from "../../lib/content";
 import { insertChapterByCreation } from "../../lib/articles/metadata";
 import { type BlogSeries } from "../../lib/series/model";
 import { TextField } from "./ArticleProperties";
-export const seriesFields = [["title", "Seri başlığı"], ["summary", "Açıklama"], ["cover", "Kapak görseli"], ["chapters", "Bölümler"], ["meta", "Seri bilgileri"], ["layout", "Sayfa düzeni"]] as const;
+export const seriesFields = [["title", "Seri başlığı"], ["summary", "Açıklama"], ["cover", "Kapak görseli"], ["seo", "Arama motorları"], ["chapters", "Bölümler"], ["meta", "Seri bilgileri"], ["layout", "Sayfa düzeni"]] as const;
 export function SeriesProperties({ series, collection, articles, field, onChange }: { series: BlogSeries; collection: readonly BlogSeries[]; articles: readonly Article[]; field: string; onChange: (s: BlogSeries) => void }) {
+  const apiMode=!!usePublicData();
   const update = (change: Partial<BlogSeries>) => onChange({ ...series, ...change });
   const layout = series.presentation ?? { heading: "left", chapterStyle: "cards" };
+  if(field==="seo"){const seo=series.seo ?? series.serverRecord?.seo ?? {title:null,description:null,indexable:true};return <><TextField label="Arama motoru başlığı" value={seo.title ?? ""} onChange={title=>update({seo:{...seo,title:title||null}})}/><TextField label="Arama motoru açıklaması" multiline value={seo.description ?? ""} onChange={description=>update({seo:{...seo,description:description||null}})}/><label className="document-checkbox"><input type="checkbox" checked={seo.indexable} onChange={e=>update({seo:{...seo,indexable:e.target.checked}})}/>Arama motorlarında yer alabilir</label></>;}
   if (field === "title") return <TextField label="Seri başlığı" value={series.title} onChange={(title) => update({ title })} />;
   if (field === "summary") return <TextField label="Seri açıklaması" multiline value={series.summary} onChange={(summary) => update({ summary })} />;
-  if (field === "cover") return <><TextField label="Kapak görseli" value={series.coverImage ?? ""} onChange={(coverImage) => update({ coverImage })} /><p className="property-note">Site içi görsel yolu veya HTTPS adresi. Boş bırakıldığında örnek kapak kullanılır.</p></>;
+  if(field==="cover"&&apiMode)return <CoverPicker type="series" id={series.serverVersion===undefined?undefined:series.id} version={series.serverVersion} value={series.cover ?? series.serverRecord?.cover ?? {mode:"auto",assetId:null}} onChange={cover=>update({cover,coverImage:cover.assetId?`/api/v1/media/${cover.assetId}`:undefined})}/>;
+  if (field === "cover") return <>{apiMode && <MediaUpload onUpload={coverImage=>update({coverImage})} />}<TextField label="Kapak görseli" value={series.coverImage ?? ""} onChange={(coverImage) => update({ coverImage })} /><p className="property-note">Yüklenen medya bu serinin erişim kurallarına göre sunulur.</p></>;
   if (field === "layout") return <><label className="studio-field"><span>Başlık hizası</span><select value={layout.heading} onChange={(e) => update({ presentation: { ...layout, heading: e.target.value as "left" | "center" } })}><option value="left">Sola hizalı</option><option value="center">Ortalanmış</option></select></label><label className="studio-field"><span>Bölüm görünümü</span><select value={layout.chapterStyle} onChange={(e) => update({ presentation: { ...layout, chapterStyle: e.target.value as "cards" | "rows" } })}><option value="cards">Kartlar</option><option value="rows">Editoryal satırlar</option></select></label></>;
   if (field === "meta") return <><TextField label="Kalıcı bağlantı adı" value={series.slug} onChange={(slug) => update({ slug })} /><label className="studio-field"><span>Görünürlük</span><select value={series.status} onChange={(e) => update({ status: e.target.value as BlogSeries["status"] })}><option value="draft">Taslak</option><option value="published">Ziyaretçiye açık</option><option value="archived">Arşiv</option><option value="trashed">Çöp kutusu</option></select></label><label className="document-checkbox"><input type="checkbox" checked={series.ongoing} onChange={(e) => update({ ongoing: e.target.checked })} />Yeni bölümler gelecek</label></>;
   const occupied = new Set(collection.filter((s) => s.id !== series.id).flatMap((s) => s.articleSlugs));

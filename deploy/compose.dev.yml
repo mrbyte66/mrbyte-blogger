@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:18}
+    environment:
+      POSTGRES_DB: satir
+      POSTGRES_USER: satir
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set a local DB_PASSWORD}
+    ports: ["127.0.0.1:5433:5432"]
+    volumes: ["postgres-dev:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U satir -d satir"]
+      interval: 5s
+      retries: 20
+  mailpit:
+    image: ${MAILPIT_IMAGE:-axllent/mailpit:v1.27}
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+volumes:
+  postgres-dev:

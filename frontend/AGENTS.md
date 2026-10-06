@@ -13,7 +13,7 @@ Read the repository `../AGENTS.md` first. Then consult only the frontend guides 
 | Member/login/account UI and server Studio gate | `docs/auth.md` |
 | Test and acceptance criteria | `docs/quality.md` |
 
-This is a Next.js App Router / React / TypeScript application. Keep components focused; content definitions live in `lib/`, screen composition in `components/`, and styling in `app/globals.css`. Business APIs belong in Spring Boot. The explicitly requested server-side Studio login gate is described in `docs/auth.md`; do not extend it into a membership/content backend.
+This is a Next.js App Router / React / TypeScript application. Keep components focused; content definitions live in `lib/`, screen composition in `components/`, and styling in `app/globals.css`. Business APIs belong in Spring Boot. Spring Boot establishes membership and Studio authority; Next checks the actual server session for private pages and never implements a second credential store. See `docs/auth.md`.
 
 Run `npm test`, `npm run typecheck`, and `npm run build` from this directory after meaningful changes. Update the owning guide when you change a component contract or design decision.
 

@@ -15,12 +15,12 @@ export function parseStudioTarget(value: unknown): StudioTarget | null {
 export function parseDocumentDraft(value: unknown): DocumentDraft | null {
   if (!value || typeof value !== "object") return null;
   const d = value as DocumentDraft;
-  if (d.kind === "article") { const article = validateArticle(d.article); return article ? { kind: "article", article } : null; }
+  if (d.kind === "article") { const article = validateArticle(d.article); return article ? { kind: "article", article: d.article.serverRecord ? {...article,serverRecord:d.article.serverRecord,serverDocument:d.article.serverDocument,paragraphIds:d.article.paragraphIds,visibility:d.article.visibility,cover:d.article.cover,seo:d.article.seo}:article } : null; }
   if (d.kind === "series") { const series = validateSeries([d.series], Array.isArray(d.series?.articleSlugs) ? d.series.articleSlugs.filter((slug) => typeof slug === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length <= 100) : []); return series ? { kind: "series", series: series[0] } : null; }
   return null;
 }
 export function isDocumentField(id: unknown): id is string {
-  return typeof id === "string" && (/^(title|excerpt|body|figure|code|table|meta|publication|layout|summary|cover|chapters)$/.test(id) || /^paragraph-\d{1,3}$/.test(id));
+  return typeof id === "string" && (/^(title|excerpt|body|figure|code|table|meta|publication|layout|seo|summary|cover|chapters)$/.test(id) || /^paragraph-\d{1,3}$/.test(id));
 }
 export function targetFromLink(href: string): StudioTarget | null {
   if (href === "/") return { kind: "home" };

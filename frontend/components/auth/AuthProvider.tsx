@@ -1,109 +1,64 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { logoutStudio } from "../../app/studio/access";
-import { validProfile, parseSession, profilesKey, readProfiles, sessionDuration, sessionKey, validEmail, type AuthScreen, type DemoProfile, type DemoSession } from "../../lib/auth/model";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { avatarStyles, type AuthScreen, type DemoProfile, type DemoSession } from "../../lib/auth/model";
+import { api, clearCsrf } from "../../lib/api/client";
 import { AuthDialog } from "./AuthDialog";
-
+export type ServerProfile = { id: string; name: string; email: string; verified: boolean; avatar: string | null; role: "member" | "owner"; version: number; preferences: { publicationEmail: boolean; timeZone: string } };
 type AuthContext = {
   session: DemoSession | null; ready: boolean; error: string;
   openAuth: (screen?: AuthScreen) => void; closeAuth: () => void;
-  enterDemo: (email: string, name?: string, google?: boolean) => boolean;
-  updateProfile: (patch: Partial<Pick<DemoProfile, "name" | "avatar" | "publicationEmail" | "verified" | "googleConnected">>) => boolean;
-  enterOwnerDemo: () => boolean; signOut: () => void; deleteAccount: () => boolean; notify: (message: string) => void;
+  login: (identifier: string, password: string) => Promise<boolean>; refresh: () => Promise<void>;
+  updateProfile: (patch: Partial<Pick<DemoProfile, "name" | "avatar" | "publicationEmail">>) => Promise<boolean>;
+  signOut: () => Promise<void>; deleteAccount: () => Promise<boolean>; notify: (message: string) => void;
 };
-const fallback: AuthContext = { session: null, ready: false, error: "", openAuth: () => {}, closeAuth: () => {}, enterDemo: () => false, updateProfile: () => false, enterOwnerDemo: () => false, signOut: () => {}, deleteAccount: () => false, notify: () => {} };
-const ownerPreferencesKey = "mrbyte:studio-preferences:v1";
+const fallback: AuthContext = { session: null, ready: false, error: "", openAuth: () => {}, closeAuth: () => {}, login: async () => false, refresh: async () => {}, updateProfile: async () => false, signOut: async () => {}, deleteAccount: async () => false, notify: () => {} };
 const Context = createContext<AuthContext>(fallback);
 export function useAuth() { return useContext(Context); }
+function profile(data: ServerProfile): DemoProfile {
+  return { id: data.id, name: data.name, email: data.email, role: data.role, verified: data.verified, googleConnected: false, avatar: avatarStyles.find(a => a === data.avatar) ?? "initials", publicationEmail: data.preferences.publicationEmail, timeZone: data.preferences.timeZone, version: data.version };
+}
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<DemoSession | null>(null);
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState("");
-  const [screen, setScreen] = useState<AuthScreen | null>(null);
-  const [toast, setToast] = useState("");
-  const load = useCallback(() => {
-    try { setSession(parseSession(localStorage.getItem(sessionKey))); setError(""); }
-    catch { setSession(null); setError("Oturum bu tarayıcıda okunamadı."); }
-    setReady(true);
+  const [session, setSession] = useState<DemoSession | null>(null); const [ready, setReady] = useState(false);
+  const [error, setError] = useState(""); const [screen, setScreen] = useState<AuthScreen | null>(null); const [toast, setToast] = useState("");
+  const generation = useRef(0); const channel = useRef<BroadcastChannel | null>(null);
+  const load = useCallback(async (): Promise<boolean> => {
+    const request = ++generation.current;
+    try {
+      const data = await api<{ authenticated: boolean; profile?: ServerProfile; expiresAt?: string }>("/auth/session");
+      if (request !== generation.current) return false;
+      setSession(data.authenticated && data.profile && data.expiresAt ? { version: 1, profile: profile(data.profile), startedAt: Date.now(), expiresAt: Date.parse(data.expiresAt) } : null); setError(""); return data.authenticated;
+    } catch(error) { if(request !== generation.current) return false; setSession(null); setError(error instanceof Error ? error.message : "Oturum okunamadı."); return false; }
+    finally { if(request === generation.current) setReady(true); }
   }, []);
   useEffect(() => {
-    load();
-    const sync = (event: StorageEvent) => { if (event.key === sessionKey || event.key === null) load(); };
-    const visible = () => { if (document.visibilityState === "visible") load(); };
-    window.addEventListener("storage", sync); window.addEventListener("focus", load); document.addEventListener("visibilitychange", visible);
-    return () => { window.removeEventListener("storage", sync); window.removeEventListener("focus", load); document.removeEventListener("visibilitychange", visible); };
+    void load(); const visible = () => { if (document.visibilityState === "visible") void load(); };
+    if (typeof BroadcastChannel !== "undefined") { channel.current = new BroadcastChannel("satir-session"); channel.current.onmessage = () => { clearCsrf(); void load(); }; }
+    const expire=()=>{generation.current++;clearCsrf();setSession(null);setReady(true);setError("Oturumun sona erdi. Tekrar giriş yap.");};
+    window.addEventListener("satir:session-expired",expire);
+    window.addEventListener("focus", visible); document.addEventListener("visibilitychange", visible);
+    return () => { generation.current++; channel.current?.close(); channel.current = null; window.removeEventListener("satir:session-expired",expire);window.removeEventListener("focus", visible); document.removeEventListener("visibilitychange", visible); };
   }, [load]);
-  useEffect(() => { if (!session) return; const timer = setTimeout(load, Math.max(0, session.expiresAt - Date.now())); return () => clearTimeout(timer); }, [session, load]);
+  useEffect(() => { if (!session) return; const timer = setTimeout(() => void load(), Math.min(2147483647, Math.max(0, session.expiresAt - Date.now()))); return () => clearTimeout(timer); }, [session, load]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 3500); return () => clearTimeout(timer); }, [toast]);
-  function persist(next: DemoSession) {
-    let previousProfiles: string | null = null;
-    let wroteProfiles = false;
-    let previousOwnerPreferences: string | null = null;
-    let wroteOwnerPreferences = false;
-    try {
-      if (next.profile.role === "owner") {
-        previousOwnerPreferences = localStorage.getItem(ownerPreferencesKey);
-        localStorage.setItem(ownerPreferencesKey, JSON.stringify({ publicationEmail: next.profile.publicationEmail ?? true }));
-        wroteOwnerPreferences = true;
-      } else {
-        previousProfiles = localStorage.getItem(profilesKey);
-        const profiles = readProfiles(previousProfiles);
-        localStorage.setItem(profilesKey, JSON.stringify([...profiles.filter(p => p.id !== next.profile.id), next.profile]));
-        wroteProfiles = true;
+  function sync() { channel.current?.postMessage("changed"); }
+  async function action(work: () => Promise<void>) {
+    setError(""); try { await work(); return true; } catch(error) { setError(error instanceof Error ? error.message : "İşlem tamamlanamadı."); return false; }
+  }
+  async function login(identifier: string, password: string) { return action(async () => { await api("/auth/login", { method: "POST", body: { identifier, password } }); clearCsrf(); if (!(await load())) throw new Error("Oturum doğrulanamadı. Tekrar giriş yap."); sync(); }); }
+  async function signOut() { await action(async () => { await api("/auth/logout", { method: "POST" }); clearCsrf(); generation.current++; setSession(null); setScreen(null); sync(); setToast("Çıkış yapıldı"); }); }
+  async function updateProfile(patch: Partial<Pick<DemoProfile, "name" | "avatar" | "publicationEmail">>) {
+    if(!session) return false;
+    return action(async () => {
+      let version = session.profile.version;
+      if (patch.name !== undefined || patch.avatar !== undefined) {
+        const next = await api<ServerProfile>("/me", { method: "PATCH", body: { name: patch.name, avatar: patch.avatar }, version }); version = next.version;
       }
-      localStorage.setItem(sessionKey, JSON.stringify(next)); setSession(next); setError(""); return true;
-    } catch {
-      if (wroteOwnerPreferences) {
-        try { if (previousOwnerPreferences === null) localStorage.removeItem(ownerPreferencesKey); else localStorage.setItem(ownerPreferencesKey, previousOwnerPreferences); } catch { /* Report failed persistence. */ }
-      }
-      if (wroteProfiles) {
-        try { if (previousProfiles === null) localStorage.removeItem(profilesKey); else localStorage.setItem(profilesKey, previousProfiles); } catch { /* Report failure; never claim a successful session. */ }
-      }
-      setError("Değişiklik saklanamadı. Tarayıcı depolamasını kontrol et."); return false;
-    }
+      if (patch.publicationEmail !== undefined) await api("/me/preferences", { method: "PATCH", body: { publicationEmail: patch.publicationEmail }, version });
+      await load(); sync();
+    });
   }
-  function enterDemo(email: string, name?: string, google = false) {
-    const normalized = email.trim().toLowerCase();
-    if (!validEmail(normalized) || (name !== undefined && (!name.trim() || name.trim().length > 80))) return false;
-    try {
-      const existing = readProfiles(localStorage.getItem(profilesKey)).find(p => p.email === normalized);
-      if (name && existing) { setError("Bu e-posta için bir demo hesap var. Giriş sekmesini kullan."); return false; }
-      const profile: DemoProfile = existing ?? { id: crypto.randomUUID(), email: normalized, name: name?.trim() || normalized.split("@")[0], verified: google, googleConnected: google, role: "member" };
-      const startedAt = Date.now();
-      return persist({ version: 1, profile: google ? { ...profile, googleConnected: true } : profile, startedAt, expiresAt: startedAt + sessionDuration });
-    } catch { setError("Demo hesap bilgisi okunamadı. Mevcut kayıtlar değiştirilmedi."); return false; }
-  }
-  function enterOwnerDemo() {
-    const startedAt = Date.now();
-    let publicationEmail = true;
-    try { const preferences = JSON.parse(localStorage.getItem(ownerPreferencesKey) ?? "null"); if (typeof preferences?.publicationEmail === "boolean") publicationEmail = preferences.publicationEmail; } catch { /* Use the compatible default for an invalid preference. */ }
-    return persist({ version: 1, profile: { publicationEmail, id: "site-owner-demo", name: "Site sahibi", email: "owner-demo@example.com", verified: true, googleConnected: false, role: "owner" }, startedAt, expiresAt: startedAt + 8 * 60 * 60 * 1000 });
-  }
-  async function signOut() {
-    try { if (session?.profile.role === "owner") await logoutStudio(); localStorage.removeItem(sessionKey); setSession(null); setScreen(null); setError(""); setToast("Çıkış yapıldı"); }
-    catch { setError("Çıkış tüm sekmelere uygulanamadı. Tekrar dene."); }
-  }
-  function updateProfile(patch: Partial<Pick<DemoProfile, "name" | "avatar" | "publicationEmail" | "verified" | "googleConnected">>) {
-    let current: DemoSession | null;
-    try { current = parseSession(localStorage.getItem(sessionKey)); } catch { setError("Oturum okunamadı."); return false; }
-    if (!current || current.profile.id !== session?.profile.id || (patch.name !== undefined && (!patch.name.trim() || patch.name.trim().length > 80))) return false;
-    const nextProfile = { ...current.profile, ...patch, ...(patch.name ? { name: patch.name.trim() } : {}) };
-    if (!validProfile(nextProfile)) return false;
-    return persist({ ...current, profile: nextProfile });
-  }
-  function deleteAccount() {
-    if (!session || session.profile.role === "owner") return false;
-    try {
-      const id = session.profile.id;
-      localStorage.setItem(profilesKey, JSON.stringify(readProfiles(localStorage.getItem(profilesKey)).filter(p => p.id !== id)));
-      localStorage.removeItem(`mrbyte:member-library:v1:${id}`);
-      const readingKeys = Object.keys(localStorage).filter(key => key.startsWith(`mrbyte:reading:member:v1:${id}:`));
-      for (const key of readingKeys) localStorage.removeItem(key);
-      localStorage.removeItem(sessionKey); setSession(null); setToast("Demo hesap silindi"); return true;
-    } catch { setError("Demo hesap silinemedi. Tekrar dene."); return false; }
-  }
-  return <Context.Provider value={{ session, ready, error, openAuth: (next = "login") => { setError(""); setScreen(next); }, closeAuth: () => setScreen(null), enterDemo, enterOwnerDemo, updateProfile, signOut, deleteAccount, notify: setToast }}>
-    {children}<AuthDialog screen={screen} />
-    <div className={`auth-toast ${toast ? "is-visible" : ""}`} role="status" aria-live="polite">{toast}</div>
+  async function deleteAccount() { return action(async () => { await api("/me", { method: "DELETE", body: { confirmation: "DELETE" } }); clearCsrf(); generation.current++; setSession(null); sync(); setToast("Hesap silindi"); }); }
+  return <Context.Provider value={{ session, ready, error, openAuth: (next = "login") => { setError(""); setScreen(next); }, closeAuth: () => setScreen(null), login, refresh: async () => { await load(); }, updateProfile, signOut, deleteAccount, notify: setToast }}>
+    {children}<AuthDialog screen={screen} /><div className={`auth-toast ${toast ? "is-visible" : ""}`} role="status" aria-live="polite">{toast}</div>
   </Context.Provider>;
 }

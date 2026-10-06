@@ -1,0 +1,162 @@
+name: satir
+x-logs: &logs
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+x-backend: &backend
+  image: ${BACKEND_IMAGE:?use a digest-pinned release image}
+  user: "10001:10001"
+  read_only: true
+  tmpfs: ["/tmp:size=128m,mode=1777"]
+  logging: *logs
+  environment: &backend-env
+    DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-satir}
+    DB_USER: satir_runtime
+    SPRING_CONFIG_IMPORT: configtree:/run/secrets/
+    PUBLIC_SITE_ORIGIN: https://${PUBLIC_HOST:?canonical domain required}
+    COOKIE_SECURE: "true"
+    SESSION_COOKIE_NAME: __Host-satir-session
+    MIGRATION_MODE: validate
+    INDEXING_ENABLED: ${INDEXING_ENABLED:-false}
+    MEDIA_ROOT: /var/satir/media
+    ARCHIVE_ROOT: /var/satir/archives
+    COVER_PROVIDER: ${COVER_PROVIDER:-none}
+    MAIL_HOST: ${MAIL_HOST:-}
+    MAIL_PORT: ${MAIL_PORT:-587}
+    MAIL_FROM: ${MAIL_FROM:-}
+    MAIL_USERNAME: ${MAIL_USERNAME:-}
+    MAIL_TLS_REQUIRED: "true"
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=50 -XX:+ExitOnOutOfMemoryError
+    SERVER_FORWARD_HEADERS_STRATEGY: native
+    SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES: '172\.29\.10\.2'
+    SERVER_TOMCAT_REMOTEIP_REMOTE_IP_HEADER: X-Forwarded-For
+    SERVER_TOMCAT_REMOTEIP_PROTOCOL_HEADER: X-Forwarded-Proto
+  secrets: &backend-secrets
+    - source: db_runtime_password
+      target: DB_PASSWORD
+    - source: rate_hmac
+      target: RATE_HMAC_SECRET
+    - source: token_key
+      target: TOKEN_ENCRYPTION_KEY
+    - source: smtp_password
+      target: MAIL_PASSWORD
+    - source: google_secret
+      target: GOOGLE_CLIENT_SECRET
+    - source: pexels_key
+      target: PEXELS_API_KEY
+  volumes: ["media:/var/satir/media", "archives:/var/satir/archives"]
+  networks: [web, data, egress]
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?use PostgreSQL18 image digest}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-satir}
+      POSTGRES_USER: satir_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_admin_password
+    secrets: [db_admin_password]
+    volumes: ["postgres:/var/lib/postgresql"]
+    networks: [data]
+    shm_size: 128m
+    mem_limit: 768m
+    cpus: 0.5
+    logging: *logs
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U satir_admin -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  backend:
+    <<: *backend
+    restart: unless-stopped
+    mem_limit: 1280m
+    cpus: 1.0
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, java, "-Dloader.main=com.satir.platform.HealthProbe", -cp, /app/app.jar, org.springframework.boot.loader.launch.PropertiesLauncher]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+  media-init:
+    image: ${BACKEND_IMAGE}
+    profiles: [tools]
+    user: "0:0"
+    entrypoint: [sh, -c, 'chown 10001:10001 /var/satir/media /var/satir/archives && chmod 700 /var/satir/media /var/satir/archives']
+    volumes: ["media:/var/satir/media", "archives:/var/satir/archives"]
+    networks: [data]
+  migrate:
+    <<: *backend
+    profiles: [tools]
+    entrypoint: [java, '-Dloader.main=com.satir.platform.MigrationCommand', -cp, /app/app.jar, org.springframework.boot.loader.launch.PropertiesLauncher]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-satir}
+      DB_USER: satir_migrate
+      DB_PASSWORD_FILE: /run/secrets/db_migration_password
+    secrets: [db_migration_password]
+    networks: [data]
+    volumes: []
+  bootstrap:
+    <<: *backend
+    profiles: [tools]
+    entrypoint: [java, '-Dloader.main=com.satir.identity.OwnerBootstrap', -cp, /app/app.jar, org.springframework.boot.loader.launch.PropertiesLauncher]
+    environment:
+      <<: *backend-env
+    secrets: *backend-secrets
+    stdin_open: true
+    tty: true
+  frontend:
+    image: ${FRONTEND_IMAGE:?use a digest-pinned release image}
+    user: "10001:10001"
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777", "/app/.next/cache:size=64m,uid=10001,gid=10001,mode=0700"]
+    restart: unless-stopped
+    environment: {BACKEND_INTERNAL_URL: "http://backend:8080", NODE_ENV: production}
+    mem_limit: 768m
+    cpus: 0.75
+    logging: *logs
+    networks: [web]
+    depends_on:
+      backend: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://127.0.0.1:3000/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  proxy:
+    image: ${CADDY_IMAGE:?use Caddy2 image digest}
+    restart: unless-stopped
+    environment: {PUBLIC_HOST: "${PUBLIC_HOST}", ALIAS_HOST: "${ALIAS_HOST:?explicit redirect domain required}"}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
+    networks:
+      web: {ipv4_address: 172.29.10.2}
+      egress: {}
+    depends_on:
+      frontend: {condition: service_healthy}
+      backend: {condition: service_healthy}
+    mem_limit: 128m
+    cpus: 0.25
+    logging: *logs
+networks:
+  web:
+    internal: true
+    ipam: {config: [{subnet: 172.29.10.0/24}]}
+  data: {internal: true}
+  egress: {}
+volumes:
+  postgres: {}
+  media: {}
+  archives: {}
+  caddy_data: {}
+  caddy_config: {}
+secrets:
+  db_admin_password: {file: '${SECRETS_DIR:?outside-repository secret directory}/db-admin-password'}
+  db_runtime_password: {file: '${SECRETS_DIR}/db-runtime-password'}
+  db_migration_password: {file: '${SECRETS_DIR}/db-migration-password'}
+  rate_hmac: {file: '${SECRETS_DIR}/rate-hmac'}
+  token_key: {file: '${SECRETS_DIR}/token-key'}
+  smtp_password: {file: '${SECRETS_DIR}/smtp-password'}
+  google_secret: {file: '${SECRETS_DIR}/google-secret'}
+  pexels_key: {file: '${SECRETS_DIR}/pexels-key'}

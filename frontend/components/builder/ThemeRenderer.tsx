@@ -1,4 +1,6 @@
 "use client";
+import { usePublicData } from "../api/PublicDataProvider";
+import { SitePageHeader } from "../SitePageHeader";
 import { AccountMenu } from "../auth/AccountMenu";
 
 import { scrollBehavior } from "../../lib/motion";
@@ -35,6 +37,7 @@ function FeedArticle({ article, index, preview }: { article: Article; index: num
   </Link><SaveArticleButton slug={article.slug} title={article.title} preview={preview} /></div>;
 }
 function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolean }) {
+  const data = usePublicData();
   const { articles: storedArticles } = useArticles();
   const articles = publicArticles(storedArticles);
   const items = articles.filter((item) => block.category === "Tümü" || articleCategories(item).includes(block.category));
@@ -47,7 +50,7 @@ function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolea
     <div className={`feed-list feed-${block.display}`}>
       {(progressive ? items.slice(0, feed.visible) : items).map((article, index) => <FeedArticle article={article} index={index} preview={preview} key={article.slug} />)}
     </div>
-    <div ref={feed.sentinel} className="feed-end" aria-live="polite">{more ? <button onClick={feed.loadMore}>Sonraki 5 yazıyı göster ↓</button> : <span>Şimdilik defterin sonuna geldin. <span aria-hidden="true">✳</span></span>}</div>
+    <div ref={feed.sentinel} className="feed-end" aria-live="polite">{more ? <button onClick={feed.loadMore}>Sonraki 5 yazıyı göster ↓</button> : data && !preview ? <Link href="/yazilar">Bütün yazıları gör ↗</Link> : <span>Şimdilik defterin sonuna geldin. <span aria-hidden="true">✳</span></span>}</div>
   </section>;
 }
 
@@ -57,11 +60,13 @@ export function ThemeNavigation({ theme, preview = false }: { theme: Theme; prev
 }
 
 function SeriesBlock({ block }: { block: Extract<PageBlock, { kind: "series" }> }) {
+  const data = usePublicData();
   const { series } = useSeriesWorkspace();
   return <section className={`theme-section series-block series-block-${block.display}`} id="seriler" aria-labelledby={`${block.id}-title`}>
     <p className="editorial-eyebrow">ADIM ADIM / OKUMA YOLLARI</p>
     <h2 id={`${block.id}-title`}>{block.title}</h2>
     <SeriesCatalog series={series} />
+    {data && <Link className="text-button" href="/seriler">Bütün serileri gör ↗</Link>}
   </section>;
 }
 
@@ -122,7 +127,7 @@ export function ThemeRenderer({ theme, preview = false, selection, onSelect }: {
 
 export function PublishedSite() {
   const { workspace } = useWorkspace();
-  return <ThemeRenderer theme={workspace.applied} />;
+  return workspace.applied.blocks.length ? <ThemeRenderer theme={workspace.applied} /> : <main className="theme-site"><SitePageHeader theme={workspace.applied} /><div className="reading-content"><h1>{workspace.applied.siteName}</h1><p>Henüz yayımlanmış bir ana sayfa düzeni yok.</p></div></main>;
 }
 
 export function DraftPreview({ embedded = false }: { embedded?: boolean }) {

@@ -80,7 +80,7 @@ describe("visual theme authoring", () => {
     expect(savedWorkspace()?.applied.siteName).toBe("SATIR");
     await user.click(screen.getByRole("button", { name: /Temayı uygula/ }));
     expect(savedWorkspace()?.applied.siteName).toBe("MRBYTE");
-    expect(editorStatus()).toContain("bu tarayıcıda uygulandı");
+    expect(editorStatus()).toContain("Tema uygulandı");
   });
 
   it("adds body sections, preserves the scene boundary and reorders only the body", async () => {

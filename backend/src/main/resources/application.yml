@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: satir
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/satir}
+    username: ${DB_USER:satir}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 101MB
+  session:
+    jdbc:
+      initialize-schema: never
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+  servlet:
+    session:
+      timeout: 7d
+      cookie:
+        name: ${SESSION_COOKIE_NAME:__Host-satir-session}
+        http-only: true
+        secure: ${COOKIE_SECURE:true}
+        same-site: lax
+        path: /
+  forward-headers-strategy: none
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+satir:
+  public-origin: ${PUBLIC_SITE_ORIGIN:http://localhost:3000}
+  time-zone: ${APP_TIME_ZONE:Europe/Istanbul}
+  indexing-enabled: ${INDEXING_ENABLED:false}
+  rate-secret: ${RATE_HMAC_SECRET:}
+  archive-root: ${ARCHIVE_ROOT:./var/archives}
+  media-root: ${MEDIA_ROOT:./var/media}
+  migration-mode: ${MIGRATION_MODE:validate}
+
+logging:
+  structured:
+    format:
+      console: ecs

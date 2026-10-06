@@ -20,7 +20,7 @@ export function PublicationSchedule({ article, onChange, onSchedule, onCancel, d
     }} /></label>
     <p id="schedule-hint" className="property-note">Saat dilimi: {zone}. Gelecekte bir tarih ve saat seç.</p>
     {article.scheduledAt && !valid && <p role="alert" className="studio-error">Bu saat geçti. Yeni bir yayın zamanı seç.</p>}
-    <p className="property-note">Plan kaydedildiğinde yazı ziyaretçilerden gizlenir. Otomatik yayınlama sunucu bağlantısıyla devreye girecek.</p>
+    <p className="property-note">Plan kaydedildiğinde yazı ziyaretçilerden gizlenir. Planlanan saatte sunucu tarafından yayına alınır.</p>
     <button type="button" className="studio-primary" disabled={disabled || !valid || !onSchedule} onClick={onSchedule}>{planned ? "Yayın planını güncelle" : "Yayın planını kaydet"}</button>
     {planned && <button type="button" className="studio-secondary" disabled={!onCancel} onClick={onCancel}>Planı iptal et · taslağa dön</button>}
     <p className="property-note">Yayınlandığında e-posta alma tercihi tüm yazılarını kapsar. <Link href="/hesap" target="_blank">Hesap → Bildirimler ↗</Link></p>

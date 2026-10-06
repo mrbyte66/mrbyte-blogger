@@ -6,9 +6,9 @@ export function validateArticle(value: unknown): Article | null {
   if (!value || typeof value !== "object") return null;
   const a = value as Article;
   const text = (v: unknown, max: number) => typeof v === "string" && v.length <= max;
-  if (!isArticleSlug(a.slug) || !text(a.title, 160) || !a.title.trim() || !text(a.excerpt, 4000) || !text(a.eyebrow, 200) || !topics.slice(1).includes(a.category) || !Number.isInteger(a.minutes) || a.minutes < 1 || a.minutes > 240) return null;
+  if (!isArticleSlug(a.slug) || !text(a.title, 160) || !a.title.trim() || !text(a.excerpt, 4000) || !text(a.eyebrow, 200) || !text(a.category,80) || !a.category.trim() || a.category==="Tümü" || !Number.isInteger(a.minutes) || a.minutes < 1 || a.minutes > 240) return null;
   const categories = a.categories ?? [a.category];
-  if (!Array.isArray(categories) || !categories.length || categories.length > topics.length - 1 || !categories.every((c) => topics.slice(1).includes(c))) return null;
+  if (!Array.isArray(categories) || !categories.length || categories.length > 10 || !categories.every((c) => text(c,80)&&c.trim()&&c!=="Tümü")) return null;
   if (a.publishedAt !== undefined && !isArticleDate(a.publishedAt)) return null;
   if (a.createdAt !== undefined && (typeof a.createdAt !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(a.createdAt) || !Number.isFinite(Date.parse(a.createdAt)))) return null;
   const fixture = fixtures.find((f) => f.slug === a.slug);

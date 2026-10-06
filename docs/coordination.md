@@ -193,3 +193,19 @@ Kullanıcı yönü kesinleştirdi: ayrı Next.js/React/TypeScript frontend, Java
 Önerilen temel: aynı origin reverse proxy, Spring Session JDBC, revision'lı içerik ve ayrı kart tarihi/gerçek yayın anı, transaction içinde planlı yayın+outbox, owner-only özel erişim, V1'de no-store içerik/medya ve server-rendered SEO. Üyelik Studio/yazarlık yetkisi vermez. Slug kimlik yerine geçmez; kişisel veriler oturum sahibine sınırlandırılır.
 
 Açık kararlar: roadmap/özellik belgeleri arasında rozet ve ileri raporların V1/V2 konumu; yayındaki Save ve seri explicit activation ayrıntıları; yeniden yayın maili; anonim clap kimlik süresi/birleştirme; veri saklama süreleri; domain/mail/Google/kapak/backup sağlayıcı ayarları. Mimari belgesindeki Ü1–Ü11 varsayımları uygulanmadan önce görünür biçimde değerlendirilmelidir. Eski series/builder belgelerindeki difficulty ve yalnız fixture içerik ifadeleri güncel kodla uyuşmuyor; difficulty geri eklenmeyecek. Yeni gerçek backend tamamlanmış olarak işaretlenmedi.
+
+## 2026-10-05 — Backend implementation checkpoint
+
+The approved architecture is being implemented in `backend/` (Java25/Boot4.1.1, PostgreSQL, Maven Wrapper). Identity/delivery and initial article lifecycle slices now have real database/HTTP tests; this is not full V1 or a frontend production migration. Exact completed/pending behavior, assumptions, environment limitations and next slices are in [backend-implementation.md](backend-implementation.md). Existing frontend prototype remains unchanged until its corresponding APIs are finished. No commit/push requested for this implementation.
+
+### Backend checkpoint extension
+
+Series, planned-list filters, private collections/bookmarks, real clap/impression intake, password/email lifecycle and personal annotations/history now have implemented APIs. The PostgreSQL suite currently passes38 tests, including concurrent reaction/bookmark retries and module-cycle/foreign-repository guards. Frontend/API migration, media/site/SEO, Google, full contract coverage and production deployment remain open; this is not V1 completion. No commit/push was made. See `backend-implementation.md` for lock ordering and assumptions.
+
+## 2026-10-06 — Gerçek V1 API ve ön yüz entegrasyonu
+
+Önceki38-test/prototip checkpoint'i güncellendi. Java25/Spring Boot4.1.1 modüler monolit, Flyway V1–V13, gerçek üyelik/Google/oturumlar, editoryal/yayın/özel içerik, tema/medya, kitaplık/notlar/ziyaretler, reaksiyonlar, sahip araçları ve güvenli içerik ZIP işlemleri uygulandı. Next üretim yolları gerçek API kullanıyor; SSR/SEO/sitemap/robots ve gizli içerik/slug/cache erişimleri test edildi. Eski Next Studio credential kapısı kaldırıldı; sunucu oturumu tek yetki kaynağı.
+
+56 backend testi,191 frontend testi, TypeScript/build ve1 tam yığın Next/Spring kabul testi geçti. Yerel PostgreSQL16.10 kullanıldı; Docker/PostgreSQL18 ve gerçek VPS/sağlayıcı yayın kontrolleri henüz çalıştırılmadı. Ayrı migration/runtime yetkileri ve yalnız geçici DB'lerde yedek/restore doğrulandı. Açıkça çalıştırılan legacy dönüştürme slug→UUID ve provenance korur, demo verilerini kendiliğinden taşımaz; içe aktarma taslak ve indeksleme kapalıdır. Kısmi yayın hatasında ön yüz gerçek kaydedilen kimlik/sürümü korur.
+
+İleri rozet/süre-cihaz analitiği ve çok yazarlı portal V1'e eklenmedi. Alan adı, VPS/image digestleri, SMTP/Google/Pexels ayarları, retention/offsite backup ve üretim CSP kararı yayın ön koşullarıdır. Ayrıntılı tamamlanan dilimler, komutlar, riskler ve release gate'ler backend-implementation.md / deploy/runbooks/operations.md içinde. Commit veya push yapılmadı.

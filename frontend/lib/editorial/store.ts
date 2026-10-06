@@ -15,7 +15,7 @@ export function articleStatus(article: Article): ContentStatus { return article.
 export function publicArticles(articles: readonly Article[]): Article[] { return sortArticlesByDate(articles.filter((a) => articleStatus(a) === "published")); }
 export function publicSeries(series: readonly BlogSeries[], articles: readonly Article[]): BlogSeries[] {
   const visible = new Set(publicArticles(articles).map((a) => a.slug));
-  return series.filter((s) => s.status === "published").map((s) => ({ ...s, articleSlugs: s.articleSlugs.filter((slug) => visible.has(slug)) })).filter((s) => s.articleSlugs.length > 0);
+  return series.filter((s) => s.status === "published").map((s) => ({ ...s, articleSlugs: s.articleSlugs.filter((slug) => visible.has(slug)) })).filter((s) => s.serverPublished || s.articleSlugs.length > 0);
 }
 export function validateContent(value: ContentWorkspace): ContentWorkspace | null {
   const articles = parseArticles(JSON.stringify(value.articles));

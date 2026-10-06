@@ -1,0 +1,11 @@
+"use client";
+import {useEffect,useState} from "react";
+import {useAuth} from "../auth/AuthProvider";
+import {api} from "../../lib/api/client";
+import {articleFromApi,type PublicArticle} from "../../lib/api/content";
+import {ArticleCard} from "../ArticleCard";
+type Page={items:{articleId:string;lastVisitedAt:string;available:boolean;article:PublicArticle|null}[];totalPages:number};
+export function ReadingHistory(){const auth=useAuth();const [data,setData]=useState<Page|null>(null),[page,setPage]=useState(0),[error,setError]=useState(""),[busy,setBusy]=useState(false),[refresh,setRefresh]=useState(0);
+ useEffect(()=>{setData(null);setError("");if(!auth.session?.profile.verified)return;const abort=new AbortController();void api<Page>(`/me/history?page=${page}&size=20`,{signal:abort.signal}).then(setData).catch(e=>{if(!abort.signal.aborted)setError(e.message);});return()=>abort.abort();},[page,refresh,auth.session?.profile.id,auth.session?.profile.verified]);
+ return <section aria-label="Okuma geçmişi"><h2>Son açtığın yazılar</h2><p>Bu geçmiş yalnızca sana görünür. Bir bölümü açmış olman tamamladığın anlamına gelmez.</p>{error&&<p role="alert">{error}</p>}{!data&&!error&&<p role="status">Geçmiş yükleniyor…</p>}{data&&!data.items.length&&<p>Henüz açtığın bir yazı yok.</p>}{data&&data.items.length>0&&<><button type="button" className="saved-manage" disabled={busy} onClick={()=>{if(!window.confirm("Okuma geçmişin temizlensin mi?"))return;setBusy(true);void api("/me/history",{method:"DELETE"}).then(()=>{setPage(0);setRefresh(n=>n+1);}).catch(e=>setError(e.message)).finally(()=>setBusy(false));}}>Geçmişi temizle</button><div className="saved-articles">{data.items.map(item=><div key={item.articleId}><p className="property-note"><time dateTime={item.lastVisitedAt}>{new Intl.DateTimeFormat("tr-TR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(item.lastVisitedAt))}</time></p>{item.available&&item.article?<ArticleCard article={articleFromApi(item.article)}/>:<p>Yazı şu anda erişilemiyor.</p>}</div>)}</div></>}{data&&data.totalPages>1&&<nav aria-label="Geçmiş sayfaları"><button disabled={page===0} onClick={()=>setPage(p=>p-1)}>← Önceki</button><span>{page+1} / {data.totalPages}</span><button disabled={page+1>=data.totalPages} onClick={()=>setPage(p=>p+1)}>Sonraki →</button></nav>}</section>;
+}

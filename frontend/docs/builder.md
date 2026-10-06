@@ -1,3 +1,9 @@
+# Current production builder contract — 2026-10-06
+
+Studio uses actual owner-authorized Spring APIs. Theme draft/applied revisions and site settings are server-versioned; apply is an explicit idempotent operation. Scene bindings and category feeds use server UUIDs, adapted into existing controls; category options include actual custom categories. Article/series writes preserve stable block IDs, server versions and explicit lifecycle rules. Partial content-save/lifecycle failures retain actual persisted identities and show feedback. Media upload and configured cover jobs use private API storage with attribution; arbitrary remote image URLs are not accepted. Studio tools provide categories, site SEO, member directory, aggregate stats, publication jobs and authenticated domain ZIP export/import. No production demo plans or localStorage authority is used.
+
+The design guidance and prototype history below explain existing visual/editor behavior; historical local persistence and pending-backend statements are superseded by this paragraph and backend-implementation.md.
+
 # Frontend theme editor
 
 Read `../../docs/site-builder.md` for product scope. This slice is local-only; `/studio` is not a secured admin and Apply is not server publication.

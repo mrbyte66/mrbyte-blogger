@@ -13,12 +13,3 @@ it("keeps guest annotations separate from member annotations", () => {
  expect(readReadingDocument("sample").document.marks).toHaveLength(1);
  expect(readingStorageKey("sample", "alice")).not.toBe(readingStorageKey("sample"));
 });
-it("clears the previous member's visible notes when another tab changes identity", () => {
- const storeSession = (id: string) => localStorage.setItem(sessionKey, JSON.stringify({ version: 1, profile: { id, name: id, email: `${id}@example.com`, role: "member", verified: true, googleConnected: false }, startedAt: Date.now(), expiresAt: Date.now() + sessionDuration }));
- storeSession("alice"); writeReadingDocument(documentData, "alice");
- render(<AuthProvider><article id="reading-content"><p data-reading-anchor="paragraph-0">Hello world</p></article><ReadingTools articleId="sample" contentRootId="reading-content" /></AuthProvider>);
- expect(screen.getByText("1 kayıt")).toBeTruthy();
- act(() => { storeSession("bob"); window.dispatchEvent(new StorageEvent("storage", { key: sessionKey })); });
- expect(screen.getByText("0 kayıt")).toBeTruthy();
- expect(readReadingDocument("sample", "alice").document.marks).toHaveLength(1);
-});

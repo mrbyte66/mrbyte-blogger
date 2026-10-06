@@ -1,9 +1,15 @@
 "use client";
+import { usePublicData } from "./api/PublicDataProvider";
+import { api } from "../lib/api/client";
+import { articleFromApi, seriesFromApi, type PublicArticle, type PublicSeries } from "../lib/api/content";
+import type { Article } from "../lib/content";
+import type { BlogSeries } from "../lib/series/model";
+import { RecordVisit } from "./reading/RecordVisit";
 import { AccountMenu } from "./auth/AccountMenu";
 import { articleCategories } from "../lib/articles/metadata";
 
 import { useEffect, useRef, useState, type Dispatch, type PointerEvent } from "react";
-import { topics } from "../lib/content";
+import { topics, type Topic } from "../lib/content";
 import { publicArticles } from "../lib/editorial/store";
 import { useArticles } from "../lib/articles/use-articles";
 import { useEdgeElasticity } from "../lib/use-edge-elasticity";
@@ -22,7 +28,12 @@ import type { Navigation, NavigationAction } from "../lib/navigation";
 const sectionNames = { writing: "Yazılar", projects: "Projeler", about: "Hakkımda" };
 
 export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { navigation: Navigation; dispatch: Dispatch<NavigationAction>; siteName?: string }) {
-  const { series } = useSeriesWorkspace();
+  const publicData=usePublicData();
+  const { series:storedSeries } = useSeriesWorkspace();
+  const [detail,setDetail]=useState<Article|null>(null);
+  const [seriesDetail,setSeriesDetail]=useState<BlogSeries|null>(null);
+  const [detailError,setDetailError]=useState("");
+  const series=seriesDetail?[...storedSeries.filter(s=>s.id!==seriesDetail.id),seriesDetail]:storedSeries;
   const { articles: storedArticles } = useArticles();
   const articles = publicArticles(storedArticles);
   const [backward, setBackward] = useState(false);
@@ -41,8 +52,24 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
   const [lastOpenNavigation, setLastOpenNavigation] = useState(navigation);
   useEffect(() => { if (navigation.section) setLastOpenNavigation(navigation); }, [navigation]);
   const displayedNavigation = navigation.section ? navigation : lastOpenNavigation;
-  const article = displayedNavigation.articleSlug ? articles.find((item) => item.slug === displayedNavigation.articleSlug) : undefined;
-  const canGoBack = !!article || !!displayedNavigation.seriesSlug;
+  const article = detail?.slug===displayedNavigation.articleSlug ? detail : !publicData && displayedNavigation.articleSlug ? articles.find((item) => item.slug === displayedNavigation.articleSlug) : undefined;
+  useEffect(()=>{
+    if(!publicData)return;
+    const abort=new AbortController();setDetail(null);setSeriesDetail(null);setDetailError("");
+    const selected=displayedNavigation.articleSlug,selectedSeries=displayedNavigation.seriesSlug;
+    if(selected)void api<PublicArticle|{resolution:"redirect";canonicalPath:string}>(`/articles/by-slug/${encodeURIComponent(selected)}`,{signal:abort.signal}).then(async value=>{
+      if("resolution" in value){const canonical=value.canonicalPath.split("/").at(-1)!;if(!/^[a-z0-9-]+$/.test(canonical))throw new Error("Geçersiz bağlantı.");dispatch({type:"article",slug:canonical});return;}
+      if(!abort.signal.aborted)setDetail(articleFromApi(value));
+    }).catch(error=>{if(!abort.signal.aborted)setDetailError(error instanceof Error?error.message:"Yazı açılamadı.");});
+    else if(selectedSeries)void (async()=>{const value=await api<PublicSeries|{resolution:"redirect";canonicalPath:string}>(`/series/by-slug/${encodeURIComponent(selectedSeries)}`,{signal:abort.signal});if("resolution" in value){dispatch({type:"series",slug:value.canonicalPath.split("/").at(-1)!});return;}
+      const chapters:{article:PublicArticle;position:number}[]=[];for(let page=0;page<4;page++){const result=await api<{items:(PublicArticle&{chapterNumber:number})[];totalPages:number}>(`/series/${value.id}/chapters?size=50&page=${page}`,{signal:abort.signal});chapters.push(...result.items.map(article=>({article,position:article.chapterNumber})));if(page+1>=result.totalPages)break;}
+      if(!abort.signal.aborted)setSeriesDetail(seriesFromApi({...value,chapters}));
+    })().catch(error=>{if(!abort.signal.aborted)setDetailError(error instanceof Error?error.message:"Seri açılamadı.");});
+    return()=>abort.abort();
+  },[publicData,displayedNavigation.articleSlug,displayedNavigation.seriesSlug,dispatch]);
+  const waitingDetail = !!publicData && !detailError && (!!displayedNavigation.articleSlug && !article || !!displayedNavigation.seriesSlug && !displayedNavigation.articleSlug && !seriesDetail);
+  const panelTopics:readonly Topic[] = publicData ? ["Tümü", ...new Set(articles.flatMap(article => articleCategories(article)))] as Topic[] : topics;
+  const canGoBack = !!displayedNavigation.articleSlug || !!displayedNavigation.seriesSlug;
   const viewKey = `${displayedNavigation.section}:${displayedNavigation.articleSlug ?? displayedNavigation.seriesSlug ?? displayedNavigation.writingView ?? "articles"}`;
   const filtered = articles.filter((item) => displayedNavigation.topic === "Tümü" || articleCategories(item).includes(displayedNavigation.topic));
   const feed = useProgressiveItems({ total: filtered.length, listKey: displayedNavigation.topic, contextKey: viewKey });
@@ -116,6 +143,7 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
     onClick={(event) => { if (event.target === event.currentTarget) go({ type: "close" }); }}>
     <div className="panel-shell">
       <div className="panel-topbar"><span className="panel-mark">{siteName}<span>.</span></span>
+        {detailError && <p role="alert">{detailError}</p>}
         {displayedNavigation.section === "writing" && !article ? <div className="panel-content-switch"><span className="panel-switch-label">DEFTER</span><div className="writing-tabs" role="tablist" aria-label="Defter içerikleri">{(["articles", "series"] as const).map((view) => {
           const active = (displayedNavigation.writingView ?? "articles") === view;
           return <RippleButton key={view} id={`reader-tab-${view}`} role="tab" aria-selected={active} aria-controls="reader-tabpanel" tabIndex={active ? 0 : -1} onClick={() => selectTab(view)} onKeyDown={(event) => {
@@ -130,13 +158,15 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
       {displayedNavigation.seriesSlug && !article && <div className="panel-context"><button className="panel-back" onClick={() => go({ type: "back" })}>← Bütün seriler</button><span>Bölüm listesi</span></div>}
       {canGoBack && <div className="panel-swipe-edge" aria-hidden="true" onPointerDown={startSwipe} onPointerMove={moveSwipe} onPointerUp={endSwipe} onPointerCancel={() => { swipe.current = null; setSwipeProgress(0); }}><span style={{ transform: `translateX(${swipeProgress * 24}px)`, opacity: .45 + swipeProgress * .55 }}>‹</span></div>}
       <CoverTransition viewKey={viewKey} backward={backward} animate={animated}><div className="panel-scroll" ref={scrollArea} role={displayedNavigation.section === "writing" && !article ? "tabpanel" : undefined} id="reader-tabpanel" aria-labelledby={displayedNavigation.section === "writing" && !article ? `reader-tab-${displayedNavigation.writingView ?? "articles"}` : undefined}><div className="elastic-content">
-        {displayedNavigation.section === "writing" && !article && displayedNavigation.writingView === "series" && <section>{!displayedNavigation.seriesSlug && <div className="catalog-heading"><h2 id="panel-title">Seriler</h2><p>Bir konuyu, adım adım.</p></div>}<SeriesCatalog series={series} selectedSeriesSlug={displayedNavigation.seriesSlug ?? undefined} onOpenSeries={(slug) => go({ type: "series", slug })} onOpenArticle={openArticle} chapterLimit={chapterLimits[displayedNavigation.seriesSlug ?? ""] ?? 5} onChapterLimitChange={(count) => setChapterLimits((value) => ({ ...value, [displayedNavigation.seriesSlug ?? ""]: count }))} /></section>}
-        {displayedNavigation.section === "writing" && (article || displayedNavigation.writingView !== "series") && (article ? <div key={article.slug}><SeriesArticleNav articleSlug={article.slug} onOpenArticle={openArticle} onOpenSeries={(slug) => go({ type: "series", slug })} /><ArticleContent article={article} /></div> : <section className="writing-view">
-          <div className="catalog-heading"><h2 id="panel-title">Yazılar</h2><p>Kod, kelime ve aradakiler.</p><span>{articles.length} yazı</span></div>
-          <div className="topic-filter" role="group" aria-label="Yazı kategorisi">{topics.map((topic) => <button key={topic} aria-pressed={topic === displayedNavigation.topic} onClick={() => go({ type: "filter", topic })}>{topic}</button>)}</div>
+        {detailError && <p role="alert">{detailError}</p>}
+        {waitingDetail && <p role="status">İçerik yükleniyor…</p>}
+        {!waitingDetail && !detailError && displayedNavigation.section === "writing" && !article && displayedNavigation.writingView === "series" && <section>{!displayedNavigation.seriesSlug && <div className="catalog-heading"><h2 id="panel-title">Seriler</h2><p>Bir konuyu, adım adım.</p></div>}<SeriesCatalog series={series} selectedSeriesSlug={displayedNavigation.seriesSlug ?? undefined} onOpenSeries={(slug) => go({ type: "series", slug })} onOpenArticle={openArticle} chapterLimit={chapterLimits[displayedNavigation.seriesSlug ?? ""] ?? 5} onChapterLimitChange={(count) => setChapterLimits((value) => ({ ...value, [displayedNavigation.seriesSlug ?? ""]: count }))} />{publicData && !displayedNavigation.seriesSlug && <a className="text-button" href="/seriler">Bütün serileri gör ↗</a>}</section>}
+        {!waitingDetail && !detailError && displayedNavigation.section === "writing" && (article || displayedNavigation.writingView !== "series") && (article ? <div key={article.slug}><SeriesArticleNav serverSeries={article.serverSeries} articleSlug={article.slug} onOpenArticle={openArticle} onOpenSeries={(slug) => go({ type: "series", slug })} /><ArticleContent article={article} /><RecordVisit articleId={article.serverId} revisionId={article.serverRevisionId}/></div> : <section className="writing-view">
+          <div className="catalog-heading"><h2 id="panel-title">Yazılar</h2><p>Kod, kelime ve aradakiler.</p><span>{publicData?.articleTotal ?? articles.length} yazı</span></div>
+          <div className="topic-filter" role="group" aria-label="Yazı kategorisi">{panelTopics.map((topic) => <button key={topic} aria-pressed={topic === displayedNavigation.topic} onClick={() => go({ type: "filter", topic })}>{topic}</button>)}</div>
           <div className="article-list">{filtered.slice(0, feed.visible).map((item) => <ArticleCard article={item} key={item.slug} onOpen={openArticle} />)}</div>
           <div className="progressive-footer" ref={feed.sentinel}><span role="status">{feed.visible} / {filtered.length} yazı</span>{feed.hasMore && <button onClick={feed.loadMore}>Sonraki 5 yazıyı göster ↓</button>}</div>
-          <p className="sample-note">Bu ilk taslakta örnek içerikleri görüyorsun.</p>
+          {publicData ? <a className="text-button" href="/yazilar">Bütün yazıları gör ↗</a> : <p className="sample-note">Bu ilk taslakta örnek içerikleri görüyorsun.</p>}
         </section>)}
         {displayedNavigation.section === "projects" && <section className="projects-view">
           <p className="eyebrow">FİKİRDEN ÇALIŞAN BİR ŞEYE</p>

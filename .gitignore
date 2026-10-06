@@ -7,3 +7,19 @@ backend/target/
 # Local server credentials; never publish account secrets.
 frontend/.env*
 !frontend/.env.example
+
+# Backend/deployment local secrets.
+backend/.env*
+!backend/.env.example
+deploy/.env*
+!deploy/.env.example
+!deploy/.env.prod.example
+
+# Local IDE workspace (preserve on disk).
+backend/.idea/
+
+backend/var/
+
+# Python tooling bytecode.
+__pycache__/
+*.pyc

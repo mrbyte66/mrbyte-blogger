@@ -34,3 +34,7 @@ Reading acceptance:
 - Tools remain visible and touch-sized; notes panels do not cover desktop article text. Escape closes the panel and mobile paragraph navigation dismisses it.
 
 Log completed verification in `../../docs/coordination.md`. Distinguish verified behavior from limitations. No zero-bug guarantees.
+
+## V1 integration evidence — 2026-10-06
+
+191 frontend tests, TypeScript and production Next build passed. Real backend suite:56 PostgreSQL/domain/security/OIDC tests plus1 separately run production Next/Spring acceptance. Focused browser QA exercised actual login/bookmark/library/Studio and390px overflow checks. Legacy conversion has3 Python tests plus backend dry-run acceptance. CI defines PostgreSQL18/container checks but was not remotely executed; local Docker is unavailable. Release requires target VPS/TLS/providers/offsite DB+media restore, as documented in docs/backend-implementation.md. Tests must never skip DB coverage or replace an unavailable server with fake successful account/content persistence.
