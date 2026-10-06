@@ -7,7 +7,8 @@ Owning product scope: `../../docs/features/membership.md`.
 - `AuthCard`, `AuthDialog`, `AuthPage`: shared login/register/recovery/verification UI. Native modal provides focus confinement and returns focus to its trigger. Login/register use a short stationary transition and keyboard-operable tabs.
 - `AccountMenu`: guest actions or initials avatar; only the server-established Studio visitor sees the Studio link. Members use `/hesap` and `/kaydedilenler`.
 - `AccountPage`: profile/security/connections/sessions, with separated sections and a confirmed destructive action at the bottom. Browser-wide sessions are not represented as fictitious devices.
-- `SavedProvider`: per-demo-account library and collections; no default signed-in preview. Guest bookmark control requests login, Studio previews remain read-only. Old preview library import is explicit.
+- `SavedProvider`: the verified member's server library (`/me/collections`, `/me/bookmarks`); nothing is kept in browser storage and the state is cleared when the account changes. Guest bookmark control requests login, unverified accounts are asked to verify, Studio previews remain read-only.
+- `AccountHistory` (Hesap → Okuma Geçmişi): own visit history from `/me/history` with a clear action; visits mean "opened", never "finished".
 - `ReadingTools`: member-specific scoped remount and storage keys, distinct guest notes; account changes clear prior visible marks and unsaved selection. No automatic guest import.
 - `app/studio/page.tsx` / `app/preview/page.tsx`: server-side gate. The request cookie is forwarded only to the fixed internal backend; Studio renders only for the OWNER role, and every Studio API call is authorized again by Spring. The former Next cookie gate (`STUDIO_*` variables) is removed.
 - `AccountPage`: profile/avatar, publication-mail preference, password and e-mail change, Google link/unlink, session list/revoke and deletion. Sensitive actions open a re-authentication dialog when the API answers `REAUTH_REQUIRED`. Unverified accounts only see verification and sign-out.
@@ -15,7 +16,7 @@ Owning product scope: `../../docs/features/membership.md`.
 
 Auth surfaces use applied `themeAppearance`, existing DM Sans typography, border/radius tokens and only a primary accent button. Custom theme colors use the same contrast calculation as other pages. Native dialogs are responsive, touch controls are at least 44px, and reduced motion disables short entrance/spinner effects.
 
-Server cookie and browser identity are separate concerns: the former protects Studio delivery; the latter previews member UI. Google buttons never call Google in this slice. Informational member benefits must distinguish local demo features from planned cloud storage and history.
+Server cookie and browser identity are separate concerns: the former protects Studio delivery; the latter previews member UI. Google buttons never call Google in this slice. Informational member benefits may now describe the account library, notes and visit history as real; badges and advanced statistics remain planned.
 
 `SitePageHeader` hesap, kitaplık, giriş, Studio girişi ve kalıcı yazı/seri sayfalarında ortak üst çubuktur: aynı içerik sınırı, logo, geri dönüş ve tema kontrolü. `AccountMenu` misafire tek giriş kontrolü sunar; giriş modalı eşit genişlikli sekmeler ve sabit pencere boyutu kullanır. Üyelik/sıfırlamada şifre tekrarı eşleşmeden işlem ilerlemez. `ProfileAvatar` 60 yerel SVG/baş harf seçeneği sunar; opsiyonel `avatar` alanı eski demo profilleriyle uyumludur. Profil fotoğrafı yükleme V2 kapsamındadır.
 

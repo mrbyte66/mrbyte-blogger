@@ -38,6 +38,8 @@ spring:
   # SMTP is enabled only when SPRING_MAIL_HOST (and SATIR_MAIL_FROM) are provided by the environment;
   # SPRING_MAIL_PORT/USERNAME/PASSWORD and SPRING_MAIL_PROPERTIES_MAIL_SMTP_* configure the provider.
   mail:
+    # Placeholder so a mounted secret file (configtree) named SPRING_MAIL_PASSWORD can supply it.
+    password: ${SPRING_MAIL_PASSWORD:}
     properties:
       mail.smtp.connectiontimeout: 10000
       mail.smtp.timeout: 10000
@@ -68,8 +70,16 @@ management:
       probes:
         enabled: true
       show-details: never
+      # Liveness never depends on the database; readiness does (deployment-vps §5).
+      group:
+        readiness:
+          include: readinessState,db
 
 satir:
+  engagement:
+    # Random anonymous clap identity (never a fingerprint). __Host- prefix requires Secure + Path=/.
+    actor-cookie-name: __Host-satir-actor
+    actor-cookie-secure: true
   site:
     # Trusted canonical origin for links in mail/SEO; never derived from the Host header.
     public-origin: ${PUBLIC_SITE_ORIGIN:http://localhost:3000}
@@ -80,6 +90,11 @@ satir:
     root: ${SATIR_MEDIA_ROOT:./data/media}
   mail:
     from: ${SATIR_MAIL_FROM:}
+  # Secrets may come from the environment or from mounted secret files (SPRING_CONFIG_IMPORT=configtree).
+  google:
+    client-secret: ${SATIR_GOOGLE_CLIENT_SECRET:}
+  covers:
+    pexels-api-key: ${SATIR_COVERS_PEXELS_API_KEY:}
   jobs:
     enabled: true
   flyway:

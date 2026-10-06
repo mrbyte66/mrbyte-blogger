@@ -2,7 +2,9 @@ package com.satir.editorial.application;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.satir.editorial.application.EditorialViews.ArticleSummary;
 import com.satir.editorial.application.EditorialViews.CategoryView;
+import com.satir.editorial.application.EditorialViews.RevisionText;
 import com.satir.editorial.application.EditorialViews.SeoUrl;
 import com.satir.editorial.application.EditorialViews.SeriesSummary;
 import com.satir.editorial.infrastructure.ArticleRepository;
@@ -55,9 +58,11 @@ public class PublicContentQuery {
     private final CategoryRepository categories;
     private final SlugRepository slugs;
     private final EditorialAssembler assembler;
+    private final EditorialJson json;
 
     PublicContentQuery(ArticleRepository articles, SeriesRepository series, CategoryRepository categories,
-            SlugRepository slugs, EditorialAssembler assembler) {
+            SlugRepository slugs, EditorialAssembler assembler, EditorialJson json) {
+        this.json = json;
         this.articles = articles;
         this.series = series;
         this.categories = categories;
@@ -134,6 +139,52 @@ public class PublicContentQuery {
     @Transactional(readOnly = true)
     public boolean isArticlePublic(UUID id) {
         return articles.find(id).map(ArticleRow::isPublic).orElse(false);
+    }
+
+    /** Summaries of the requested articles that are public right now; hidden ones are simply absent. */
+    @Transactional(readOnly = true)
+    public Map<UUID, ArticleSummary> publicSummaries(Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        List<ArticleRow> rows = articles.findAll(ids.stream().distinct().toList()).stream().filter(ArticleRow::isPublic).toList();
+        Map<UUID, ArticleSummary> byId = new LinkedHashMap<>();
+        assembler.summaries(rows, false, Map.of()).forEach(summary -> byId.put(summary.id(), summary));
+        return byId;
+    }
+
+    /** Current revision of a public article; empty when the article is hidden or missing. */
+    @Transactional(readOnly = true)
+    public Optional<UUID> currentPublicRevision(UUID articleId) {
+        return articles.find(articleId).filter(ArticleRow::isPublic).map(ArticleRow::revisionId);
+    }
+
+    /**
+     * Annotatable texts of a revision of a <em>public</em> article ({@code "abstract"} plus block IDs).
+     * Empty when the article is hidden or the revision belongs to another article.
+     */
+    @Transactional(readOnly = true)
+    public Optional<RevisionText> revisionText(UUID articleId, UUID revisionId) {
+        if (!isArticlePublic(articleId)) {
+            return Optional.empty();
+        }
+        return articles.revision(articleId, revisionId).map(revision -> {
+            Map<String, String> anchors = new HashMap<>();
+            anchors.put("abstract", revision.abstractText());
+            json.document(revision.documentJson()).annotatableTexts()
+                    .forEach((blockId, text) -> anchors.put(blockId.toString(), text));
+            return new RevisionText(articleId, revision.id(), anchors);
+        });
+    }
+
+    /** IDs of the public chapters of a public series in Studio order; empty when the series is hidden. */
+    @Transactional(readOnly = true)
+    public Optional<List<UUID>> publicChapterIds(UUID seriesId) {
+        if (!series.isPublic(seriesId)) {
+            return Optional.empty();
+        }
+        return Optional.of(series.chapters(List.of(seriesId)).stream().filter(ChapterRow::isPublic)
+                .map(ChapterRow::articleId).toList());
     }
 
     @Transactional(readOnly = true)

@@ -332,3 +332,18 @@ html[data-theme=dark] .studio .studio-state.status-published { color:#bee69d; }h
 @media(max-width:860px) { .inline-series-anchor,.document-studio .studio-preview { scroll-margin-top:16px; } }
 
 .page-menu-list time { display:block; margin-top:4px; font-size:12px; color:var(--muted); font-weight:400; }
+
+/* Owner statistics and member list (read-only). */
+.insights-layout { max-width:1100px; margin:0 auto; padding:28px 24px 64px; display:grid; gap:40px; }
+.insights-layout h1, .insights-layout h2 { margin:0 0 6px; }
+.insights-note { margin:0 0 16px; opacity:.75; }
+.insights-table { overflow-x:auto; border:1px solid var(--line); border-radius:14px; }
+.insights-table table { width:100%; border-collapse:collapse; font-size:15px; }
+.insights-table th, .insights-table td { text-align:left; padding:12px 14px; border-bottom:1px solid var(--line); white-space:nowrap; }
+.insights-table tbody th { font-weight:500; white-space:normal; }
+.insights-table tbody tr:last-child > * { border-bottom:0; }
+.insights-pager, .insights-search { display:flex; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap; }
+.insights-search label { display:flex; flex-direction:column; gap:6px; flex:1 1 240px; }
+.insights-search input { font-size:16px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; }
+
+.document-actions .document-actions-hint { margin:2px 12px 8px; padding:8px 10px; border-radius:6px; background:#f6efdc; color:#6b4f12; font-size:12.5px; }

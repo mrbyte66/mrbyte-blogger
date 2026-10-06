@@ -35,12 +35,16 @@ export function DocumentEditor({ navigation, initial, articles, series, isNew = 
   const [saving, setSaving] = useState(false);
   const [seriesFormDirty, setSeriesFormDirty] = useState(false);
   const seriesFormRef = useRef<HTMLDivElement>(null);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline) || seriesId !== savedSeriesId || seriesFormDirty;
+  // A brand-new article counts as changed only after the author edits its template.
+  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline ?? initial) || seriesId !== savedSeriesId || seriesFormDirty;
   const status = draft.kind === "article" ? articleStatus(draft.article) : draft.series.status;
   const canPublish = draft.kind === "article" ? draft.article.paragraphs.some((p) => p.trim()) : draft.series.articleSlugs.length > 0;
   useEffect(() => { if (creatingSeries) seriesFormRef.current?.scrollIntoView({ block: "start", behavior: scrollBehavior() }); }, [creatingSeries]);
   const valid = parseDocumentDraft(draft);
   const missingBody = (status === "published" || status === "scheduled") && !canPublish;
+  const publishHint = canPublish ? "" : draft.kind === "article"
+    ? "Yayına almak için soldaki «Metin ve paragraflar» alanına en az bir paragraf yaz. Başlık ve özet tek başına yetmez."
+    : "Seriyi yayına almak için en az bir bölüm ekle.";
   const [preview, setPreview] = useState(initial);
   // After a save the server returns a new version; adopt it in place (keeping the selected field).
   const serverVersion = initial.kind === "article" ? `${initial.article.id}:${initial.article.version}` : `${initial.series.id}:${initial.series.version}`;
@@ -104,7 +108,7 @@ export function DocumentEditor({ navigation, initial, articles, series, isNew = 
     <StudioHeader navigation={navigation} status={<span className={`studio-state status-${status}`} title={dirty ? "Kaydedilmemiş değişiklikler var" : "Kaydedildi"}>{statusLabels[status]}{dirty ? " · düzenleniyor" : ""}</span>} actions={<>
       {baseline && (baseline.kind === "article" ? articleStatus(baseline.article) : baseline.series.status) === "published" && <Link className="studio-text-link" href={baseline.kind === "article" ? `/yazilar/${baseline.article.slug}` : `/seriler/${baseline.series.slug}`} target="_blank" aria-label="Kaydedilmiş sayfayı aç ↗" title="Kaydedilmiş sayfayı aç">↗</Link>}
       <button className="studio-secondary" disabled={!dirty} onClick={revert} aria-label="Değişiklikleri geri al" title="Değişiklikleri geri al">↶</button>
-      <DocumentActions status={status} disabled={!ready || !valid || creatingSeries || saving} canPublish={canPublish} onSave={save} onSchedule={draft.kind === "article" ? () => select("publication") : undefined} />
+      <DocumentActions status={status} disabled={!ready || !valid || creatingSeries || saving} canPublish={canPublish} publishHint={publishHint} onSave={save} onSchedule={draft.kind === "article" ? () => select("publication") : undefined} />
       <button className="studio-primary" disabled={!ready || !dirty || !valid || missingBody || creatingSeries || saving} onClick={() => save()}>{saving ? "Kaydediliyor…" : "Sayfayı kaydet ↗"}</button>
     </>} />
 

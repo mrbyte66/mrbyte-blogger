@@ -9,6 +9,11 @@ import type { DocumentDraft, StudioTarget } from "../../lib/builder/document-pro
 import { PageNavigator } from "./PageNavigator";
 import { ThemeEditor } from "./ThemeEditor";
 import { DocumentEditor } from "./DocumentEditor";
+import { announceContentChange } from "../data/PublicContentRefresh";
+
+const leaveMessage = "Kaydedilmemiş değişiklikler var. Kaydetmeden bu sayfadan çıkmak istiyor musun?";
+/** Asks before discarding unsaved edits; environments without dialogs keep the edits. */
+function confirmLeave(): boolean { try { return window.confirm(leaveMessage) === true; } catch { return false; } }
 
 export function SiteEditor() {
   const content = useContentWorkspace();
@@ -20,9 +25,11 @@ export function SiteEditor() {
   const availableArticles = newArticle ? [...content.articles, newArticle] : content.articles;
   function navigate(next: StudioTarget) {
     if (JSON.stringify(next) === JSON.stringify(target)) return;
-    if (dirty) { setNotice("Sayfa değiştirmeden önce düzenlemelerini kaydet veya geri al."); return; }
+    if (dirty && !confirmLeave()) { setNotice("Sayfa değiştirmeden önce düzenlemelerini kaydet veya geri al."); return; }
     if (next.kind === "article" && !availableArticles.some((a) => a.slug === next.slug)) return;
     if (next.kind === "series" && !content.series.some((s) => s.slug === next.slug)) return;
+    // Leaving an unsaved new article discards it (it was never stored).
+    if (newArticle && !(next.kind === "article" && next.slug === newArticle.slug)) setNewArticle(null);
     setTarget(next); setNotice(""); setSaveError(null); setDirty(false);
   }
   const article = target.kind === "article" ? availableArticles.find((a) => a.slug === target.slug) : undefined;
@@ -40,6 +47,7 @@ export function SiteEditor() {
         setTarget({ kind: "series", slug: saved.slug });
       }
       setNotice(""); setSaveError(null);
+      announceContentChange();
       return true;
     } catch (cause) {
       setSaveError(`Kaydedilemedi. ${describe(cause)}`);
@@ -52,7 +60,7 @@ export function SiteEditor() {
     catch (cause) { setSaveError(`Seri oluşturulamadı. ${describe(cause)}`); return null; }
   }
   function addArticle() {
-    if (dirty) { setNotice("Yeni bir yazı açmadan önce düzenlemelerini kaydet veya geri al."); return; }
+    if (dirty && !confirmLeave()) { setNotice("Yeni bir yazı açmadan önce düzenlemelerini kaydet veya geri al."); return; }
     const record = createArticle();
     setNewArticle(record); setTarget({ kind: "article", slug: record.slug }); setNotice(""); setSaveError(null);
   }

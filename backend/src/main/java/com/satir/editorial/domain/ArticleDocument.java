@@ -111,6 +111,24 @@ public record ArticleDocument(Integer schemaVersion, List<Block> blocks) {
                 .toList();
     }
 
+    /** Text of every block a reader can annotate, keyed by stable block ID (UTF-16 offsets apply). */
+    public java.util.Map<UUID, String> annotatableTexts() {
+        java.util.Map<UUID, String> texts = new java.util.HashMap<>();
+        for (Block block : blocks) {
+            String text = switch (block) {
+                case Block.Paragraph p -> p.text();
+                case Block.Heading h -> h.text();
+                case Block.Quote q -> q.text();
+                case Block.Code c -> c.text();
+                default -> null;
+            };
+            if (text != null) {
+                texts.put(block.id(), text);
+            }
+        }
+        return texts;
+    }
+
     /** Server-derived reading time: 200 words per minute, at least one minute. */
     public int readingMinutes() {
         long words = 0;

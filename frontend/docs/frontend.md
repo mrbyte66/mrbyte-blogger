@@ -20,10 +20,13 @@ Independent Next.js App Router application using React, TypeScript, and CSS. Kee
 - `components/ContentPanel.tsx`: accessible browsing and reading surface.
 - `components/ArticleCard.tsx`: visual article card inside the scene writing catalog.
 - `components/ArticleCard.tsx` also renders ordered series chapters, with an optional chapter label, body preview and callback/link navigation.
-- `lib/reactions/use-claps.ts`: validated independent browser-local reactions; same-tab and cross-tab synchronization. No counts in authored content records.
-- `lib/reactions/use-views.ts`: validated browser-local article view totals and first-visible-card impressions. Full reader entries count once per mount; Studio previews do not count. These totals are not site-wide analytics.
+- `components/engagement/EngagementProvider.tsx`: server claps and view events (API contract §6). Holds only fresher totals returned by the visitor's own actions and their own clap state (cleared when the account changes); mutations per article are queued so an older response never overwrites a newer choice.
+- `lib/reactions/use-claps.ts`: `useClap(slug)` — own clap via `/articles/{id}/my-clap` and target-state `PUT …/clap`.
+- `lib/reactions/use-views.ts`: `useArticleStats` (server totals from the public content, `null` → "—" for drafts), `useVisibleArticleView` (card ≥20% visible, once per page view) and `usePermalinkView`. The side panel, Studio and previews send no events. Totals are views, not unique readers.
 - `components/ArticleEngagement.tsx` and `ClapCount.tsx`: shared modal/permalink toggle/sharing and read-only totals across cards. Studio preview disables actions. See `../../docs/features/claps-and-sharing.md` for the server boundary.
-- `components/saved/` and `lib/saved/model.ts`: demo-authenticated member context, validated per-account browser-local article collections, card/reader bookmark controls and `/kaydedilenler` management. The root provider owns synchronization; Studio has read-only counts. Replace the mock membership and local adapter with authenticated backend endpoints later.
+- `components/saved/`: the member's server library (collections, bookmarks), card/reader bookmark controls and `/kaydedilenler` management. Hidden articles stay listed as anonymous "erişilemiyor" records that can be removed. Studio shows read-only save totals.
+- `lib/reading/history.ts`: permalink visit recording for verified members and `useSeriesHistory` ("Son açtığın bölüm" link in series detail).
+- `components/builder/StudioInsights.tsx` (`/studio/istatistikler`): owner's per-article totals and limited member list.
 - `components/CatalogCover.tsx` and `lib/catalog-covers.ts`: shared decorative cover renderer and explicit local prototype artwork mappings; real provider matching belongs to the planned backend feature.
 - `components/Character.tsx`: original character, screen masking, and ambient wrapper.
 - `components/MonitorFace.tsx`: animated eye gaze and blinking.

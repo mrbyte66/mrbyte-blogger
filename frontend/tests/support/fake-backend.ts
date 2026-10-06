@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { memberApi, memberApiState } from "./fake-member-api";
 
 type Profile = { id: string; name: string; email: string; verified: boolean; avatar: string | null; role: "member" | "owner"; preferences: { publicationEmail: boolean; timeZone: string }; version: number };
 export type Call = { method: string; path: string; body?: Record<string, unknown>; headers: Record<string, string> };
@@ -15,6 +16,7 @@ export function fakeBackend(options: { signedIn?: Partial<Profile> | null; passw
     accounts: new Map<string, Profile>(),
     calls: [] as Call[],
     connections: [] as { provider: string; connectedAt: string }[],
+    member: memberApiState(),
   };
   if (state.profile) state.accounts.set(state.profile.email, state.profile);
   const json = (status: number, body?: unknown) => Promise.resolve(new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { "Content-Type": status >= 400 ? "application/problem+json" : "application/json" } }));
@@ -27,6 +29,8 @@ export function fakeBackend(options: { signedIn?: Partial<Profile> | null; passw
     const body = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
     state.calls.push({ method, path, body, headers: { ...(init.headers as Record<string, string> ?? {}) } });
     if (method !== "GET" && !(init.headers as Record<string, string>)?.["X-CSRF-TOKEN"]) return problem(403, "CSRF_INVALID", "Oturum doğrulanamadı");
+    const member = memberApi(state.member, method, path, body, (init.headers as Record<string, string>) ?? {}, state.profile?.verified ? state.profile.id : null, json, problem);
+    if (member) return member;
     switch (`${method} ${path}`) {
       case "GET /auth/csrf": return json(200, { token: "csrf-token", headerName: "X-CSRF-TOKEN" });
       case "GET /auth/session": return json(200, state.profile ? { authenticated: true, profile: state.profile, expiresAt: new Date(Date.now() + 3_600_000).toISOString() } : { authenticated: false });

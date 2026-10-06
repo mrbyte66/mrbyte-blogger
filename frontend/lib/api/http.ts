@@ -20,7 +20,7 @@ function csrfToken() {
 /** Login, logout and re-authentication rotate the token; the next unsafe request fetches a fresh one. */
 export function resetCsrf() { csrf = null; }
 
-type Options = { body?: unknown; ifMatch?: number | string; idempotent?: boolean; form?: FormData; signal?: AbortSignal };
+type Options = { body?: unknown; ifMatch?: number | string; ifNoneMatch?: string; idempotent?: boolean; form?: FormData; signal?: AbortSignal };
 export type ApiResponse<T> = { data: T; etag: string | null; status: number };
 
 export async function api<T = unknown>(method: string, path: string, options: Options = {}): Promise<ApiResponse<T>> {
@@ -29,6 +29,7 @@ export async function api<T = unknown>(method: string, path: string, options: Op
   if (unsafe) { const token = await csrfToken(); headers[token.headerName] = token.token; }
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.ifMatch !== undefined) headers["If-Match"] = typeof options.ifMatch === "number" ? `"${options.ifMatch}"` : options.ifMatch;
+  if (options.ifNoneMatch !== undefined) headers["If-None-Match"] = options.ifNoneMatch;
   if (options.idempotent) headers["Idempotency-Key"] = crypto.randomUUID();
   let response: Response;
   try {

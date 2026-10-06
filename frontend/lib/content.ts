@@ -1,5 +1,7 @@
 export const topics = ["Tümü", "Yazılım", "Edebiyat", "Kültür"] as const;
 export type Topic = (typeof topics)[number];
+/** Public totals from the server: visible-card/permalink views, active claps and member saves. */
+export type ArticleStats = { views: number; claps: number; saves: number };
 export type Article = {
   /** Server identity and optimistic-lock version (absent until the article is saved to the API). */
   id?: string;
@@ -11,6 +13,10 @@ export type Article = {
   seriesId?: string | null;
   /** Server-stored cover image (media URL), when one was chosen. */
   coverUrl?: string;
+  /** Public server totals (absent in Studio edit views and local drafts). */
+  stats?: ArticleStats;
+  /** Current public revision; private reading marks anchor to it. Only on permalink pages. */
+  revisionId?: string;
   slug: string;
   authored?: boolean;
   status?: "scheduled" | "draft" | "published" | "archived" | "trashed";

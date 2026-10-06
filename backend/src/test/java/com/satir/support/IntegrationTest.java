@@ -85,7 +85,7 @@ public abstract class IntegrationTest {
         // CASCADE also empties every table that references these (articles, series, themes, tokens...).
         jdbc.sql("""
                 TRUNCATE app_user, auth_rate_bucket, audit_event, spring_session, idempotency_record, outbox_job,
-                    media_asset, cover_job CASCADE
+                    media_asset, cover_job, anonymous_actor CASCADE
                 """).update();
         jdbc.sql("INSERT INTO theme_workspace (id, updated_at) VALUES (1, now()) ON CONFLICT (id) DO NOTHING").update();
         jdbc.sql("UPDATE site_settings SET author_public_name = NULL, seo = '{}', indexing_enabled = FALSE, version = 0").update();

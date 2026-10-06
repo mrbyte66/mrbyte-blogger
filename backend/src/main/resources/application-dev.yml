@@ -19,6 +19,9 @@ server:
         secure: false
 
 satir:
+  engagement:
+    actor-cookie-name: satir-actor-dev
+    actor-cookie-secure: false
   site:
     public-origin: ${PUBLIC_SITE_ORIGIN:http://localhost:3000}
   mail:

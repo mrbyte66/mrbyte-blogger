@@ -9,10 +9,12 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import com.satir.editorial.application.EditorialViews.ArticleDetail;
 import com.satir.editorial.application.EditorialViews.ArticleEdit;
+import com.satir.editorial.application.EditorialViews.ArticleStats;
 import com.satir.editorial.application.EditorialViews.ArticleSummary;
 import com.satir.editorial.application.EditorialViews.Attribution;
 import com.satir.editorial.application.EditorialViews.CategoryView;
@@ -37,10 +39,21 @@ class EditorialAssembler {
 
     private final EditorialJson json;
     private final MediaService media;
+    private final ObjectProvider<ArticleStatsSource> statsSource;
 
-    EditorialAssembler(EditorialJson json, MediaService media) {
+    EditorialAssembler(EditorialJson json, MediaService media, ObjectProvider<ArticleStatsSource> statsSource) {
         this.json = json;
         this.media = media;
+        this.statsSource = statsSource;
+    }
+
+    /** Totals for public articles only; callers never pass hidden articles, so they never contribute. */
+    Map<UUID, ArticleStats> stats(Collection<UUID> publicArticleIds) {
+        ArticleStatsSource source = statsSource.getIfAvailable();
+        if (source == null || publicArticleIds.isEmpty()) {
+            return Map.of();
+        }
+        return source.stats(publicArticleIds.stream().distinct().toList());
     }
 
     static String articlePath(String slug) {
@@ -70,11 +83,13 @@ class EditorialAssembler {
 
     List<ArticleSummary> summaries(List<ArticleRow> rows, boolean withDocument, Map<UUID, Integer> chapterNumbers) {
         Map<UUID, MediaAsset> covers = assets(rows.stream().map(ArticleRow::coverAssetId).toList());
+        Map<UUID, ArticleStats> stats = stats(rows.stream().filter(ArticleRow::isPublic).map(ArticleRow::id).toList());
         return rows.stream().map(row -> {
             ArticleDocument document = json.document(row.documentJson());
             return new ArticleSummary(row.id(), row.slug(), articlePath(row.slug()), row.title(), row.eyebrow(),
                     row.abstractText(), document.bodyPreview(200), categories(row), row.displayDate(),
                     document.readingMinutes(), mediaPublic(covers.get(row.coverAssetId())),
+                    stats.getOrDefault(row.id(), ArticleStats.ZERO),
                     withDocument ? json.articlePresentation(row.presentationJson()) : null,
                     withDocument ? document : null, chapterNumbers.get(row.id()));
         }).toList();
@@ -85,7 +100,8 @@ class EditorialAssembler {
         MediaAsset cover = row.coverAssetId() == null ? null : assets(List.of(row.coverAssetId())).get(row.coverAssetId());
         return new ArticleDetail(row.id(), row.slug(), articlePath(row.slug()), row.title(), row.eyebrow(),
                 row.abstractText(), document.bodyPreview(200), categories(row), row.displayDate(),
-                document.readingMinutes(), mediaPublic(cover), row.revisionId(), document,
+                document.readingMinutes(), mediaPublic(cover),
+                stats(List.of(row.id())).getOrDefault(row.id(), ArticleStats.ZERO), row.revisionId(), document,
                 json.articlePresentation(row.presentationJson()), json.seo(row.seoJson()), row.firstPublishedAt(),
                 row.publicModifiedAt(), series);
     }
@@ -107,10 +123,15 @@ class EditorialAssembler {
 
     List<SeriesSummary> seriesSummaries(List<SeriesRow> rows, Map<UUID, List<ChapterRow>> chapters) {
         Map<UUID, MediaAsset> covers = assets(rows.stream().map(SeriesRow::coverAssetId).toList());
+        Map<UUID, ArticleStats> stats = stats(rows.stream()
+                .flatMap(row -> publicChapters(chapters.getOrDefault(row.id(), List.of())).stream())
+                .map(ChapterRef::id).toList());
         return rows.stream().map(row -> {
             List<ChapterRef> visible = publicChapters(chapters.getOrDefault(row.id(), List.of()));
+            ArticleStats total = visible.stream().map(c -> stats.getOrDefault(c.id(), ArticleStats.ZERO))
+                    .reduce(ArticleStats.ZERO, ArticleStats::plus);
             return new SeriesSummary(row.id(), row.slug(), seriesPath(row.slug()), row.title(), row.summary(),
-                    row.ongoing(), mediaPublic(covers.get(row.coverAssetId())), visible.size(),
+                    row.ongoing(), mediaPublic(covers.get(row.coverAssetId())), visible.size(), total,
                     json.seriesPresentation(row.presentationJson()), visible);
         }).toList();
     }
@@ -118,7 +139,8 @@ class EditorialAssembler {
     SeriesDetail seriesDetail(SeriesRow row, List<ChapterRow> chapters) {
         SeriesSummary summary = seriesSummaries(List.of(row), Map.of(row.id(), chapters)).getFirst();
         return new SeriesDetail(summary.id(), summary.slug(), summary.url(), summary.title(), summary.summary(),
-                summary.ongoing(), summary.cover(), summary.chapterCount(), summary.presentation(), summary.chapters(),
+                summary.ongoing(), summary.cover(), summary.chapterCount(), summary.stats(), summary.presentation(),
+                summary.chapters(),
                 json.seo(row.seoJson()), row.publicModifiedAt());
     }
 

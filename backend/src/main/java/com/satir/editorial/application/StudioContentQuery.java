@@ -65,6 +65,17 @@ public class StudioContentQuery {
         return PageResponse.of(assembler.edits(result.items()), page, size, result.total(), sortKey);
     }
 
+    /** Every article in any state, newest display date first, for owner statistics. */
+    @Transactional(readOnly = true)
+    public PageResponse<EditorialViews.ArticleTitle> articleTitles(int page, int size) {
+        PageResponse.checkBounds(page, size);
+        PageResult<ArticleRow> result = articles.page(new ArticleRepository.Filter(null, null, null, null, null, false),
+                "a.display_date DESC, a.id DESC", page, size);
+        return PageResponse.of(result.items().stream()
+                .map(row -> new EditorialViews.ArticleTitle(row.id(), row.title(), row.status().toLowerCase(Locale.ROOT)))
+                .toList(), page, size, result.total(), "date_desc");
+    }
+
     @Transactional(readOnly = true)
     public Optional<ArticleEdit> article(UUID id) {
         return articles.find(id).map(row -> assembler.edits(List.of(row)).getFirst());

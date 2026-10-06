@@ -28,6 +28,12 @@ public class MembershipRepository {
     public record Identity(UUID userId, String provider, String subject, Instant createdAt) {
     }
 
+    public record MemberRow(UUID id, String name, String email, String status, Instant createdAt) {
+    }
+
+    public record MemberPage(List<MemberRow> items, long total) {
+    }
+
     private static final String ACCOUNT_COLUMNS =
             "id, email, display_name, avatar_key, role, status, verified_at, version FROM app_user";
 
@@ -95,6 +101,27 @@ public class MembershipRepository {
                 """)
                 .param("id", id).param("email", email).param("normalized", normalized).param("now", Timestamp.from(now))
                 .update();
+    }
+
+    /** Member accounts (never the owner or tombstones), newest first; q matches name or e-mail. */
+    public MemberPage memberPage(String query, int page, int size) {
+        String where = " WHERE role = 'MEMBER' AND status <> 'DELETED'"
+                + (query == null ? "" : " AND (display_name ILIKE :q ESCAPE '\\' OR email_normalized ILIKE :q ESCAPE '\\')");
+        String like = query == null ? null : "%" + query.toLowerCase(java.util.Locale.ROOT)
+                .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        var count = jdbc.sql("SELECT count(*) FROM app_user" + where);
+        var select = jdbc.sql("SELECT id, display_name, email, status, created_at FROM app_user" + where
+                + " ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset");
+        if (like != null) {
+            count = count.param("q", like);
+            select = select.param("q", like);
+        }
+        long total = count.query(Long.class).single();
+        List<MemberRow> rows = select.param("limit", size).param("offset", (long) page * size)
+                .query((rs, n) -> new MemberRow(rs.getObject("id", UUID.class), rs.getString("display_name"),
+                        rs.getString("email"), rs.getString("status"), rs.getTimestamp("created_at").toInstant()))
+                .list();
+        return new MemberPage(rows, total);
     }
 
     /** Removes all personal data and leaves an identity-free tombstone row. */

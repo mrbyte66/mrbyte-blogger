@@ -38,11 +38,20 @@ public final class EditorialViews {
     public record Link(UUID id, String slug, String title, String url) {
     }
 
+    /** Public totals: views, active claps and bookmarks. Never personalised. */
+    public record ArticleStats(long views, long claps, long saves) {
+        public static final ArticleStats ZERO = new ArticleStats(0, 0, 0);
+
+        public ArticleStats plus(ArticleStats other) {
+            return new ArticleStats(views + other.views, claps + other.claps, saves + other.saves);
+        }
+    }
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ArticleSummary(UUID id, String slug, String url, String title, String eyebrow,
             @com.fasterxml.jackson.annotation.JsonProperty("abstract") String abstractText, String bodyPreview,
             List<CategoryView> categories, LocalDate displayDate, int readingMinutes, MediaPublic cover,
-            ArticlePresentation presentation, ArticleDocument document, Integer chapterNumber) {
+            ArticleStats stats, ArticlePresentation presentation, ArticleDocument document, Integer chapterNumber) {
     }
 
     public record SeriesNav(UUID id, String slug, String title, int position, int total, Link previous, Link next) {
@@ -51,7 +60,7 @@ public final class EditorialViews {
     public record ArticleDetail(UUID id, String slug, String url, String title, String eyebrow,
             @com.fasterxml.jackson.annotation.JsonProperty("abstract") String abstractText, String bodyPreview,
             List<CategoryView> categories, LocalDate displayDate, int readingMinutes, MediaPublic cover,
-            UUID revisionId, ArticleDocument document, ArticlePresentation presentation, Seo seo,
+            ArticleStats stats, UUID revisionId, ArticleDocument document, ArticlePresentation presentation, Seo seo,
             Instant firstPublishedAt, Instant publicModifiedAt, SeriesNav series) {
     }
 
@@ -79,11 +88,12 @@ public final class EditorialViews {
     }
 
     public record SeriesSummary(UUID id, String slug, String url, String title, String summary, boolean ongoing,
-            MediaPublic cover, int chapterCount, SeriesPresentation presentation, List<ChapterRef> chapters) {
+            MediaPublic cover, int chapterCount, ArticleStats stats, SeriesPresentation presentation,
+            List<ChapterRef> chapters) {
     }
 
     public record SeriesDetail(UUID id, String slug, String url, String title, String summary, boolean ongoing,
-            MediaPublic cover, int chapterCount, SeriesPresentation presentation, List<ChapterRef> chapters, Seo seo,
+            MediaPublic cover, int chapterCount, ArticleStats stats, SeriesPresentation presentation, List<ChapterRef> chapters, Seo seo,
             Instant publicModifiedAt) {
     }
 
@@ -93,5 +103,13 @@ public final class EditorialViews {
     }
 
     public record SeoUrl(String path, Instant lastModified) {
+    }
+
+    /** Minimal Studio row for owner statistics. */
+    public record ArticleTitle(UUID id, String title, String status) {
+    }
+
+    /** Annotatable text of one revision of a public article: block ID (or "abstract") to text. */
+    public record RevisionText(UUID articleId, UUID revisionId, java.util.Map<String, String> anchors) {
     }
 }

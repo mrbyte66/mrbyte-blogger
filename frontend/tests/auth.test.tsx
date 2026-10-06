@@ -7,10 +7,20 @@ import { AccountPage } from "../components/auth/AccountPage";
 import { SavedProvider, useSavedLibrary } from "../components/saved/SavedProvider";
 import { SaveArticleButton } from "../components/saved/SaveArticleButton";
 import { fakeBackend, settle } from "./support/fake-backend";
+import { SiteDataValues } from "../components/data/SiteData";
+import { EngagementProvider } from "../components/engagement/EngagementProvider";
+import { createWorkspace } from "../lib/builder/model";
+import { articles } from "../lib/content";
+import type { ReactNode } from "react";
+
+const savedArticle = { ...articles[0], id: "30000000-0000-4000-8000-000000000001", stats: { views: 0, claps: 0, saves: 0 } };
+function Content({ children }: { children: ReactNode }) {
+  return <SiteDataValues content={{ articles: [savedArticle], series: [], ready: true, error: null }} workspace={{ workspace: createWorkspace(), save: () => false, ready: true, storageError: null }}>{children}</SiteDataValues>;
+}
 
 function Inspector() {
   const auth = useAuth(); const saved = useSavedLibrary();
-  return <><output data-testid="identity">{auth.session?.profile.email ?? "guest"}</output><output data-testid="records">{saved.library.entries.length}</output><button onClick={() => void auth.signOut()}>Logout</button><button onClick={() => saved.save("yapay-zeka-ile-dusunmek")}>Save</button></>;
+  return <><output data-testid="identity">{auth.session?.profile.email ?? "guest"}</output><output data-testid="records">{saved.library.entries.length}</output><button onClick={() => void auth.signOut()}>Logout</button><button onClick={() => void saved.save(savedArticle.slug)}>Save</button></>;
 }
 beforeEach(() => localStorage.clear());
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -72,10 +82,11 @@ describe("server-backed membership", () => {
   });
   it("re-reads the session when another tab changes identity and hides the prior library", async () => {
     const backend = fakeBackend({ signedIn: { email: "alice@example.com" } });
-    render(<AuthProvider><SavedProvider><Inspector /></SavedProvider></AuthProvider>);
+    backend.state.member.publicArticles.set(savedArticle.id, { slug: savedArticle.slug, stats: { views: 0, claps: 0, saves: 0 } });
+    render(<Content><AuthProvider><EngagementProvider><SavedProvider><Inspector /></SavedProvider></EngagementProvider></AuthProvider></Content>);
     await act(settle);
     expect(screen.getByTestId("identity").textContent).toBe("alice@example.com");
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); await settle(); });
     expect(screen.getByTestId("records").textContent).toBe("1");
     backend.switchTo({ id: "22222222-2222-4222-8222-222222222222", email: "bob@example.com", name: "Bob" });
     await act(async () => { window.dispatchEvent(new Event("focus")); await settle(); });

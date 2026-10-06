@@ -67,4 +67,24 @@ public final class Fixtures {
     public static String ifMatch(long version) {
         return "\"" + version + "\"";
     }
+
+    /** Creates and publishes an article as the owner; returns the published edit view. */
+    public static ApiClient.Response publish(ApiClient owner, Map<String, Object> body) {
+        ApiClient.Response created = owner.command("/api/v1/studio/articles", body, null);
+        if (created.status() != 201) {
+            throw new IllegalStateException("create failed: " + created.json());
+        }
+        ApiClient.Response published = owner.command("/api/v1/studio/articles/" + created.id() + "/actions",
+                action("publish"), created.etag());
+        if (published.status() != 200) {
+            throw new IllegalStateException("publish failed: " + published.json());
+        }
+        return published;
+    }
+
+    /** Moves a published article back to draft (it disappears from every public surface). */
+    public static ApiClient.Response unpublish(ApiClient owner, ApiClient.Response edit) {
+        ApiClient.Response current = owner.get("/api/v1/studio/articles/" + edit.id());
+        return owner.command("/api/v1/studio/articles/" + edit.id() + "/actions", action("save-draft"), current.etag());
+    }
 }

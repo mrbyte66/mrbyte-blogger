@@ -1,4 +1,4 @@
-import type { Article, Topic } from "../content";
+import type { Article, ArticleStats, Topic } from "../content";
 import type { BlogSeries } from "../series/model";
 import type { PageBlock, Theme } from "../builder/model";
 import { topicIds, topicOfId } from "./categories";
@@ -15,10 +15,10 @@ export type DocumentDto = { schemaVersion: 1; blocks: BlockDto[] };
 export type MediaDto = { id: string; url: string; width?: number; height?: number; attribution?: { provider: string; photographer?: string; photographerUrl?: string; sourceUrl?: string; licenseUrl?: string } };
 export type CategoryDto = { id: string; slug: string; name: string };
 export type PresentationDto = { width: "comfortable" | "wide"; heading: "left" | "center"; showMeta: boolean };
-export type ArticleSummaryDto = { id: string; slug: string; title: string; eyebrow: string; abstract: string; categories: CategoryDto[]; displayDate: string; readingMinutes: number; cover?: MediaDto; presentation?: PresentationDto; document?: DocumentDto };
-export type ArticleDetailDto = ArticleSummaryDto & { document: DocumentDto; presentation: PresentationDto; firstPublishedAt?: string; publicModifiedAt?: string; seo?: { title?: string; description?: string; indexable: boolean } };
+export type ArticleSummaryDto = { id: string; slug: string; title: string; eyebrow: string; abstract: string; categories: CategoryDto[]; displayDate: string; readingMinutes: number; cover?: MediaDto; stats?: ArticleStats; presentation?: PresentationDto; document?: DocumentDto };
+export type ArticleDetailDto = ArticleSummaryDto & { revisionId?: string; document: DocumentDto; presentation: PresentationDto; firstPublishedAt?: string; publicModifiedAt?: string; seo?: { title?: string; description?: string; indexable: boolean } };
 export type ArticleEditDto = { id: string; version: number; createdAt: string; status: Exclude<Article["status"], undefined>; visibility: "public" | "private"; scheduledAt?: string | null; scheduleZone?: string | null; firstPublishedAt?: string | null; title: string; slug: string; eyebrow: string; abstract: string; displayDate: string; categoryIds: string[]; document: DocumentDto; presentation: PresentationDto; seo: { title?: string | null; description?: string | null; indexable: boolean }; cover: { mode: "auto" | "manual" | "none"; assetId?: string | null; media?: MediaDto | null }; seriesPlacement: { seriesId: string } | null; readingMinutes: number };
-export type SeriesSummaryDto = { id: string; slug: string; title: string; summary: string; ongoing: boolean; cover?: MediaDto | null; chapterCount: number; presentation: { heading: "left" | "center"; chapterStyle: "cards" | "rows" }; chapters: { id: string; slug: string; title: string }[] };
+export type SeriesSummaryDto = { id: string; slug: string; title: string; summary: string; ongoing: boolean; cover?: MediaDto | null; chapterCount: number; stats?: ArticleStats; presentation: { heading: "left" | "center"; chapterStyle: "cards" | "rows" }; chapters: { id: string; slug: string; title: string }[] };
 export type SeriesEditDto = { id: string; version: number; status: BlogSeries["status"]; title: string; slug: string; summary: string; ongoing: boolean; cover: { mode: "auto" | "manual" | "none"; assetId?: string | null; media?: MediaDto | null }; presentation: { heading: "left" | "center"; chapterStyle: "cards" | "rows" }; seo: { indexable: boolean }; chapterIds: string[] };
 export type ThemeBlockDto = Record<string, unknown> & { id: string; kind: PageBlock["kind"] };
 export type ThemeDto = { schemaVersion: 1; name: string; siteName: string; accent: string; typography: Theme["typography"]; surface: Theme["surface"]; width: Theme["width"]; spacing: Theme["spacing"]; blocks: ThemeBlockDto[] };
@@ -73,6 +73,8 @@ export function articleFromPublic(dto: ArticleSummaryDto | ArticleDetailDto): Ar
     publishedAt: dto.displayDate, eyebrow: dto.eyebrow, excerpt: dto.abstract, minutes: Math.max(1, dto.readingMinutes),
     ...(dto.presentation ? { presentation: dto.presentation } : {}),
     ...(dto.cover ? { coverUrl: dto.cover.url } : {}),
+    ...(dto.stats ? { stats: dto.stats } : {}),
+    ...("revisionId" in dto && dto.revisionId ? { revisionId: dto.revisionId } : {}),
     ...fromDocument(dto.document ?? { schemaVersion: 1, blocks: [] }),
   };
 }

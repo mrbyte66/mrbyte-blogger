@@ -13,9 +13,11 @@ import "./auth.css";
 import { AuthProvider } from "../components/auth/AuthProvider";
 import { AmbientAudioProvider, AmbientAudioToggle } from "../components/audio/AmbientAudio";
 import { SavedProvider } from "../components/saved/SavedProvider";
+import { EngagementProvider } from "../components/engagement/EngagementProvider";
 import { RouteMotion } from "../components/SlideLink";
 import { SitePreferences } from "../components/SitePreferences";
 import { SiteDataProvider } from "../components/data/SiteData";
+import { PublicContentRefresh } from "../components/data/PublicContentRefresh";
 import { BackendUnavailable, loadPublicContent, siteOrigin, type PublicContent } from "../lib/api/server";
 
 // Content comes from the API on every request; nothing published is baked in at build time.
@@ -45,7 +47,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('satir:theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;document.documentElement.dataset.motion=localStorage.getItem('satir:motion')==='off'||matchMedia('(prefers-reduced-motion: reduce)').matches?'off':'on'}catch(e){}" }} /></head><body>
     {!content && <p className="site-unavailable" role="alert">Sunucuya şu anda ulaşılamıyor. İçerikler geçici olarak gösterilemiyor; biraz sonra tekrar dene.</p>}
     <SiteDataProvider site={content?.site ?? { indexingEnabled: false, canonicalOrigin: siteOrigin() }} articles={content?.articles ?? []} series={content?.series ?? []}>
-      <SitePreferences><AuthProvider><SavedProvider><AmbientAudioProvider><RouteMotion>{children}</RouteMotion><AmbientAudioToggle /></AmbientAudioProvider></SavedProvider></AuthProvider></SitePreferences>
+      <PublicContentRefresh /><SitePreferences><AuthProvider><EngagementProvider><SavedProvider><AmbientAudioProvider><RouteMotion>{children}</RouteMotion><AmbientAudioToggle /></AmbientAudioProvider></SavedProvider></EngagementProvider></AuthProvider></SitePreferences>
     </SiteDataProvider>
   </body></html>;
 }

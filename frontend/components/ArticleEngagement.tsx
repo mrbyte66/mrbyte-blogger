@@ -4,15 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import { EngagementIcon } from "./EngagementIcon";
 import { SaveArticleButton } from "./saved/SaveArticleButton";
 import { ViewCount } from "./ViewCount";
-import { useClaps } from "../lib/reactions/use-claps";
+import { useClap } from "../lib/reactions/use-claps";
+import { useArticleStats } from "../lib/reactions/use-views";
 
 export function ArticleEngagement({ slug, title, preview = false }: { slug: string; title: string; preview?: boolean }) {
-  const { ready, error, toggle, hasClapped, count } = useClaps();
+  const clap = useClap(slug, !preview);
+  const stats = useArticleStats([slug]);
   const [url, setUrl] = useState("");
   const [nativeShare, setNativeShare] = useState(false);
   const [message, setMessage] = useState("");
   const menu = useRef<HTMLDetailsElement>(null);
-  const clapped = hasClapped(slug);
+  const clapped = clap.clapped;
   useEffect(() => {
     setUrl(new URL(`/yazilar/${slug}`, window.location.origin).href);
     setNativeShare(typeof navigator.share === "function");
@@ -33,7 +35,7 @@ export function ArticleEngagement({ slug, title, preview = false }: { slug: stri
   return <section className="article-engagement" aria-label="Yazıya tepki ver ve paylaş">
     <div className="engagement-actions">
       <div className="engagement-views"><ViewCount slugs={[slug]} /><span>görüntülenme</span></div>
-      <button type="button" className="clap-button" title="Alkışlar şimdilik bu tarayıcıda saklanır." aria-pressed={clapped} aria-label={clapped ? "Alkışını geri al" : "Yazıyı alkışla"} disabled={preview || !ready} onClick={() => toggle(slug)}><EngagementIcon kind="clap" /><span>{clapped ? "Alkışladın" : "Alkışla"}</span><span className="clap-total" aria-live="polite">{error ? "—" : count([slug])}</span></button>
+      <button type="button" className="clap-button" title="Hesapsız alkışlar bu tarayıcıya bağlıdır; giriş yaptığında hesabınla alkışlarsın." aria-pressed={clapped} aria-label={clapped ? "Alkışını geri al" : "Yazıyı alkışla"} disabled={preview || !clap.ready} onClick={clap.toggle}><EngagementIcon kind="clap" /><span>{clapped ? "Alkışladın" : "Alkışla"}</span><span className="clap-total" aria-live="polite">{stats ? stats.claps : "—"}</span></button>
       <SaveArticleButton slug={slug} title={title} preview={preview} />
       {preview ? <button type="button" className="share-preview" disabled>Paylaş <EngagementIcon kind="share" /></button> : <details ref={menu} className="article-share" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); if (menu.current) { menu.current.open = false; menu.current.querySelector("summary")?.focus(); } } }}>
         <summary>Paylaş <EngagementIcon kind="share" /></summary>
@@ -47,7 +49,7 @@ export function ArticleEngagement({ slug, title, preview = false }: { slug: stri
       </details>}
     </div>
     {preview && <p className="engagement-note">Ziyaretçi tepkileri Studio’dan düzenlenemez.</p>}
-    {error && <p className="engagement-feedback" role="alert">{error}</p>}
+    {clap.error && <p className="engagement-feedback" role="alert">{clap.error}</p>}
     {message && <p className="engagement-feedback" role="status">{message}{message.startsWith("Kopyalanamadı") && <input aria-label="Paylaşılacak bağlantı" readOnly value={url} onFocus={(event) => event.currentTarget.select()} />}</p>}
   </section>;
 }

@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -65,9 +66,10 @@ public class MembershipService {
     private final AuditLog audit;
     private final IdGenerator ids;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     MembershipService(MembershipRepository members, PasswordEncoder passwords, Secrets secrets, AuthMailer mailer,
-            RateLimiter rateLimiter, AuditLog audit, IdGenerator ids, Clock clock) {
+            RateLimiter rateLimiter, AuditLog audit, IdGenerator ids, Clock clock, ApplicationEventPublisher events) {
         this.members = members;
         this.passwords = passwords;
         this.secrets = secrets;
@@ -76,6 +78,7 @@ public class MembershipService {
         this.audit = audit;
         this.ids = ids;
         this.clock = clock;
+        this.events = events;
     }
 
     // ---------------------------------------------------------------- registration & verification
@@ -265,6 +268,8 @@ public class MembershipService {
             throw new ValidationException("confirmation", "INVALID");
         }
         members.tombstone(userId, clock.instant());
+        // Library, notes, history and member claps are removed by their modules in this same transaction.
+        events.publishEvent(new AccountDeleted(userId));
         audit.record(userId, "ACCOUNT_DELETE", "USER", userId, AuditLog.Outcome.SUCCESS);
     }
 

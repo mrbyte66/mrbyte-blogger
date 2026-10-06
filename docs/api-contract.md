@@ -218,3 +218,7 @@ Frontend migration adapter'ı yalnız geçiş katmanıdır:
 - OpenAPI/generated TypeScript public DTO'ları paylaşır; frontend özel backend domain entity'sine bağımlı olmaz.
 
 Kabul: bütün tablolardaki endpoint ve schema'lar contract test matrisiyle eşlenmeden API tamamlandı sayılmaz. Özellikle permission, unavailable records, concurrent membership, same-key retry, plan iptali/iş yarışı, Google link ve private medya testleri zorunludur.
+
+## 10. Uygulama notları (2026-10-06)
+
+Sözleşmenin sessiz kaldığı yerlerde seçilen en küçük güvenli davranışlar `backend/README.md` "Implementation decisions" bölümündedir. Kısaca: kitaplık sınırı 100 koleksiyon/1000 kayıt; `Genel` ilk kullanımda oluşur; annotation `markId` istemci UUID'sidir ve hesap başına tekildir, olmayan işaretin silinmesi 404'tür; `POST /me/visits` yalnız en yeni zamanı tutar (`eventId` saklanmaz, 24 saatten eski 422); `/me/article-state` gizli yazı için yalnız `{articleId, available:false}` döner; seri özet/detaylarında `stats` (kamu bölümlerinin toplamı) eklenmiştir; doğrulanmamış hesap anonim aktör olarak alkışlar.

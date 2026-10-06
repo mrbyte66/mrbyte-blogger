@@ -8,6 +8,9 @@ server:
         secure: false
 
 satir:
+  engagement:
+    actor-cookie-name: satir-actor-dev
+    actor-cookie-secure: false
   flyway:
     mode: migrate
   site:

@@ -7,9 +7,10 @@ import { api, ApiError, describe, resetCsrf } from "../../lib/api/http";
 import { useAuth } from "./AuthProvider";
 import { AuthIcon } from "./AuthIcon";
 import { avatars, ProfileAvatar } from "./ProfileAvatar";
+import { AccountHistory } from "./AccountHistory";
 import type { AvatarStyle } from "../../lib/auth/model";
 
-const sections = [{ id: "profile", label: "Profil" }, { id: "notifications", label: "Bildirimler" }, { id: "security", label: "Güvenlik" }, { id: "connected", label: "Bağlı Hesaplar" }, { id: "sessions", label: "Oturumlar" }, { id: "delete", label: "Hesabı Sil" }] as const;
+const sections = [{ id: "profile", label: "Profil" }, { id: "notifications", label: "Bildirimler" }, { id: "history", label: "Okuma Geçmişi" }, { id: "security", label: "Güvenlik" }, { id: "connected", label: "Bağlı Hesaplar" }, { id: "sessions", label: "Oturumlar" }, { id: "delete", label: "Hesabı Sil" }] as const;
 type Section = typeof sections[number]["id"];
 type SessionInfo = { id: string; current: boolean; deviceLabel: string; createdAt: string; lastSeenAt: string; expiresAt: string };
 const formatTime = (value: string | number) => new Date(value).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" });
@@ -76,11 +77,12 @@ export function AccountPage() {
               ? <button type="button" disabled={busy} onClick={() => sensitive(async () => { await api("DELETE", "/me/connections/google"); await auth.refresh(); auth.notify("Google bağlantısı kaldırıldı"); })}>Bağlantıyı kaldır</button>
               : <button type="button" disabled={busy} onClick={() => sensitive(async () => { const { data } = await api<{ authorizationUrl: string }>("POST", "/me/connections/google/start", { body: { returnTo: "/hesap" } }); window.location.assign(data.authorizationUrl); })}>Google hesabını bağla</button>}</div></>}
             {active === "sessions" && <><h2>Oturumlar</h2><p>Hesabına açık oturumlar. Tanımadığın bir oturumu kapatabilirsin.</p>{!sessions ? <p role="status">Oturumlar yükleniyor…</p> : sessions.map(item => <div className="account-session" key={item.id}><strong>{item.deviceLabel} {item.current && <span>Bu oturum</span>}</strong><p>Açılış: {formatTime(item.createdAt)} · Son etkinlik: {formatTime(item.lastSeenAt)}</p><p>Bitiş: {formatTime(item.expiresAt)}</p><button className="account-outline" type="button" disabled={busy} onClick={() => sensitive(async () => { await api("DELETE", `/me/sessions/${item.id}`); if (item.current) await afterSignOutBySever("Bu oturum kapatıldı"); else await loadSessions(); })}>{item.current ? "Bu oturumu kapat" : "Oturumu kapat"}</button></div>)}{sessions && sessions.length > 1 && <button className="account-outline" type="button" disabled={busy} onClick={() => sensitive(async () => { await api("POST", "/me/sessions/revoke-others"); await loadSessions(); auth.notify("Diğer oturumlar kapatıldı"); })}>Diğer bütün oturumları kapat</button>}</>}
+            {active === "history" && <AccountHistory />}
             {active === "delete" && <><h2>Hesabı Sil</h2><p>Aşağıdaki alandan hesabını kalıcı olarak kaldırabilirsin.</p></>}
           </section>
           {notice && <p role="status" className="account-notice">{notice}</p>}
           {auth.error && <p role="alert" className="auth-field-error">{auth.error}</p>}
-          {profile.role !== "owner" && <section className="account-delete" ref={deletion}><h2>Hesabı sil</h2><p>Hesabın, giriş yöntemlerin, tercihlerin ve oturumların kaldırılır. Bu tarayıcıdaki yerel kitaplık ve notlar ayrıca tarayıcıdan silinebilir.</p><button className="account-danger" type="button" onClick={() => { setConfirmation(""); setDeleting(true); }}>Hesabı sil</button></section>}
+          {profile.role !== "owner" && <section className="account-delete" ref={deletion}><h2>Hesabı sil</h2><p>Hesabın, giriş yöntemlerin, tercihlerin, oturumların, kitaplığın, notların, okuma geçmişin ve alkışların kaldırılır. Bu tarayıcıda hesapsız tuttuğun notlar ayrıca tarayıcıdan silinebilir.</p><button className="account-danger" type="button" onClick={() => { setConfirmation(""); setDeleting(true); }}>Hesabı sil</button></section>}
         </div>
       </div>}
     </div>

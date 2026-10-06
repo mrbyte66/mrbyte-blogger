@@ -1,0 +1,75 @@
+# Production edge (deployment-vps.md §1). Only this container publishes ports (80/443).
+# SITE_HOST is the single canonical host; SITE_ALT_HOST (e.g. www.) answers with a 308 to it.
+# /api/** goes to Spring Boot unchanged; everything else to Next.js. Actuator is never routed.
+{
+	email {$ACME_EMAIL}
+	# Caddy is the edge: client-supplied X-Forwarded-* headers are not trusted (no trusted_proxies).
+}
+
+{$SITE_HOST} {
+	encode zstd gzip
+
+	header {
+		# Start short; raise (and consider includeSubDomains) only after every host serves HTTPS.
+		Strict-Transport-Security "max-age=86400"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Studio previews frame the site itself only.
+		Content-Security-Policy "frame-ancestors 'self'"
+		-Server
+	}
+
+	# Owner image uploads (10 MiB file + multipart overhead).
+	@upload path /api/v1/studio/media
+	handle @upload {
+		request_body {
+			max_size 12MB
+		}
+		reverse_proxy backend:8080
+	}
+
+	handle /api/* {
+		# Largest JSON body: an article document (1 MiB) plus metadata.
+		request_body {
+			max_size 2MB
+		}
+		reverse_proxy backend:8080 {
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 60s
+			}
+		}
+	}
+
+	handle {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy frontend:3000 {
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 60s
+			}
+		}
+	}
+
+	log {
+		output stdout
+		# Never log tokens from links (verification/reset), OAuth codes or cookies.
+		format filter {
+			request>uri query {
+				delete token
+				delete code
+				delete state
+			}
+			request>headers>Cookie delete
+			request>headers>Authorization delete
+			request>headers>X-Csrf-Token delete
+			resp_headers>Set-Cookie delete
+		}
+	}
+}
+
+{$SITE_ALT_HOST} {
+	redir https://{$SITE_HOST}{uri} 308
+}

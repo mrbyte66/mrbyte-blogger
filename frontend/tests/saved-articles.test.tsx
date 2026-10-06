@@ -1,139 +1,136 @@
 import type { ReactNode } from "react";
-import { AuthProvider, useAuth } from "../components/auth/AuthProvider";
-import { fakeBackend, settle } from "./support/fake-backend";
-import { MemorySite, siteWrapper } from "./support/memory-site";
-import { act, fireEvent, render as baseRender, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render as baseRender, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AuthProvider, useAuth } from "../components/auth/AuthProvider";
+import { SiteDataValues, type ContentState } from "../components/data/SiteData";
+import { EngagementProvider } from "../components/engagement/EngagementProvider";
 import { SavedLibraryPage } from "../components/saved/SavedLibraryPage";
 import { ArticleCard } from "../components/ArticleCard";
-import { SavedProvider as LibraryProvider, useSavedLibrary } from "../components/saved/SavedProvider";
+import { SavedProvider } from "../components/saved/SavedProvider";
 import { SaveArticleButton } from "../components/saved/SaveArticleButton";
-import { articles } from "../lib/content";
-import { createCollection, deleteCollection, emptyLibrary, parseLibrary, saveArticle, savedKey as baseSavedKey } from "../lib/saved/model";
+import { createWorkspace } from "../lib/builder/model";
+import { articles as fixtures, type Article } from "../lib/content";
+import { fakeBackend, settle } from "./support/fake-backend";
+import { personalOf } from "./support/fake-member-api";
 
-const savedKey = `${baseSavedKey}:test-member`;
-const Site = siteWrapper(new MemorySite());
-function SavedProvider({ children }: { children: ReactNode }) { return <Site><AuthProvider><LibraryProvider>{children}</LibraryProvider></AuthProvider></Site>; }
-/** Renders and waits until the server session (fake backend) has been read. */
-async function render(ui: React.ReactElement) { const result = baseRender(ui); await act(settle); return result; }
+const articles: Article[] = fixtures.slice(0, 3).map((article, index) => ({ ...article, id: `20000000-0000-4000-8000-00000000000${index + 1}`, status: "published", stats: { views: 0, claps: 0, saves: 0 } }));
+let backend: ReturnType<typeof fakeBackend>;
+
+function Site({ children }: { children: ReactNode }) {
+  const content: ContentState = { articles, series: [], ready: true, error: null };
+  return <SiteDataValues content={content} workspace={{ workspace: createWorkspace(), save: () => false, ready: true, storageError: null }}>
+    <AuthProvider><EngagementProvider><SavedProvider>{children}</SavedProvider></EngagementProvider></AuthProvider>
+  </SiteDataValues>;
+}
+async function render(ui: ReactNode) { const result = baseRender(<Site>{ui}</Site>); await act(settle); return result; }
 async function click(element: HTMLElement) { await act(async () => { fireEvent.click(element); await settle(); }); }
+function SignOut() { const { signOut } = useAuth(); return <button onClick={() => void signOut()}>Çıkış</button>; }
+const me = () => personalOf(backend.state.member, "member-1");
+const bookmarks = () => me().bookmarks;
+const collections = () => me().collections;
+
 beforeEach(() => {
- localStorage.clear();
- fakeBackend({ signedIn: { id: "test-member", name: "Üye", email: "member@example.com" } });
+  localStorage.clear();
+  backend = fakeBackend({ signedIn: { id: "member-1", name: "Üye", email: "member@example.com" } });
+  for (const article of articles) backend.state.member.publicArticles.set(article.id!, { slug: article.slug, stats: { views: 0, claps: 0, saves: 0 } });
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-function Controls() {
-  const { library, deleteCategory } = useSavedLibrary();
-  const { signOut } = useAuth();
-  return <><button onClick={() => void signOut()}>Misafir</button><button onClick={() => deleteCategory(library.collections[1]?.id)}>Kategori sil</button></>;
-}
-describe("private member collection model", () => {
-  it("uses one record per article and moves deleted categories to the default", async () => {
-    const initial = saveArticle(emptyLibrary(), articles[0].slug);
-    const categorized = saveArticle(createCollection(initial, "Türk edebiyatı", "literature"), articles[0].slug, "literature");
-    expect(categorized.entries).toEqual([{ slug: articles[0].slug, collectionId: "literature" }]);
-    expect(deleteCollection(categorized, "literature").entries).toEqual(initial.entries);
-    expect(() => deleteCollection(initial, "saved")).toThrow();
-    expect(() => createCollection(categorized, "TÜRK EDEBİYATI", "other")).toThrow();
-  });
-  it("migrates the default name without losing records or custom collection references", async () => {
-    const legacy = { version: 1, collections: [{ id: "saved", name: "Kaydedilenler" }, { id: "general", name: "Genel" }], entries: [{ slug: articles[0].slug, collectionId: "general" }] };
-    const migrated = parseLibrary(JSON.stringify(legacy));
-    expect(migrated.collections).toEqual([{ id: "saved", name: "Genel" }, { id: "general", name: "Genel (2)" }]);
-    expect(migrated.entries).toEqual(legacy.entries);
-    expect(parseLibrary(JSON.stringify(migrated))).toEqual(migrated);
-  });
-  it("preserves card order when moving an existing record", async () => {
-    let library = saveArticle(saveArticle(emptyLibrary(), articles[0].slug), articles[1].slug);
-    library = createCollection(library, "Yapay Zeka", "ai");
-    const moved = saveArticle(library, articles[0].slug, "ai");
-    expect(moved.entries.map((entry) => entry.slug)).toEqual(library.entries.map((entry) => entry.slug));
-  });
-  it("rejects duplicate entries and orphan categories", async () => {
-    const saved = saveArticle(emptyLibrary(), articles[0].slug);
-    expect(() => parseLibrary(JSON.stringify({ ...saved, entries: [...saved.entries, ...saved.entries] }))).toThrow();
-    expect(() => parseLibrary(JSON.stringify({ ...saved, entries: [{ slug: articles[0].slug, collectionId: "missing" }] }))).toThrow();
-  });
-});
+
 describe("member bookmark controls", () => {
-  it("saves without opening the article, persists categories and supports removal", async () => {
+  it("saves to Genel without opening the article, moves, creates collections and removes", async () => {
     const open = vi.fn();
-    const { container, unmount } = await render(<SavedProvider><ArticleCard article={articles[0]} onOpen={open} /></SavedProvider>);
-    fireEvent.click(screen.getByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` }));
+    const { container } = await render(<ArticleCard article={articles[0]} onOpen={open} />);
+    await click(screen.getByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` }));
     expect(open).not.toHaveBeenCalled();
     expect(container.querySelector("button button")).toBeNull();
-    expect(JSON.parse(localStorage.getItem(savedKey)!).entries[0].collectionId).toBe("saved");
-    expect(screen.queryByLabelText("Koleksiyon adı")).toBeNull();
+    const genel = collections().find((c) => c.isDefault)!;
+    expect(genel.name).toBe("Genel");
+    expect(bookmarks()).toEqual([expect.objectContaining({ articleId: articles[0].id, collectionId: genel.id })]);
+    expect(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` }).textContent).toContain("1");
+
     fireEvent.click(screen.getByRole("button", { name: "Yeni koleksiyon" }));
     expect(document.activeElement).toBe(screen.getByLabelText("Koleksiyon adı"));
     fireEvent.change(screen.getByLabelText("Koleksiyon adı"), { target: { value: "Kişisel gelişim" } });
-    fireEvent.click(screen.getByRole("button", { name: "Oluştur ve taşı" }));
-    const data = parseLibrary(localStorage.getItem(savedKey));
-    expect(data.entries).toHaveLength(1);
-    expect(data.collections[1].name).toBe("Kişisel gelişim");
-    expect(data.entries[0].collectionId).toBe(data.collections[1].id);
-    fireEvent.click(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` }));
-    fireEvent.change(screen.getByLabelText("Koleksiyon", { exact: true }), { target: { value: "saved" } });
-    expect(parseLibrary(localStorage.getItem(savedKey)).entries[0].collectionId).toBe(data.collections[1].id);
-    fireEvent.click(screen.getByRole("button", { name: "Taşı" }));
-    expect(parseLibrary(localStorage.getItem(savedKey)).entries[0].collectionId).toBe("saved");
-    unmount();
-    await render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} /><Controls /></SavedProvider>);
-    await waitFor(() => expect(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` })).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Kategori sil" }));
-    expect(parseLibrary(localStorage.getItem(savedKey)).entries[0].collectionId).toBe("saved");
-    fireEvent.click(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` }));
-    fireEvent.click(screen.getByRole("button", { name: "Kaydı kaldır" }));
-    expect(parseLibrary(localStorage.getItem(savedKey)).entries).toEqual([]);
-    await click(screen.getByRole("button", { name: "Misafir" }));
-    expect(screen.queryByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` })).toBeNull();
-    expect(screen.getByRole("button", { name: `Giriş yap ve yazıyı kaydet: ${articles[0].title}` })).toBeTruthy();
+    await click(screen.getByRole("button", { name: "Oluştur ve taşı" }));
+    const custom = collections().find((c) => c.name === "Kişisel gelişim")!;
+    expect(bookmarks()[0].collectionId).toBe(custom.id);
+    expect(backend.state.calls.find((c) => c.method === "POST" && c.path === "/me/collections")?.headers["Idempotency-Key"]).toBeTruthy();
+
+    await click(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` }));
+    fireEvent.change(screen.getByLabelText("Koleksiyon", { exact: true }), { target: { value: genel.id } });
+    expect(bookmarks()[0].collectionId).toBe(custom.id);
+    await click(screen.getByRole("button", { name: "Taşı" }));
+    expect(bookmarks()[0].collectionId).toBe(genel.id);
+
+    await click(screen.getByRole("button", { name: `Kaydı yönet: ${articles[0].title}` }));
+    await click(screen.getByRole("button", { name: "Kaydı kaldır" }));
+    expect(bookmarks()).toEqual([]);
+    expect(localStorage.length).toBe(0);
   });
-  it("preserves malformed data and reports write failures", async () => {
-    localStorage.setItem(savedKey, "broken");
-    await render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} /></SavedProvider>);
-    fireEvent.click(screen.getByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` }));
-    expect(localStorage.getItem(savedKey)).toBe("broken");
-    expect(screen.getByRole("alert")).toBeTruthy();
-    act(() => { localStorage.removeItem(savedKey); window.dispatchEvent(new StorageEvent("storage", { key: savedKey })); });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("quota", "QuotaExceededError"); });
-    fireEvent.click(screen.getByRole("button", { name: "Yeni koleksiyon" }));
-    fireEvent.change(screen.getByLabelText("Koleksiyon adı"), { target: { value: "Başka kategori" } });
-    fireEvent.click(screen.getByRole("button", { name: "Oluştur ve taşı" }));
-    expect(screen.getByRole("alert").textContent).toContain("Kaydedilemedi");
-    expect(localStorage.getItem(savedKey)).toBeNull();
+
+  it("reports server failures without pretending the record was saved", async () => {
+    await render(<SaveArticleButton slug={articles[0].slug} title={articles[0].title} />);
+    backend.state.member.publicArticles.delete(articles[0].id!);
+    await click(screen.getByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` }));
+    expect(screen.getByRole("alert").textContent).toContain("Bulunamadı");
+    expect(bookmarks()).toEqual([]);
+    expect(screen.getByRole("button", { name: `Yazıyı kaydet: ${articles[0].title}` }).getAttribute("aria-pressed")).toBe("false");
   });
-  it("never allows Studio preview to save", async () => {
-    await render(<SavedProvider><SaveArticleButton slug={articles[0].slug} title={articles[0].title} preview /></SavedProvider>);
+
+  it("never allows Studio preview to save and asks guests to sign in", async () => {
+    await render(<SaveArticleButton slug={articles[0].slug} title={articles[0].title} preview />);
     expect(screen.queryByRole("button")).toBeNull();
-    expect(localStorage.getItem(savedKey)).toBeNull();
+    backend.switchTo(null);
+    baseRender(<Site><SaveArticleButton slug={articles[1].slug} title={articles[1].title} /></Site>);
+    await act(settle);
+    expect(screen.getByRole("button", { name: `Giriş yap ve yazıyı kaydet: ${articles[1].title}` })).toBeTruthy();
+    expect(backend.state.calls.filter((c) => c.path.startsWith("/me/bookmarks") && c.method !== "GET")).toEqual([]);
   });
 });
 
-
-describe("private library guest preview", () => {
-  it("hides saved articles and collection names when membership preview is disabled", async () => {
-    localStorage.setItem(savedKey, JSON.stringify(saveArticle(createCollection(emptyLibrary(), "Özel kategori", "private"), articles[0].slug, "private")));
-    await render(<SavedProvider><SavedLibraryPage /><Controls /></SavedProvider>);
-    expect(screen.getByRole("button", { name: "Özel kategori 1" })).toBeTruthy();
-    await click(screen.getByRole("button", { name: "Misafir" }));
-    expect(screen.queryByRole("button", { name: "Özel kategori 1" })).toBeNull();
+describe("library page", () => {
+  it("lists, searches and sorts saved writing; signing out hides everything", async () => {
+    me().collections.push({ id: "c-default", name: "Genel", isDefault: true, version: 0 }, { id: "c-private", name: "Özel koleksiyon", isDefault: false, version: 0 });
+    me().bookmarks.push(
+      { articleId: articles[1].id!, collectionId: "c-private", savedAt: "2026-10-01T10:00:00Z", version: 0 },
+      { articleId: articles[0].id!, collectionId: "c-default", savedAt: "2026-10-02T10:00:00Z", version: 0 });
+    const { container } = await render(<><SavedLibraryPage /><SignOut /></>);
+    expect(screen.getByRole("button", { name: "Özel koleksiyon 1" })).toBeTruthy();
+    const order = () => Array.from(container.querySelectorAll(".saved-item .article-card-title")).map((el) => el.textContent);
+    expect(order()).toEqual([articles[1].title, articles[0].title]);
+    fireEvent.change(screen.getByLabelText("Sıralama"), { target: { value: "title" } });
+    expect(order()).toEqual([articles[0].title, articles[1].title].sort((a, b) => a.localeCompare(b, "tr")));
+    fireEvent.change(screen.getByLabelText("Kitaplıkta ara"), { target: { value: "no-match-1234" } });
+    expect(screen.getByRole("heading", { name: "Aradığın satır henüz burada değil." })).toBeTruthy();
+    await click(screen.getByRole("button", { name: "Çıkış" }));
+    expect(screen.queryByRole("button", { name: "Özel koleksiyon 1" })).toBeNull();
     expect(screen.queryByText(articles[0].title)).toBeNull();
-    expect(parseLibrary(localStorage.getItem(savedKey)).entries).toHaveLength(1);
   });
-});
 
-it("searches the member library and sorts explicitly without changing stored order", async () => {
- const library = saveArticle(saveArticle(emptyLibrary(), articles[0].slug), articles[1].slug);
- localStorage.setItem(savedKey, JSON.stringify(library));
- const { container } = await render(<SavedProvider><SavedLibraryPage /></SavedProvider>);
- fireEvent.change(screen.getByLabelText("Kitaplıkta ara"), { target: { value: articles[0].title } });
- expect(container.querySelectorAll(".saved-item")).toHaveLength(1);
- fireEvent.change(screen.getByLabelText("Kitaplıkta ara"), { target: { value: "no-match-1234" } });
- expect(screen.getByRole("heading", { name: "Aradığın satır henüz burada değil." })).toBeTruthy();
- fireEvent.click(screen.getByRole("button", { name: "Aramayı temizle" }));
- fireEvent.change(screen.getByLabelText("Sıralama"), { target: { value: "title" } });
- const titles = Array.from(container.querySelectorAll(".saved-item .article-card-title")).map(el => el.textContent);
- expect(titles).toEqual([articles[0].title, articles[1].title].sort((a,b) => a.localeCompare(b,"tr")));
- expect(parseLibrary(localStorage.getItem(savedKey)).entries).toEqual(library.entries);
+  it("keeps hidden writing as an anonymous record that can be removed", async () => {
+    me().collections.push({ id: "c-default", name: "Genel", isDefault: true, version: 0 });
+    me().bookmarks.push({ articleId: articles[2].id!, collectionId: "c-default", savedAt: "2026-10-01T10:00:00Z", version: 0 });
+    backend.state.member.publicArticles.delete(articles[2].id!);
+    await render(<SavedLibraryPage />);
+    expect(screen.getByRole("heading", { name: "Yazı şu anda erişilemiyor" })).toBeTruthy();
+    expect(screen.queryByText(articles[2].title)).toBeNull();
+    await click(screen.getByRole("button", { name: "Kaydı kaldır" }));
+    expect(bookmarks()).toEqual([]);
+  });
+
+  it("renames and deletes a custom collection; its writing returns to Genel", async () => {
+    me().collections.push({ id: "c-default", name: "Genel", isDefault: true, version: 0 }, { id: "c-old", name: "Eski ad", isDefault: false, version: 0 });
+    me().bookmarks.push({ articleId: articles[0].id!, collectionId: "c-old", savedAt: "2026-10-01T10:00:00Z", version: 0 });
+    await render(<SavedLibraryPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Eski ad 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Koleksiyonu düzenle" }));
+    fireEvent.change(screen.getByLabelText("Koleksiyon adı"), { target: { value: "Yeni ad" } });
+    await click(screen.getByRole("button", { name: "Kaydet" }));
+    expect(collections().find((c) => c.id === "c-old")?.name).toBe("Yeni ad");
+    fireEvent.click(screen.getByRole("button", { name: "Yeni ad 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Koleksiyonu düzenle" }));
+    await click(screen.getByRole("button", { name: "Koleksiyonu kaldır" }));
+    expect(collections().map((c) => c.id)).toEqual(["c-default"]);
+    expect(bookmarks()[0].collectionId).toBe("c-default");
+  });
 });

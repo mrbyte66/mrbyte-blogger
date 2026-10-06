@@ -220,6 +220,21 @@ public class ArticleRepository {
                 .query(ArticleRepository::map).list());
     }
 
+    /** Abstract and body of one revision, only if it belongs to {@code articleId}. */
+    public Optional<RevisionContent> revision(UUID articleId, UUID revisionId) {
+        return jdbc.sql("""
+                SELECT id, article_id, abstract, document::text AS document FROM article_revision
+                WHERE id = :revision AND article_id = :article
+                """)
+                .param("revision", revisionId).param("article", articleId)
+                .query((rs, n) -> new RevisionContent(rs.getObject("id", UUID.class), rs.getObject("article_id", UUID.class),
+                        rs.getString("abstract"), rs.getString("document")))
+                .optional();
+    }
+
+    public record RevisionContent(UUID id, UUID articleId, String abstractText, String documentJson) {
+    }
+
     public boolean categoryInUse(UUID categoryId) {
         return jdbc.sql("SELECT EXISTS (SELECT 1 FROM article_category WHERE category_id = :id)")
                 .param("id", categoryId).query(Boolean.class).single();
