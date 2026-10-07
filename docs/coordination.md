@@ -194,3 +194,9 @@ Kullanıcı yönü kesinleştirdi: ayrı Next.js/React/TypeScript frontend, Java
 Önerilen temel: aynı origin reverse proxy, Spring Session JDBC, revision'lı içerik ve ayrı kart tarihi/gerçek yayın anı, transaction içinde planlı yayın+outbox, owner-only özel erişim, V1'de no-store içerik/medya ve server-rendered SEO. Üyelik Studio/yazarlık yetkisi vermez. Slug kimlik yerine geçmez; kişisel veriler oturum sahibine sınırlandırılır.
 
 Açık kararlar: roadmap/özellik belgeleri arasında rozet ve ileri raporların V1/V2 konumu; yayındaki Save ve seri explicit activation ayrıntıları; yeniden yayın maili; anonim clap kimlik süresi/birleştirme; veri saklama süreleri; domain/mail/Google/kapak/backup sağlayıcı ayarları. Mimari belgesindeki Ü1–Ü11 varsayımları uygulanmadan önce görünür biçimde değerlendirilmelidir. Eski series/builder belgelerindeki difficulty ve yalnız fixture içerik ifadeleri güncel kodla uyuşmuyor; difficulty geri eklenmeyecek. Yeni gerçek backend tamamlanmış olarak işaretlenmedi.
+
+## 2026-10-07 — Kitaplık hesap geçişi (#5)
+
+Kitaplık iç görünümü hesap kimliğine göre yeniden kurulur. Başka hesaba geçiş ve çıkış/yeniden giriş koleksiyon formunu, seçili koleksiyonu, aramayı ve sıralamayı sıfırlar; kalıcı kayıtlar korunur. Aynı hesabın profil güncellemesi yeniden kurulum tetiklemez.
+
+İki regresyon senaryosu önce eski kodda başarısız oldu; düzeltme sonrası 32 dosyada 200 test, typecheck ve production build geçti. Bağımsız kontrol sonucu GitHub issue #5 üzerinde tutulur.

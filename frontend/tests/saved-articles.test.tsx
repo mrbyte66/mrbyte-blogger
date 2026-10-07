@@ -134,3 +134,39 @@ it("searches the member library and sorts explicitly without changing stored ord
  expect(titles).toEqual([articles[0].title, articles[1].title].sort((a,b) => a.localeCompare(b,"tr")));
  expect(parseLibrary(localStorage.getItem(savedKey)).entries).toEqual(library.entries);
 });
+
+it.each(["account-switch", "logout-and-return"])("clears private library drafts and filters on %s", async (transition) => {
+  const aliceLibrary = saveArticle(createCollection(emptyLibrary(), "Alice özel koleksiyonu", "alice-private"), articles[0].slug, "alice-private");
+  const bobLibrary = saveArticle(emptyLibrary(), articles[1].slug);
+  const bobKey = `${baseSavedKey}:bob-member`;
+  const aliceSession = JSON.parse(localStorage.getItem(sessionKey)!);
+  const bobProfile = { ...aliceSession.profile, id: "bob-member", name: "Bob", email: "bob@example.com" };
+  const profiles = JSON.stringify([aliceSession.profile, bobProfile]);
+  localStorage.setItem(profilesKey, profiles);
+  localStorage.setItem(savedKey, JSON.stringify(aliceLibrary));
+  localStorage.setItem(bobKey, JSON.stringify(bobLibrary));
+  render(<SavedProvider><SavedLibraryPage /><Controls /></SavedProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Alice özel koleksiyonu 1" }));
+  fireEvent.change(screen.getByLabelText("Kitaplıkta ara"), { target: { value: articles[0].title } });
+  fireEvent.change(screen.getByLabelText("Sıralama"), { target: { value: "title" } });
+  fireEvent.click(screen.getByRole("button", { name: "Koleksiyonu düzenle" }));
+  expect(screen.getByLabelText("Koleksiyon adı")).toHaveProperty("value", "Alice özel koleksiyonu");
+  if (transition === "logout-and-return") {
+    fireEvent.click(screen.getByRole("button", { name: "Misafir" }));
+    expect(screen.queryByLabelText("Koleksiyon adı")).toBeNull();
+  }
+  act(() => {
+    const profile = transition === "account-switch" ? bobProfile : aliceSession.profile;
+    localStorage.setItem(sessionKey, JSON.stringify({ ...aliceSession, profile }));
+    window.dispatchEvent(new StorageEvent("storage", { key: sessionKey }));
+  });
+  const expectedArticle = transition === "account-switch" ? articles[1] : articles[0];
+  await waitFor(() => expect(screen.getByText(expectedArticle.title)).toBeTruthy());
+  expect(screen.queryByLabelText("Koleksiyon adı")).toBeNull();
+  expect(screen.getByLabelText("Kitaplıkta ara")).toHaveProperty("value", "");
+  expect(screen.getByLabelText("Sıralama")).toHaveProperty("value", "saved");
+  expect(screen.getByRole("button", { name: "Tümü 1" }).getAttribute("aria-pressed")).toBe("true");
+  expect(parseLibrary(localStorage.getItem(savedKey))).toEqual(aliceLibrary);
+  expect(parseLibrary(localStorage.getItem(bobKey))).toEqual(bobLibrary);
+  expect(localStorage.getItem(profilesKey)).toBe(profiles);
+});
