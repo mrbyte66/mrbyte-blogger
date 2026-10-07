@@ -97,7 +97,7 @@ Claude tarafında yaklaşık 20 dakikalık yerel tarama planlandığı bildirild
 
 ## Panoda sorumlu ve görev devri
 
-Satir Project’inde `Aktif sorumlu` (Codex/Claude/Kullanıcı; yeni ekip üyesi için seçenek eklenir), `Kodlayıcı` ve `Testçi` alanları görünürdür. Kodlayıcı/Testçi metin alanlarında gerekirse çalışma örneği de belirtilir. GitHub Assignee gerçek hesap olarak kalır; ajan sorumluluğu bu alanlarda ve etiketlerde tutulur.
+Satir Project’inde `Aktif sorumlu` (Codex/Claude/Kullanıcı; yeni ekip üyesi için seçenek eklenir), `Kodlayıcı` ve `Testçi` alanları bulunur. İş Akışı kartlarında yalnız başlık, bağlı PR ve Aktif sorumlu gösterilir; kodlayıcı/testçi ve etiketler issue ayrıntılarında korunur, filtrelemeye devam eder. Kodlayıcı/Testçi metin alanlarında gerekirse çalışma örneği de belirtilir. GitHub Assignee gerçek hesap olarak kalır; ajan sorumluluğu bu alanlarda ve etiketlerde tutulur.
 
 - Todo: kodlayıcı ve varsa testçi planı yazılır; Aktif sorumlu boş kalır. In Progress: işi gerçekten alan kodlayıcı aktif sorumludur. In Test: testi devralan testçi aktif sorumludur. In Test tek başına testin başladığı anlamına gelmez; devir yorumunda başladı/bekliyor belirtilir. Done’da aktif sorumlu temizlenir, kodlayıcı/testçi geçmişi korunur.
 - Kullanıcının “#N testini sen yap” demesi devir için yeterlidir. Yeni testçi Testçi/Aktif sorumlu alanlarını ve `test:*` etiketini günceller; önceki testçiye işin devredildiğini GitHub yorumuyla kaydeder. Başka sağlayıcı veya ayrı bağımsız çalışma örneği seçilebilir; uygulayan örnek kendi işine bağımsız PASS veremez.
