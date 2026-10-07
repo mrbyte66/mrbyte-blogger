@@ -17,7 +17,7 @@ describe("sign-in and sign-up pages (#34)", () => {
     fakeBackend({ signedIn: { email: "okur@example.test" } });
     visit("/giris?google=signed_in");
     render(<AuthProvider><AuthPage initial="login" /></AuthProvider>);
-    await waitFor(() => expect(routing.replace).toHaveBeenCalledWith("/kaydedilenler"));
+    await waitFor(() => expect(routing.replace).toHaveBeenCalledWith("/"));
     expect(screen.queryByRole("button", { name: /giriş yap/i })).toBeNull();
     expect(window.location.search).toBe("");
   });
@@ -26,7 +26,7 @@ describe("sign-in and sign-up pages (#34)", () => {
     fakeBackend({ signedIn: { email: "okur@example.test" } });
     visit("/uye-ol");
     render(<AuthProvider><AuthPage initial="register" /></AuthProvider>);
-    await waitFor(() => expect(routing.replace).toHaveBeenCalledWith("/kaydedilenler"));
+    await waitFor(() => expect(routing.replace).toHaveBeenCalledWith("/"));
   });
 
   it("stay on the form with the error when Google fails", async () => {

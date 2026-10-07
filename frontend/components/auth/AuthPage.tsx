@@ -8,8 +8,8 @@ import { themeAppearance } from "../../lib/builder/appearance";
 import { AuthCard } from "./AuthCard";
 import { useAuth } from "./AuthProvider";
 
-/** Where the sign-in and sign-up pages send a signed-in visitor: after a password login, a Google return or a revisit. */
-export const AUTH_PAGE_DESTINATION = "/kaydedilenler";
+/** Where the sign-in and sign-up pages send a signed-in visitor (password login, Google return or revisit): the home page. */
+export const AUTH_PAGE_DESTINATION = "/";
 
 export function AuthPage({ initial = "login" }: { initial?: AuthScreen }) {
   const router = useRouter(); const { workspace } = useWorkspace(); const appearance = themeAppearance(workspace.applied);
