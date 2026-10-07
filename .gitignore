@@ -13,4 +13,5 @@ deploy/.env
 
 # Local dev credentials written by setup steps
 deploy/*.local.txt
+deploy/*.local.env
 backend/data/
