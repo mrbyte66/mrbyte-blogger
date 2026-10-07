@@ -1,4 +1,5 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
+import { renderWithSite as render } from "./support/memory-site";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CatalogCover } from "../components/CatalogCover";
 import { SeriesCatalog } from "../components/series/SeriesCatalog";

@@ -14,7 +14,8 @@ export type ReadingMark = {
   note: string;
   createdAt: string;
 };
-export type ReadingDocument = { version: 1; articleId: string; marks: ReadingMark[] };
+/** {@code importId} is remembered once a guest import starts, so a retry returns the same server result. */
+export type ReadingDocument = { version: 1; articleId: string; marks: ReadingMark[]; importId?: string };
 export const maxMarks = 200;
 export const maxNoteLength = 4000;
 const maxQuoteLength = 12_000;
@@ -52,7 +53,8 @@ export function parseReadingDocument(raw: string, articleId: string): ReadingDoc
     if (!record(value) || value.version !== 1 || value.articleId !== articleId
       || !Array.isArray(value.marks) || value.marks.length > maxMarks || !value.marks.every(validMark)
       || new Set(value.marks.map((mark) => mark.id)).size !== value.marks.length) return null;
-    return { version: 1, articleId, marks: value.marks };
+    const importId = typeof value.importId === "string" && safeId.test(value.importId) ? value.importId : undefined;
+    return { version: 1, articleId, marks: value.marks, ...(importId ? { importId } : {}) };
   } catch { return null; }
 }
 
@@ -103,8 +105,11 @@ export function resolveOffsets(text: string, anchor: TextAnchor): { start: numbe
   return candidates.length === 1 ? { start: candidates[0], end: candidates[0] + anchor.quote.length } : null;
 }
 
+/** Server articles anchor to stable block IDs; older guest notes used "paragraph-N" (kept as a legacy alias). */
 export function findAnchor(root: HTMLElement, anchorId: string): HTMLElement | null {
-  return Array.from(root.querySelectorAll<HTMLElement>("[data-reading-anchor]")).find((element) => element.dataset.readingAnchor === anchorId) ?? null;
+  const elements = Array.from(root.querySelectorAll<HTMLElement>("[data-reading-anchor]"));
+  return elements.find((element) => element.dataset.readingAnchor === anchorId)
+    ?? elements.find((element) => element.dataset.readingLegacy === anchorId) ?? null;
 }
 
 function textPosition(element: HTMLElement, offset: number): { node: Text; offset: number } | null {

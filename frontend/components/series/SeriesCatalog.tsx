@@ -12,6 +12,7 @@ import { ClapCount } from "../ClapCount";
 import { ViewCount } from "../ViewCount";
 import { CatalogCover } from "../CatalogCover";
 import { seriesDraftCover } from "../../lib/catalog-covers";
+import { useSeriesHistory } from "../../lib/reading/history";
 import "../../app/series.css";
 
 type Props = {
@@ -29,6 +30,10 @@ export function SeriesCatalog({ series, selectedSeriesSlug, onOpenSeries, onOpen
   const visible = preview ? series : publicSeries(series, storedArticles);
   const selected = visible.find((s) => s.slug === selectedSeriesSlug);
   const chapters = useProgressiveItems({ total: selected?.articleSlugs.length ?? 0, listKey: selectedSeriesSlug ?? "", limit: chapterLimit, onLimitChange: onChapterLimitChange });
+  // A member's own visit history: "where you left off" means last opened, not finished.
+  const visits = useSeriesHistory(preview ? undefined : selected?.id);
+  const lastVisit = visits.reduce<(typeof visits)[number] | undefined>((latest, visit) => !latest || visit.lastVisitedAt > latest.lastVisitedAt ? visit : latest, undefined);
+  const lastArticle = lastVisit && articles.find((article) => article.id === lastVisit.articleId);
   function articleAction(slug: string, label: React.ReactNode, className?: string) {
     const open = () => onOpenArticle?.(slug);
     return onOpenArticle ? <button type="button" className={className} data-article={slug} onClick={open}>{label}</button> : <Link className={className} href={`/yazilar/${slug}`} onClick={open}>{label}</Link>;
@@ -39,7 +44,7 @@ export function SeriesCatalog({ series, selectedSeriesSlug, onOpenSeries, onOpen
       <div data-edit-field="meta" className="series-meta"><span>{selected.articleSlugs.length} bölüm</span><span>{selected.ongoing ? "Yeni bölümler gelecek" : "Tamamlanmış seri"}</span></div>
       {onOpenSeries ? <h2 id="panel-title" tabIndex={-1}>{selected.title}</h2> : <h1 data-edit-field="title">{selected.title}</h1>}<p data-edit-field="summary" className="series-summary">{selected.summary}</p>
       <div data-edit-field="cover" className="series-detail-cover"><CatalogCover src={selected.coverImage} fallback={seriesDraftCover(selected)} /></div>
-      <div className="series-start-actions">{selected.articleSlugs.length > 0 && articleAction(selected.articleSlugs[0], "İlk bölümden başla", "series-primary")}</div>
+      <div className="series-start-actions">{selected.articleSlugs.length > 0 && articleAction(selected.articleSlugs[0], "İlk bölümden başla", "series-primary")}{lastArticle && articleAction(lastArticle.slug, <>Son açtığın bölüm: {lastArticle.title} ↗</>, "series-continue")}</div>
       <ol data-edit-field="chapters" className="series-chapters article-list">{selected.articleSlugs.slice(0, chapters.visible).map((slug, index) => {
         const article = articles.find((item) => item.slug === slug);
         if (!article) return null;

@@ -1,0 +1,73 @@
+# Full local stack built from this checkout, for manual end-to-end testing in a browser.
+# Not production: dev profile (HTTP cookies, auto-migrate), throwaway credentials, Mailpit catches all mail.
+# From the repository root:
+#   docker compose -f deploy/compose.local.yml up -d --build
+#   open http://127.0.0.1:3010  (mail inbox: http://127.0.0.1:8025)
+# Ports are bound to 127.0.0.1 and chosen not to clash with other local stacks (3000/3001/5432/8080).
+name: satir-local
+
+services:
+  postgres:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: satir
+      POSTGRES_USER: satir
+      POSTGRES_PASSWORD: satir-local
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale-provider=icu --icu-locale=tr-TR --locale=C
+    ports:
+      - "127.0.0.1:${LOCAL_DB_PORT:-55432}:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U satir -d satir"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LOCAL_MAIL_UI_PORT:-8025}:8025"
+
+  backend:
+    build: ../backend
+    image: satir-backend:local
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev            # migrates on start, non-Secure dev cookies
+      DB_HOST: postgres
+      DB_NAME: satir
+      DB_USER: satir
+      DB_PASSWORD: satir-local
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: "1025"
+      PUBLIC_SITE_ORIGIN: http://127.0.0.1:${LOCAL_WEB_PORT:-3010}
+      INDEXING_ENABLED: "false"
+    # Optional, git-ignored: SATIR_GOOGLE_CLIENT_ID / SATIR_GOOGLE_CLIENT_SECRET for Google sign-in.
+    env_file:
+      - path: ./google.local.env
+        required: false
+    volumes:
+      - media:/var/lib/satir/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ../frontend
+    image: satir-frontend:local
+    restart: unless-stopped
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8080
+      PUBLIC_SITE_ORIGIN: http://127.0.0.1:${LOCAL_WEB_PORT:-3010}
+    ports:
+      - "127.0.0.1:${LOCAL_WEB_PORT:-3010}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres:
+  media:

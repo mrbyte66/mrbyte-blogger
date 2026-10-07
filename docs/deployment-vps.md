@@ -1,6 +1,6 @@
 # VPS dağıtım ve işletim planı
 
-Tarih: 2026-10-05. Durum: uygulanacak taslak. Henüz Dockerfile, Compose, migration, backend servisi veya VPS kurulumu yapılmadı. Aşağıdaki yollar/komutlar **uygulama aşamasında oluşturulacak dosyaları** tarif eder; bugün çalışır diye sunulmaz. Domain, sağlayıcı, secret ve sunucu erişimi gerekmeden planlanmıştır. [Mimari](backend-architecture.md) ve [API](api-contract.md) ile birlikte kullanılır.
+Tarih: 2026-10-05, güncelleme 2026-10-06. Durum: dağıtım dosyaları oluşturuldu (`backend/Dockerfile`, `frontend/Dockerfile`, `deploy/compose.prod.yml`, `deploy/Caddyfile`, `deploy/postgres/`, `deploy/backup/`, `deploy/runbooks/`). Caddyfile, en az yetkili DB rolleri ve dosyadan sır okuma yerelde doğrulandı; Docker imajları bu makinede derlenmedi ve hiçbir VPS kurulmadı. Kurulum adımları: [ilk kurulum](../deploy/runbooks/first-deploy.md), [sürüm/geri alma](../deploy/runbooks/release.md), [yedek/geri yükleme](../deploy/runbooks/backup-restore.md). Domain, sağlayıcı, secret ve sunucu erişimi gerekmeden planlanmıştır. [Mimari](backend-architecture.md) ve [API](api-contract.md) ile birlikte kullanılır.
 
 ## 1. Topoloji ve sınırlar
 

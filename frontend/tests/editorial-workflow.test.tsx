@@ -1,12 +1,11 @@
-import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { SiteEditor } from "../components/builder/SiteEditor";
-import { ArticlePage } from "../components/builder/ArticlePage";
-import { createArticle } from "../lib/articles/model";
-import { useContentWorkspace } from "../lib/editorial/use-content-workspace";
-import { contentKey, initialContent, publicArticles, publicSeries, readContent, saveArticleRecord, writeContent } from "../lib/editorial/store";
+import { articleActions, seriesActions } from "../components/data/SiteData";
+import { publicArticles, publicSeries } from "../lib/editorial/store";
 import { articles } from "../lib/content";
 import { initialSeries } from "../lib/series/model";
+import { MemorySite, renderWithSite } from "./support/memory-site";
 vi.mock("../components/Experience", () => ({ Experience: () => <div>Scene</div> }));
 beforeEach(() => {
   localStorage.clear();
@@ -19,87 +18,103 @@ function newWriting() {
   fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
   fireEvent.click(screen.getByRole("button", { name: /Yeni yazı/ }));
 }
-function action(name: string) { fireEvent.click(screen.getByLabelText("İçerik işlemleri")); fireEvent.click(screen.getByText(name)); }
+async function click(element: HTMLElement) { await act(async () => { fireEvent.click(element); }); }
+async function action(name: string) { fireEvent.click(screen.getByLabelText("İçerik işlemleri")); await click(screen.getByText(name)); }
+const studio = (site = new MemorySite()) => { renderWithSite(<SiteEditor />, { site, mode: "studio" }); return site; };
+const seriesId = (site: MemorySite, slug: string) => site.series.find((s) => s.slug === slug)!.id;
 
 describe("article-first editorial workflow", () => {
-  it("saves an empty writing draft, connects an existing series and publishes it later", () => {
-    render(<SiteEditor />); newWriting();
+  it("saves an empty writing draft, connects an existing series and publishes it later", async () => {
+    const site = studio(); newWriting();
     fireEvent.change(screen.getByLabelText("Yazı başlığı"), { target: { value: "Yeni bölüm" } });
-    fireEvent.change(screen.getByLabelText("Yazının serisi"), { target: { value: initialSeries[0].id } });
-    fireEvent.click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
-    expect(readContent().articles[0]).toMatchObject({ slug: "yeni-bolum", status: "draft" });
-    expect(readContent().series[0].articleSlugs).toContain("yeni-bolum");
-    expect(publicArticles(readContent().articles).some((a) => a.slug === "yeni-bolum")).toBe(false);
-    expect(publicSeries(readContent().series, readContent().articles)[0].articleSlugs).not.toContain("yeni-bolum");
+    fireEvent.change(screen.getByLabelText("Yazının serisi"), { target: { value: seriesId(site, initialSeries[0].slug) } });
+    await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
+    expect(site.article("yeni-bolum")).toMatchObject({ status: "draft" });
+    expect(site.series[0].articleSlugs).toContain("yeni-bolum");
+    expect(publicArticles(site.articles).some((a) => a.slug === "yeni-bolum")).toBe(false);
+    expect(publicSeries(site.series, site.articles)[0].articleSlugs).not.toContain("yeni-bolum");
     fireEvent.click(screen.getByRole("button", { name: "Metin ve paragraflar" }));
     fireEvent.change(screen.getByLabelText("Paragraf 1"), { target: { value: "İlk bölümün metni." } });
-    action("Yayına al");
-    expect(publicSeries(readContent().series, readContent().articles)[0].articleSlugs).toContain("yeni-bolum");
+    await action("Yayına al");
+    expect(publicSeries(site.series, site.articles)[0].articleSlugs).toContain("yeni-bolum");
   });
-  it("saves an inline series with its cover and binds the current writing as its first chapter", () => {
-    render(<SiteEditor />); newWriting();
+  it("creates an inline draft series and binds the current writing as its first chapter", async () => {
+    const site = studio(); newWriting();
     fireEvent.change(screen.getByLabelText("Yazının serisi"), { target: { value: "new" } });
     fireEvent.change(screen.getByLabelText("Yeni seri başlığı"), { target: { value: "Yeni ufuklar" } });
-    fireEvent.change(screen.getByLabelText("Yeni seri kapak görseli"), { target: { value: "/assets/cover.svg" } });
-    fireEvent.click(screen.getByRole("button", { name: "Seriyi kaydet" }));
-    const savedSeries = readContent().series.at(-1)!;
-    expect(savedSeries).toMatchObject({ title: "Yeni ufuklar", coverImage: "/assets/cover.svg", status: "draft" });
+    await click(screen.getByRole("button", { name: "Seriyi kaydet" }));
+    const savedSeries = site.series.at(-1)!;
+    expect(savedSeries).toMatchObject({ title: "Yeni ufuklar", slug: "yeni-ufuklar", status: "draft" });
     expect((screen.getByLabelText("Yazının serisi") as HTMLSelectElement).value).toBe(savedSeries.id);
     expect(screen.queryByLabelText("Yeni seri başlığı")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Metin ve paragraflar" }));
     fireEvent.change(screen.getByLabelText("Paragraf 1"), { target: { value: "İlk yazı." } });
-    action("Yayına al");
-    expect(readContent().series.at(-1)).toMatchObject({ status: "published", articleSlugs: [readContent().articles[0].slug] });
+    await action("Yayına al");
+    // The series stays a draft: publishing a series is an explicit, separate owner action (Ü6).
+    expect(site.series.at(-1)).toMatchObject({ status: "draft", articleSlugs: [site.articles[0].slug] });
   });
-  it("archives, trashes and restores a writing while keeping its text and membership", () => {
-    const writer = renderHook(useContentWorkspace);
-    act(() => { writer.result.current.mutate((current) => saveArticleRecord(current, { ...articles[0], status: "archived" }, false)); });
-    expect(publicArticles(writer.result.current.articles)).not.toContainEqual(expect.objectContaining({ slug: articles[0].slug }));
-    act(() => { writer.result.current.mutate((current) => saveArticleRecord(current, { ...articles[0], status: "trashed" }, false)); });
-    expect(writer.result.current.series[0].articleSlugs).toContain(articles[0].slug);
-    const page = render(<ArticlePage article={articles[0]} />);
-    expect(screen.getByRole("heading", { name: "Yazı bulunamadı" })).toBeTruthy();
-    page.unmount();
-    act(() => { writer.result.current.mutate((current) => saveArticleRecord(current, { ...articles[0], status: "published" }, false)); });
-    expect(publicArticles(writer.result.current.articles)).toContainEqual(expect.objectContaining({ slug: articles[0].slug, paragraphs: articles[0].paragraphs }));
+  it("archives, trashes and restores a writing while keeping its text and membership", async () => {
+    const site = studio();
+    fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
+    fireEvent.click(screen.getByRole("button", { name: articles[0].title }));
+    await action("Arşivle");
+    expect(publicArticles(site.articles)).not.toContainEqual(expect.objectContaining({ slug: articles[0].slug }));
+    await action("Sil · çöp kutusuna taşı");
+    expect(site.article(articles[0].slug)!.status).toBe("trashed");
+    expect(site.series[0].articleSlugs).toContain(articles[0].slug);
+    await action("Taslağa geri yükle");
+    await action("Yayına al");
+    expect(publicArticles(site.articles)).toContainEqual(expect.objectContaining({ slug: articles[0].slug, paragraphs: articles[0].paragraphs }));
   });
-  it("archives a series without hiding or deleting its independent articles, then restores it", () => {
-    render(<SiteEditor />);
+  it("archives a series without hiding or deleting its independent articles, then restores it", async () => {
+    const site = studio();
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
     fireEvent.click(screen.getByRole("button", { name: initialSeries[0].title }));
-    action("Arşivle");
-    expect(readContent().series[0].status).toBe("archived");
-    expect(publicSeries(readContent().series, readContent().articles).some((s) => s.id === initialSeries[0].id)).toBe(false);
-    expect(publicArticles(readContent().articles)).toHaveLength(articles.length);
-    action("Taslağa geri yükle");
-    action("Yayına al");
-    expect(readContent().series[0].status).toBe("published");
-    expect(readContent().series[0].articleSlugs).toEqual(initialSeries[0].articleSlugs);
+    await action("Arşivle");
+    expect(site.series[0].status).toBe("archived");
+    expect(publicSeries(site.series, site.articles).some((s) => s.slug === initialSeries[0].slug)).toBe(false);
+    expect(publicArticles(site.articles)).toHaveLength(articles.length);
+    await action("Taslağa geri yükle");
+    await action("Yayına al");
+    expect(site.series[0].status).toBe("published");
+    expect(site.series[0].articleSlugs).toEqual(initialSeries[0].articleSlugs);
   });
-  it("keeps both article content and membership unchanged on a failed atomic write", () => {
-    const record = { ...createArticle(), title: "New", paragraphs: ["Body"] };
-    const previous = readContent();
-    const next = saveArticleRecord(previous, record, true, initialSeries[0].id);
-    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
-    expect(() => writeContent(next, previous)).toThrow("quota");
-    spy.mockRestore();
-    expect(localStorage.getItem(contentKey)).toBeNull();
-    expect(readContent()).toEqual(initialContent);
-  });
-  it("shows series before writing and exposes archived and trashed records for recovery", () => {
-    const editor = render(<SiteEditor />);
+  it("shows series before writing and exposes trashed records for recovery", async () => {
+    const site = new MemorySite();
+    site.articles[0] = { ...site.articles[0], status: "trashed" };
+    studio(site);
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
     const menu = screen.getByRole("navigation", { name: "Sayfalar" });
-    const groups = within(menu).getAllByRole("region");
-    expect(groups.map((group) => group.getAttribute("aria-label"))).toEqual(["Seriler", "Yazılar"]);
+    expect(within(menu).getAllByRole("region").map((group) => group.getAttribute("aria-label"))).toEqual(["Seriler", "Yazılar"]);
     expect(within(menu).queryByRole("button", { name: /Yeni seri/ })).toBeNull();
-    editor.unmount();
-    writeContent({ ...initialContent, articles: initialContent.articles.map((a, i) => i === 0 ? { ...a, status: "trashed" } : a) }, initialContent);
-    render(<SiteEditor />);
-    fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
     fireEvent.change(screen.getByLabelText("İçerik görünümü"), { target: { value: "trashed" } });
     fireEvent.click(screen.getByRole("button", { name: /Yapay zekâ ile düşünmek/ }));
-    action("Taslağa geri yükle");
-    expect(readContent().articles.find((a) => a.slug === articles[0].slug)?.status).toBe("draft");
+    await action("Taslağa geri yükle");
+    expect(site.article(articles[0].slug)?.status).toBe("draft");
+  });
+  it("marks writing private so it can never be published by mistake", async () => {
+    const site = studio();
+    fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
+    fireEvent.click(screen.getByRole("button", { name: articles[1].title }));
+    fireEvent.click(screen.getByRole("button", { name: "Yayın planı" }));
+    fireEvent.click(screen.getByLabelText(/Özel yazı/));
+    expect(screen.queryByLabelText("Yayın tarihi ve saati")).toBeNull();
+    await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
+    expect(site.article(articles[1].slug)).toMatchObject({ visibility: "private", status: "draft" });
+    expect(publicArticles(site.articles).some((a) => a.slug === articles[1].slug)).toBe(false);
+  });
+});
+
+describe("lifecycle translation to API actions", () => {
+  it("maps editor states to the contract's explicit actions", () => {
+    expect(articleActions("draft", "public", "published", "public")).toEqual(["publish"]);
+    expect(articleActions("published", "public", "scheduled", "public")).toEqual(["save-draft", "schedule"]);
+    expect(articleActions("scheduled", "public", "draft", "public")).toEqual(["cancel-schedule"]);
+    expect(articleActions("trashed", "public", "published", "public")).toEqual(["restore", "publish"]);
+    expect(articleActions("published", "public", "draft", "private")).toEqual(["make-private"]);
+    expect(articleActions("draft", "private", "published", "public")).toEqual(["prepare-public", "publish"]);
+    expect(articleActions("archived", "private", "draft", "public")).toEqual(["restore", "prepare-public"]);
+    expect(seriesActions("archived", "published")).toEqual(["restore", "publish"]);
+    expect(seriesActions("published", "published")).toEqual([]);
   });
 });

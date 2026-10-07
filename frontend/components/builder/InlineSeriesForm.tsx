@@ -2,8 +2,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createSeries, slugifySeriesTitle, validateSeries, type BlogSeries } from "../../lib/series/model";
 import { TextField } from "./ArticleProperties";
+import { ImageUpload } from "./ImageUpload";
 
-export function InlineSeriesForm({ onSave, onCancel, onDirty }: { onSave: (series: BlogSeries) => boolean; onCancel: () => void; onDirty: (dirty: boolean) => void }) {
+export function InlineSeriesForm({ onSave, onCancel, onDirty }: { onSave: (series: BlogSeries) => Promise<boolean>; onCancel: () => void; onDirty: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState(createSeries);
   const [customSlug, setCustomSlug] = useState(false);
   const headingId = useId();
@@ -17,10 +18,10 @@ export function InlineSeriesForm({ onSave, onCancel, onDirty }: { onSave: (serie
       <TextField label="Yeni seri başlığı" value={draft.title} onChange={(title) => update({ ...draft, title, slug: customSlug ? draft.slug : slugifySeriesTitle(title) })} />
       <TextField label="Yeni seri bağlantısı" value={draft.slug} onChange={(slug) => { setCustomSlug(true); update({ ...draft, slug }); }} />
       <div className="settings-full"><TextField label="Yeni seri açıklaması" multiline value={draft.summary} onChange={(summary) => update({ ...draft, summary })} /></div>
-      <div className="settings-full"><TextField label="Yeni seri kapak görseli" value={draft.coverImage ?? ""} onChange={(coverImage) => update({ ...draft, coverImage })} /></div>
+      <div className="settings-full"><ImageUpload label="Kapak görseli yükle" onUploaded={(coverImage) => update({ ...draft, coverImage })} /></div>
       {draft.coverImage && <figure className="inline-series-cover settings-full"><img src={draft.coverImage} alt="Seri kapağı önizlemesi" /><figcaption>Kapak önizlemesi</figcaption></figure>}
       <label className="document-checkbox"><input type="checkbox" checked={draft.ongoing} onChange={(e) => update({ ...draft, ongoing: e.target.checked })} />Devam eden seri</label>
     </div>
-    <footer><span>İlk yazı yayınlanana kadar seri taslak kalır. Kapak için site içi yol veya HTTPS adresi kullan.</span><button className="studio-secondary" onClick={onCancel}>Vazgeç</button><button className="studio-primary" disabled={!valid} onClick={() => { if (onSave(draft)) onDirty(false); }}>Seriyi kaydet</button></footer>
+    <footer><span>Seri taslak olarak oluşur; en az bir bölümü yayındayken seriyi ayrıca yayımlarsın.</span><button className="studio-secondary" onClick={onCancel}>Vazgeç</button><button className="studio-primary" disabled={!valid} onClick={async () => { if (await onSave(draft)) onDirty(false); }}>Seriyi kaydet</button></footer>
   </section>;
 }

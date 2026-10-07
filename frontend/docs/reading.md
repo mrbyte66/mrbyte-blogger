@@ -1,8 +1,9 @@
 # Modular reading tools
 
-Read `../../docs/features/reading-tools.md` for public/private ownership and future scope. The first module is browser-local and enabled on permanent article pages, independently of the current theme.
+Read `../../docs/features/reading-tools.md` for public/private ownership and future scope. The module is enabled on permanent article pages, independently of the current theme. Guests keep marks in this browser; verified members keep them in their account (API contract §5).
 
-- `components/reading/ReadingTools.tsx`: selection capture, accessible toolbar/panel, note form and local mark workflow. Props: `articleId` and `contentRootId`.
+- `components/reading/ReadingTools.tsx`: selection capture, accessible toolbar/panel, note form and mark workflow. Props: `articleId` (local key: the slug), `contentRootId` and optional `server` (`{id, revisionId, blockIds}` of a published server article). With a verified member and `server`, marks are loaded from and written to the account (optimistic, rolled back on failure; undo re-creates the same mark ID with `If-None-Match:*`).
+- `lib/reading/server.ts`: API adapter. The page anchors paragraphs by stable block UUID (`data-reading-anchor`) with `data-reading-legacy="paragraph-N"` as an alias for older guest notes; the abstract is `excerpt` on the page and `abstract` in the API.
 - `lib/reading/model.ts`: validated mark document, paragraph fragments, UTF-16 text offsets, quote/context resolution and DOM Range creation.
 - `lib/reading/storage.ts`: versioned per-article local storage adapter and visible failure states.
 - `components/ArticleContent.tsx`: stable `data-reading-anchor` hooks on excerpt and body paragraphs.
@@ -15,10 +16,10 @@ Toolbar and closed panel never cover article text. Reserve space on desktop whil
 
 Selection remains available while the reader invokes an annotation action. On pointer release or collapse outside the toolbar/panel, clear the stale selection preview and native browser selection; keep stored highlights until the visitor removes that saved record. Never leave a stale quote eligible for a later action.
 
-Anonymous marks remain private to the local browser. They are not owner-public annotations, server-saved records, or an authenticated account feature. Public layers and syncing require separate backend contracts.
+Guest marks remain private to the local browser. Member marks are private account records; the owner cannot read them. Public owner annotation layers remain future work.
 
 Reference: [MDN CSS highlight pseudo-element](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/::highlight).
 
 `ReadingTools.contentRevision` triggers anchor re-resolution when a saved article changes in another Studio/reader instance. Clear any stale active selection; retain saved quotes and show the unresolved notice rather than highlighting unrelated replacement text.
 
-Demo members use scoped per-account annotation keys; guests retain the existing browser-local keys. Changing identity remounts the annotation tools and clears prior marks/selection. Guest notes are not silently imported into an account.
+Changing identity remounts the annotation tools and clears prior marks/selection. Guest notes are never silently imported: a verified member sees an explicit "Misafir notlarını hesabıma aktar" action; the import uses one `clientImportId` per local document (safe to retry) and removes only the accepted local marks.

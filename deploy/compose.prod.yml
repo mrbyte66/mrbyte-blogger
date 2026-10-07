@@ -1,0 +1,247 @@
+# Production stack for a single VPS (deployment-vps.md). Run from the repository's deploy/ directory:
+#   docker compose --env-file /etc/satir/release.env -f compose.prod.yml <command>
+# Only `proxy` publishes ports. Images are referenced by immutable digest from release.env; secrets
+# are files under ${SATIR_SECRETS_DIR} (outside Git) mounted as /run/secrets/*. See runbooks/.
+name: satir
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-backend-env: &backend-env
+  # Secret files are exposed to Spring as properties (file name = property name).
+  SPRING_CONFIG_IMPORT: optional:configtree:/run/secrets/
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: satir
+  DB_POOL_SIZE: ${DB_POOL_SIZE:-8}
+  PUBLIC_SITE_ORIGIN: ${PUBLIC_SITE_ORIGIN:?set PUBLIC_SITE_ORIGIN}
+  APP_TIME_ZONE: ${APP_TIME_ZONE:-Europe/Istanbul}
+  INDEXING_ENABLED: ${INDEXING_ENABLED:-false}
+  SATIR_MEDIA_ROOT: /var/lib/satir/media
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?set POSTGRES_IMAGE}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: satir
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_superuser_password
+      # ICU Turkish collation is used for title sorting (architecture §3).
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale-provider=icu --icu-locale=tr-TR --locale=C.UTF-8
+    secrets:
+      - postgres_superuser_password
+      - db_migration_password
+      - db_app_password
+      - db_backup_password
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    networks: [db]
+    shm_size: 128mb
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d satir"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  # One-shot schema migration with the DDL role; the web app itself only validates the schema.
+  migrate:
+    image: ${BACKEND_IMAGE:?set BACKEND_IMAGE}
+    profiles: [ops]
+    command: ["migrate"]
+    restart: "no"
+    environment:
+      <<: *backend-env
+      DB_USER: satir_migrator
+    secrets:
+      - source: db_migration_password
+        target: DB_PASSWORD
+      - source: rate_limit_key
+        target: SATIR_RATE_LIMIT_KEY
+    networks: [db]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+  backend:
+    image: ${BACKEND_IMAGE:?set BACKEND_IMAGE}
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      DB_USER: satir_app
+      APP_RELEASE: ${APP_RELEASE:-unknown}
+      SATIR_MAIL_FROM: ${SATIR_MAIL_FROM:-}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-true}
+      SATIR_GOOGLE_CLIENT_ID: ${SATIR_GOOGLE_CLIENT_ID:-}
+      SATIR_GOOGLE_REDIRECT_URI: ${SATIR_GOOGLE_REDIRECT_URI:-}
+      SATIR_SECURITY_ARGON2_MEMORY_KIB: ${SATIR_SECURITY_ARGON2_MEMORY_KIB:-19456}
+      SATIR_SECURITY_ARGON2_ITERATIONS: ${SATIR_SECURITY_ARGON2_ITERATIONS:-2}
+      SATIR_SECURITY_ARGON2_PARALLELISM: ${SATIR_SECURITY_ARGON2_PARALLELISM:-1}
+    secrets:
+      - source: db_app_password
+        target: DB_PASSWORD
+      - source: rate_limit_key
+        target: SATIR_RATE_LIMIT_KEY
+      - source: mail_password
+        target: SPRING_MAIL_PASSWORD
+      - source: google_client_secret
+        target: SATIR_GOOGLE_CLIENT_SECRET
+      - source: pexels_api_key
+        target: SATIR_COVERS_PEXELS_API_KEY
+    volumes:
+      - media:/var/lib/satir/media
+    # db: PostgreSQL; app: Next.js and Caddy; egress: mail, Google and the cover provider.
+    networks: [db, app, egress]
+    mem_limit: 1280m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?set FRONTEND_IMAGE}
+    restart: unless-stopped
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8080
+      PUBLIC_SITE_ORIGIN: ${PUBLIC_SITE_ORIGIN:?set PUBLIC_SITE_ORIGIN}
+    networks: [app]
+    mem_limit: 768m
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging: *logging
+
+  proxy:
+    image: ${CADDY_IMAGE:?set CADDY_IMAGE}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_HOST: ${SITE_HOST:?set SITE_HOST}
+      SITE_ALT_HOST: ${SITE_ALT_HOST:?set SITE_ALT_HOST}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [app, egress]
+    mem_limit: 128m
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    logging: *logging
+
+  # Local backup set: consistent DB dump + media checksum manifest (read-only media access).
+  backup:
+    image: ${POSTGRES_IMAGE:?set POSTGRES_IMAGE}
+    profiles: [ops]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/opt/backup/backup-db.sh"]
+    environment:
+      PGHOST: postgres
+      PGDATABASE: satir
+      PGUSER: satir_backup
+      APP_RELEASE: ${APP_RELEASE:-unknown}
+    secrets:
+      - db_backup_password
+    volumes:
+      - ./backup:/opt/backup:ro
+      - backups:/backups
+      - media:/media:ro
+    networks: [db]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+  # Restores a set fetched by `offsite restore` into an EMPTY database/media volume (runbooks/backup-restore.md).
+  restore:
+    image: ${POSTGRES_IMAGE:?set POSTGRES_IMAGE}
+    profiles: [ops]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/opt/backup/restore-db.sh"]
+    environment:
+      PGHOST: postgres
+      PGDATABASE: satir
+      PGUSER: satir_migrator
+    secrets:
+      - db_migration_password
+    volumes:
+      - ./backup:/opt/backup:ro
+      - restore:/restore:ro
+      - media:/media
+    networks: [db]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+  # Encrypted off-site copy of the latest backup set and the media volume (restic repository).
+  offsite:
+    image: ${RESTIC_IMAGE:?set RESTIC_IMAGE}
+    profiles: [ops]
+    restart: "no"
+    command: ["backup", "--host", "satir", "--tag", "satir", "/backups/current", "/media"]
+    env_file:
+      - ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/restic.env
+    environment:
+      RESTIC_PASSWORD_FILE: /run/secrets/restic_password
+    secrets:
+      - restic_password
+    volumes:
+      - backups:/backups:ro
+      - media:/media:ro
+      - restore:/restore
+    networks: [egress]
+    logging: *logging
+
+networks:
+  db:
+    internal: true
+  app:
+    internal: true
+  egress: {}
+
+volumes:
+  postgres-data:
+  media:
+  backups:
+  restore:
+  caddy-data:
+  caddy-config:
+
+# Files in ${SATIR_SECRETS_DIR} (default /etc/satir/secrets). Unused optional secrets are empty files.
+secrets:
+  postgres_superuser_password:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/postgres_superuser_password
+  db_migration_password:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/db_migration_password
+  db_app_password:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/db_app_password
+  db_backup_password:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/db_backup_password
+  rate_limit_key:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/rate_limit_key
+  mail_password:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/mail_password
+  google_client_secret:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/google_client_secret
+  pexels_api_key:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/pexels_api_key
+  restic_password:
+    file: ${SATIR_SECRETS_DIR:-/etc/satir/secrets}/restic_password

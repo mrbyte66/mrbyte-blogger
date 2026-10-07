@@ -7,3 +7,11 @@ backend/target/
 # Local server credentials; never publish account secrets.
 frontend/.env*
 !frontend/.env.example
+
+# Deployment secrets
+deploy/.env
+
+# Local dev credentials written by setup steps
+deploy/*.local.txt
+deploy/*.local.env
+backend/data/

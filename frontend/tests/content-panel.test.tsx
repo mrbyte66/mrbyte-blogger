@@ -1,5 +1,6 @@
 import { useReducer } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
+import { renderWithSite as render } from "./support/memory-site";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ContentPanel } from "../components/ContentPanel";
 import { initialNavigation, navigate } from "../lib/navigation";

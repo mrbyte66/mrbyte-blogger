@@ -1,0 +1,764 @@
+openapi: 3.1.0
+info:
+  title: Satır API
+  version: 1.0.0-slices-1-and-6-7
+  description: |
+    Machine-readable contract for implemented endpoints. The behavioural source of truth is
+    docs/api-contract.md. Covered here: slice 1 (auth/session) and slices 6–7 (library, reading,
+    engagement, owner totals). Slices 2–5 (editorial, site/media, publishing, membership) are
+    implemented but not yet described in this file (see backend README "Not done").
+    All responses are `Cache-Control: no-store` and `X-Robots-Tag: noindex`. Errors use
+    `application/problem+json`. Unsafe methods require the `X-CSRF-TOKEN` header obtained from
+    `GET /auth/csrf` (fetch a new token after login and logout). Unknown request fields are rejected (422).
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+tags:
+  - name: auth
+  - name: me
+  - name: library
+  - name: reading
+  - name: engagement
+  - name: studio
+
+paths:
+  /auth/csrf:
+    get:
+      tags: [auth]
+      operationId: getCsrfToken
+      security: []
+      summary: Bootstrap or re-read the CSRF token (may create an anonymous session)
+      responses:
+        '200':
+          description: CSRF token for unsafe requests
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CsrfToken'}
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      security: [{csrfHeader: []}]
+      summary: Password login with e-mail or the owner username
+      description: |
+        Rotates the session ID and CSRF token. Failures are generic (no account enumeration).
+        Limits: 5 failures / 15 min per identifier and 30 / 15 min per client address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: Signed in; session cookie set
+          headers:
+            Set-Cookie:
+              description: '`__Host-satir-session` (HttpOnly; Secure; SameSite=Lax; Path=/)'
+              schema: {type: string}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Profile'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '429':
+          description: Too many failed attempts
+          headers:
+            Retry-After: {schema: {type: integer, minimum: 1}}
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /auth/session:
+    get:
+      tags: [auth]
+      operationId: getSession
+      security: [{}, {sessionCookie: []}]
+      summary: Current session state; the frontend takes the role from here
+      responses:
+        '200':
+          description: Anonymous or signed-in state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+
+  /auth/session/renew:
+    post:
+      tags: [auth]
+      operationId: renewSession
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Renew the idle deadline without extending the absolute deadline
+      responses:
+        '200':
+          description: Session still valid
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Delete the current server session
+      responses:
+        '204': {description: Signed out (also when already anonymous)}
+        '403': {$ref: '#/components/responses/Problem'}
+
+  /me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: Own profile (verified, active account)
+      responses:
+        '200':
+          description: Own profile
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Profile'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403':
+          description: '`EMAIL_VERIFICATION_REQUIRED` for unverified accounts'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  # ---------------------------------------------------------------- slice 6: library
+  /me/collections:
+    get:
+      tags: [library]
+      operationId: listCollections
+      summary: Own collections; the immutable default "Genel" is created on first use and listed first
+      responses:
+        '200':
+          description: Collections with bookmark counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/Collection'}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+    post:
+      tags: [library]
+      operationId: createCollection
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      summary: Create a collection (name unique per account, Turkish case-insensitive; max 100)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CollectionWrite'}
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: {schema: {type: string}}
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Collection'}
+        '409': {description: '`DUPLICATE_COLLECTION`, `COLLECTION_LIMIT` or `IDEMPOTENCY_KEY_REUSED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {description: Idempotency-Key missing, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+  /me/collections/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+    patch:
+      tags: [library]
+      operationId: renameCollection
+      summary: Rename a custom collection
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CollectionWrite'}
+      responses:
+        '200': {description: Renamed, content: {application/json: {schema: {$ref: '#/components/schemas/Collection'}}}}
+        '404': {description: Missing or another account's collection, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '409': {description: '`DEFAULT_COLLECTION` or `DUPLICATE_COLLECTION`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [library]
+      operationId: deleteCollection
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      summary: Delete; its bookmarks move to "Genel" with unchanged savedAt
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`DEFAULT_COLLECTION`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+  /me/bookmarks:
+    get:
+      tags: [library]
+      operationId: listBookmarks
+      summary: Own bookmarks; unavailable (hidden) articles appear without any article metadata
+      parameters:
+        - {name: collectionId, in: query, schema: {type: string, format: uuid}}
+        - {name: q, in: query, schema: {type: string, minLength: 1, maxLength: 100}, description: 'Matches visible title, abstract and category only'}
+        - {name: sort, in: query, schema: {type: string, enum: [saved_asc, saved_desc, date_desc, title_asc], default: saved_asc}}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200':
+          description: Page of bookmarks
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/PageMeta'}
+                  - {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/BookmarkItem'}}}}
+        '404': {description: Foreign or missing collectionId, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+  /me/bookmarks/{articleId}:
+    parameters: [{name: articleId, in: path, required: true, schema: {type: string, format: uuid}}]
+    put:
+      tags: [library]
+      operationId: saveBookmark
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Target state. First save needs a public article and lands in collectionId or "Genel"; an existing bookmark keeps its collection unless one is given
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                collectionId: {type: string, format: uuid}
+      responses:
+        '200': {description: Saved, content: {application/json: {schema: {$ref: '#/components/schemas/Bookmark'}}}}
+        '404': {description: Hidden article (new save) or foreign collection, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '409': {description: '`LIBRARY_FULL` (1000 bookmarks)', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+    delete:
+      tags: [library]
+      operationId: removeBookmark
+      summary: Remove a bookmark (target state)
+      security: [{sessionCookie: [], csrfHeader: []}]
+      responses:
+        '204': {description: Removed (also when absent or hidden)}
+  /me/article-state:
+    get:
+      tags: [library]
+      operationId: articleState
+      summary: Own bookmark and last visit for up to 50 articles
+      parameters:
+        - {name: ids, in: query, required: true, schema: {type: string}, description: 'Comma-separated UUIDs, at most 50'}
+      responses:
+        '200':
+          description: Own bookmark and last visit per article; hidden articles only `available:false`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/ArticleState'}}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  # ---------------------------------------------------------------- slice 6: reading
+  /me/articles/{articleId}/annotations:
+    parameters: [{name: articleId, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      tags: [reading]
+      operationId: listAnnotations
+      summary: Own marks on one article
+      responses:
+        '200':
+          description: Own marks; for a hidden article only opaque `{id, available:false}` items
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [articleId, items]
+                properties:
+                  articleId: {type: string, format: uuid}
+                  available: {type: boolean, description: Present (false) only when the article is hidden}
+                  revisionId: {type: string, format: uuid, description: Current public revision}
+                  items:
+                    type: array
+                    items:
+                      oneOf:
+                        - {$ref: '#/components/schemas/Annotation'}
+                        - {type: object, required: [id, available], properties: {id: {type: string, format: uuid}, available: {const: false}}}
+  /me/articles/{articleId}/annotations/{markId}:
+    parameters:
+      - {name: articleId, in: path, required: true, schema: {type: string, format: uuid}}
+      - {name: markId, in: path, required: true, schema: {type: string, format: uuid}, description: Client-generated; unique per account}
+    put:
+      tags: [reading]
+      operationId: putAnnotation
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Create with `If-None-Match:*` (also undo of a deletion), update with `If-Match`
+      parameters:
+        - {name: If-None-Match, in: header, schema: {type: string, const: '*'}}
+        - {name: If-Match, in: header, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AnnotationWrite'}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Annotation'}}}}
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/Annotation'}}}}
+        '404': {description: 'Hidden article, or update of a mark this account does not have', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '409': {description: '`ANNOTATION_LIMIT` (200 per article)', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {description: '`ALREADY_EXISTS` on create or `STALE_VERSION` on update', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {description: 'Field codes: QUOTE_MISMATCH, UNKNOWN_ANCHOR, UNKNOWN_REVISION, RANGE, CONTEXT_LENGTH, LENGTH, REQUIRED', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '428': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [reading]
+      operationId: deleteAnnotation
+      summary: Delete own mark
+      security: [{sessionCookie: [], csrfHeader: []}]
+      responses:
+        '204': {description: Deleted}
+        '404': {description: Not this account's mark, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+  /me/imports/annotations:
+    post:
+      tags: [reading]
+      operationId: importAnnotations
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Explicit guest-note import; `clientImportId` is the idempotency key (same body replays the report, different body 409)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [clientImportId, items]
+              properties:
+                clientImportId: {type: string, format: uuid}
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items:
+                    allOf:
+                      - {$ref: '#/components/schemas/AnnotationWrite'}
+                      - type: object
+                        required: [articleId]
+                        properties:
+                          articleId: {type: string, format: uuid}
+                          createdAt: {type: string, format: date-time}
+      responses:
+        '200':
+          description: Per-item report (valid items are never blocked by invalid ones)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientImportId: {type: string, format: uuid}
+                  accepted: {type: array, items: {type: object, properties: {index: {type: integer}, id: {type: string, format: uuid}, articleId: {type: string, format: uuid}}}}
+                  rejected: {type: array, items: {type: object, properties: {index: {type: integer}, code: {type: string, examples: [NOT_AVAILABLE, QUOTE_MISMATCH, ANNOTATION_LIMIT, DUPLICATE]}}}}
+        '409': {$ref: '#/components/responses/Problem'}
+  /me/visits:
+    post:
+      tags: [reading]
+      operationId: recordVisit
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Records a real permalink opening (not completion). Replays are harmless; the newest time wins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [eventId, articleId, revisionId]
+              properties:
+                eventId: {type: string, format: uuid}
+                articleId: {type: string, format: uuid}
+                revisionId: {type: string, format: uuid}
+                visitedAt: {type: string, format: date-time, description: Capped at server time; older than 24 h is 422}
+      responses:
+        '204': {description: Recorded}
+        '404': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+  /me/history:
+    get:
+      tags: [reading]
+      operationId: listHistory
+      summary: Own visit history, newest first
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/Size'}]
+      responses:
+        '200':
+          description: Newest first; hidden articles as `{articleId, available:false}`. Retention 180 days
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/PageMeta'}
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          required: [articleId, available]
+                          properties:
+                            articleId: {type: string, format: uuid}
+                            available: {type: boolean}
+                            article: {$ref: '#/components/schemas/ArticleSummary'}
+                            lastVisitedAt: {type: string, format: date-time}
+    delete:
+      tags: [reading]
+      operationId: clearHistory
+      summary: Delete own visit history
+      security: [{sessionCookie: [], csrfHeader: []}]
+      responses:
+        '204': {description: Cleared}
+  /me/series/{seriesId}/history:
+    get:
+      tags: [reading]
+      operationId: seriesHistory
+      summary: Own visits of a public series' chapters
+      parameters: [{name: seriesId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200':
+          description: Visits of the series' current public chapters, in chapter order (no "completed")
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: {type: array, items: {type: object, properties: {articleId: {type: string, format: uuid}, lastVisitedAt: {type: string, format: date-time}}}}
+        '404': {$ref: '#/components/responses/Problem'}
+
+  # ---------------------------------------------------------------- slice 7: engagement
+  /engagement/session:
+    post:
+      tags: [engagement]
+      operationId: ensureEngagementActor
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Ensures an anonymous clap identity cookie (random secret, 180 days; only its hash is stored)
+      responses:
+        '200':
+          description: Ready
+          headers:
+            Set-Cookie: {description: '`__Host-satir-actor` (HttpOnly; Secure; SameSite=Lax; Path=/) when newly created', schema: {type: string}}
+          content:
+            application/json:
+              schema: {type: object, properties: {ready: {const: true}}}
+  /articles/{id}/my-clap:
+    get:
+      tags: [engagement]
+      operationId: myClap
+      summary: The caller's own clap state
+      security: []
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: The caller's own clap, content: {application/json: {schema: {type: object, properties: {clapped: {type: boolean}}}}}}
+        '404': {description: Hidden or missing article, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+  /articles/{id}/clap:
+    put:
+      tags: [engagement]
+      operationId: setClap
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Target state per actor (verified member account, otherwise anonymous cookie). Anonymous claps are never merged on sign-in. 30/min per actor
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false, required: [clapped], properties: {clapped: {type: boolean}}}
+      responses:
+        '200': {description: New state and public total, content: {application/json: {schema: {type: object, properties: {clapped: {type: boolean}, claps: {type: integer, format: int64}}}}}}
+        '404': {$ref: '#/components/responses/Problem'}
+        '429': {description: '`RATE_LIMITED` with Retry-After', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+  /impressions:
+    post:
+      tags: [engagement]
+      operationId: recordImpression
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Visible card (≥20%) or permalink view. Counted once per (actor, article, source, pageViewId); eventId retries never count twice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [eventId, articleId, source, pageViewId, occurredAt]
+              properties:
+                eventId: {type: string, format: uuid}
+                articleId: {type: string, format: uuid}
+                source: {type: string, enum: [card, permalink]}
+                pageViewId: {type: string, format: uuid}
+                occurredAt: {type: string, format: date-time, description: At most 24 h past / 5 min future}
+      responses:
+        '200':
+          description: '`accepted:false` for known automation user agents'
+          content:
+            application/json:
+              schema: {type: object, properties: {accepted: {type: boolean}, counted: {type: boolean}, views: {type: integer, format: int64}}}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`EVENT_ID_REUSED` for a different payload', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+        '429': {$ref: '#/components/responses/Problem'}
+  /articles/{id}/stats:
+    get:
+      tags: [engagement]
+      operationId: articleStats
+      summary: Public totals of a public article
+      security: []
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: Public totals, content: {application/json: {schema: {$ref: '#/components/schemas/ArticleStats'}}}}
+        '404': {$ref: '#/components/responses/Problem'}
+  /studio/article-stats:
+    get:
+      tags: [studio]
+      operationId: ownerArticleStats
+      summary: OWNER only. Read-only totals per article (no duration, device or per-reader data)
+      parameters: [{$ref: '#/components/parameters/Page'}, {$ref: '#/components/parameters/Size'}]
+      responses:
+        '200':
+          description: Page of totals, newest display date first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/PageMeta'}
+                  - type: object
+                    properties:
+                      items: {type: array, items: {type: object, properties: {articleId: {type: string, format: uuid}, title: {type: string}, views: {type: integer}, claps: {type: integer}, saves: {type: integer}}}}
+        '403': {$ref: '#/components/responses/Problem'}
+  /studio/members:
+    get:
+      tags: [studio]
+      operationId: ownerMembers
+      summary: OWNER only. Member identity fields; never libraries, notes, history or claps
+      parameters:
+        - {name: q, in: query, schema: {type: string, maxLength: 100}, description: Name or e-mail}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200':
+          description: Newest first; deleted accounts are not listed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/PageMeta'}
+                  - type: object
+                    properties:
+                      items: {type: array, items: {type: object, properties: {id: {type: string, format: uuid}, name: {type: [string, 'null']}, email: {type: string}, status: {type: string, enum: [active, pending]}, createdAt: {type: string, format: date-time}}}}
+        '403': {$ref: '#/components/responses/Problem'}
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-satir-session
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-TOKEN
+
+  parameters:
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+    IfMatch: {name: If-Match, in: header, required: true, schema: {type: string, examples: ['"3"']}}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 0, maximum: 1000, default: 0}}
+    Size: {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
+
+  responses:
+    Problem:
+      description: Problem details
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+
+  schemas:
+    CsrfToken:
+      type: object
+      additionalProperties: false
+      required: [token, headerName]
+      properties:
+        token: {type: string}
+        headerName: {type: string, const: X-CSRF-TOKEN}
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [identifier, password]
+      properties:
+        identifier: {type: string, minLength: 1, maxLength: 254, description: E-mail or owner username}
+        password: {type: string, minLength: 1, maxLength: 1024, format: password}
+
+    Profile:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, verified, avatar, role, preferences, version]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string, maxLength: 80}
+        email: {type: string, format: email}
+        verified: {type: boolean}
+        avatar: {type: [string, 'null'], description: One of the 60 built-in avatar keys}
+        role: {type: string, enum: [owner, member]}
+        preferences:
+          type: object
+          additionalProperties: false
+          required: [publicationEmail, timeZone]
+          properties:
+            publicationEmail: {type: boolean}
+            timeZone: {type: string, description: IANA zone, examples: [Europe/Istanbul]}
+        version: {type: integer, format: int64}
+
+    Session:
+      type: object
+      additionalProperties: false
+      required: [authenticated]
+      properties:
+        authenticated: {type: boolean}
+        profile: {$ref: '#/components/schemas/Profile'}
+        expiresAt: {type: string, format: date-time, description: Earlier of idle and absolute deadline}
+
+    Problem:
+      type: object
+      required: [type, title, status, code, requestId]
+      properties:
+        type: {type: string, examples: ['urn:satir:problem:validation-failed']}
+        title: {type: string}
+        status: {type: integer}
+        code:
+          type: string
+          examples: [VALIDATION_FAILED, UNAUTHENTICATED, FORBIDDEN, CSRF_INVALID, EMAIL_VERIFICATION_REQUIRED,
+                     INVALID_CREDENTIALS, RATE_LIMITED, NOT_FOUND, MALFORMED_REQUEST]
+        requestId: {type: string}
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, code]
+            properties:
+              field: {type: string}
+              code: {type: string, examples: [REQUIRED, LENGTH, FORMAT, UNKNOWN_FIELD, INVALID]}
+
+    PageMeta:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: string}
+
+    ArticleStats:
+      type: object
+      required: [views, claps, saves]
+      properties:
+        views: {type: integer, format: int64, description: Visible-card and permalink views; not unique readers}
+        claps: {type: integer, format: int64, description: Active claps}
+        saves: {type: integer, format: int64, description: Members who saved the article}
+
+    ArticleSummary:
+      type: object
+      description: Public article summary (API contract §2); see docs/api-contract.md for all fields
+      required: [id, slug, url, title, categories, displayDate, readingMinutes, stats]
+      properties:
+        categories:
+          type: array
+          items: {type: object, properties: {id: {type: string, format: uuid}, slug: {type: string}, name: {type: string}}}
+        id: {type: string, format: uuid}
+        slug: {type: string}
+        url: {type: string}
+        title: {type: string}
+        eyebrow: {type: string}
+        abstract: {type: string}
+        bodyPreview: {type: string}
+        displayDate: {type: string, format: date}
+        readingMinutes: {type: integer}
+        stats: {$ref: '#/components/schemas/ArticleStats'}
+
+    Collection:
+      type: object
+      required: [id, name, isDefault, count, version]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string, minLength: 1, maxLength: 60}
+        isDefault: {type: boolean}
+        count: {type: integer, format: int64}
+        version: {type: integer, format: int64}
+
+    CollectionWrite:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 60}
+
+    Bookmark:
+      type: object
+      required: [articleId, collectionId, savedAt, version]
+      properties:
+        articleId: {type: string, format: uuid}
+        collectionId: {type: string, format: uuid}
+        savedAt: {type: string, format: date-time, description: Never changes when the bookmark moves}
+        version: {type: integer, format: int64}
+
+    BookmarkItem:
+      allOf:
+        - {$ref: '#/components/schemas/Bookmark'}
+        - type: object
+          required: [available]
+          properties:
+            available: {type: boolean}
+            article: {$ref: '#/components/schemas/ArticleSummary'}
+
+    ArticleState:
+      type: object
+      required: [articleId, available]
+      properties:
+        articleId: {type: string, format: uuid}
+        available: {type: boolean}
+        bookmark: {$ref: '#/components/schemas/Bookmark'}
+        lastVisitedAt: {type: string, format: date-time}
+
+    Fragment:
+      type: object
+      additionalProperties: false
+      required: [blockId, start, end, quote]
+      description: UTF-16 offsets into one block (or the abstract) of the anchored revision; quote must match exactly
+      properties:
+        blockId: {type: string, description: 'Block UUID or the literal "abstract"'}
+        start: {type: integer, minimum: 0}
+        end: {type: integer, minimum: 1}
+        quote: {type: string}
+        before: {type: string, maxLength: 48}
+        after: {type: string, maxLength: 48}
+
+    AnnotationWrite:
+      type: object
+      additionalProperties: false
+      required: [kind, revisionId, fragments]
+      properties:
+        kind: {type: string, enum: [highlight, underline, note]}
+        revisionId: {type: string, format: uuid}
+        fragments: {type: array, minItems: 1, maxItems: 30, items: {$ref: '#/components/schemas/Fragment'}, description: Total quote length at most 12000}
+        note: {type: string, maxLength: 4000, description: Required (non-blank) for kind note}
+
+    Annotation:
+      type: object
+      required: [id, kind, revisionId, fragments, note, createdAt, version]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {type: string, enum: [highlight, underline, note]}
+        revisionId: {type: string, format: uuid}
+        fragments: {type: array, items: {$ref: '#/components/schemas/Fragment'}}
+        note: {type: string}
+        createdAt: {type: string, format: date-time}
+        version: {type: integer, format: int64}
