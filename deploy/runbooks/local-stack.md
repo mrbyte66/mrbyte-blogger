@@ -46,3 +46,37 @@ docker compose -f deploy/compose.local.yml down -v             # veritabanı ve 
 ```
 
 Google ile giriş ve Pexels kapak araması bu yığında yapılandırılmamıştır; arayüz bunları "yapılandırılmadı" olarak gösterir.
+
+## Docker'sız: yerel PostgreSQL + jar
+
+Kod üzerinde çalışırken site `http://localhost:3010`, backend `8080` (`dev` profili). Gerekenler: JDK 25, Node 22, PostgreSQL (16 ile elle, 18 ile testlerde denendi).
+
+```sh
+# 1. Boş veritabanı (dev profilinin varsayılanları: satir / satir-dev)
+psql -h 127.0.0.1 -d postgres -c "CREATE ROLE satir LOGIN PASSWORD 'satir-dev'" -c "CREATE DATABASE satir OWNER satir"
+
+# 2. Jar, migration ve sahip (parola git dışı dosyada; komut satırına yazma)
+cd backend && ./mvnw package -DskipTests
+export DB_PASSWORD=satir-dev SATIR_RATE_LIMIT_KEY=dev-only-rate-limit-key-not-for-production
+java -jar target/satir-backend-0.1.0-SNAPSHOT.jar migrate
+java -jar target/satir-backend-0.1.0-SNAPSHOT.jar bootstrap-owner --email=sahip@satir.localhost --username=mrbyte --name="Mr Byte" --password-file=../deploy/owner-password.local.txt
+
+# 3. Backend ve site
+SPRING_PROFILES_ACTIVE=dev PUBLIC_SITE_ORIGIN=http://localhost:3010 java -jar target/satir-backend-0.1.0-SNAPSHOT.jar
+cd ../frontend && npm ci && PORT=3010 npm run dev     # /api istekleri 127.0.0.1:8080'e gider
+```
+
+Farklı bir dalın şemasıyla kurulmuş eski bir veritabanı varsa (`flyway_schema_history` main'den fazla sürüm içerir) migration başarısız olur veya sayfalar 500 verir; yedekleyip silin ve 1. adımdan kurun. E-posta gönderen akışlar için Mailpit `localhost:1025` (SMTP) / `localhost:8025` (arayüz) bekler; yoksa bu akışlar hata kaydı bırakır.
+
+### Google ile giriş (yerel)
+
+1. Google Cloud Console → *APIs & Services → Credentials* → *OAuth client ID* (Web application).
+2. *Authorized redirect URI*: `http://localhost:3010/api/v1/auth/google/callback` (backend bunu `PUBLIC_SITE_ORIGIN`'den türetir; site adresi değişirse bu da değişir).
+3. Kimlik bilgilerini git dışı `deploy/google.local.env` dosyasına yaz (kayda, sohbete veya komut satırına girmez):
+
+   ```sh
+   SATIR_GOOGLE_CLIENT_ID=…
+   SATIR_GOOGLE_CLIENT_SECRET=…
+   ```
+
+4. Backend'i bu dosyayı yükleyerek başlat: `set -a; . ../deploy/google.local.env; set +a` ve ardından 3. adımdaki komut. Yapılandırma doğruysa `POST /api/v1/auth/google/start` 503 `GOOGLE_NOT_CONFIGURED` yerine bir `authorizationUrl` döndürür.
