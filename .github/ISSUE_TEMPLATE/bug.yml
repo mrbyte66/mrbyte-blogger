@@ -1,34 +1,66 @@
-name: Bug
-description: Report a reproducible defect
-title: "bug: "
+name: Hata bildir
+description: Tekrarlanabilir bir sorunu bildir
+title: "hata: "
+labels: ["bug"]
 body:
   - type: textarea
     id: summary
     attributes:
-      label: Problem
-      description: What is wrong, and what should happen instead?
+      label: Sorun
+      description: Ne yanlış? Ne olması gerekiyordu?
     validations:
       required: true
   - type: textarea
     id: reproduce
     attributes:
-      label: Reproduction
-      description: Exact steps, route, and relevant account/state.
-      placeholder: "1. Open …\n2. Select …\n3. Observe …"
+      label: Tekrarlama adımları
+      description: Sayfayı ve sorunu görmek için gereken adımları yaz.
+      placeholder: "1. … sayfasını aç\n2. … seçeneğine tıkla\n3. … olduğunu gör"
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Acceptance criteria
-      description: Observable conditions that prove the fix.
+      label: Tamamlanma ölçütü
+      description: Düzeltmenin çalıştığını nasıl anlayacağız?
       placeholder: "- [ ] …"
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: Context and constraints
-      description: Related issues, affected areas, and anything explicitly out of scope.
+      label: Ek bilgi
+      description: İlgili işler, etkilenen alanlar veya kapsam dışı konular.
     validations:
       required: false
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Öncelik
+      options:
+        - P2 — Normal
+        - P1 — Yüksek
+        - P0 — Acil canlı hatası
+        - P3 — Düşük
+    validations:
+      required: true
+  - type: dropdown
+    id: points
+    attributes:
+      label: Büyüklük puanı
+      options:
+        - "1 — Çok küçük"
+        - "2 — Küçük"
+        - "3 — Orta"
+        - "5 — Büyük"
+        - "8 — Alt işlere böl"
+    validations:
+      required: true
+  - type: textarea
+    id: coordination
+    attributes:
+      label: İş sırası ve çakışma
+      description: Önkoşul issue, etkilenen alanlar ve paralel uygunluk. Yoksa Yok yaz.
+      placeholder: "Önkoşul: Yok. Alan: frontend. Paralel: uygun."
+    validations:
+      required: true

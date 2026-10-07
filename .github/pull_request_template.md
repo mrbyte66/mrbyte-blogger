@@ -1,20 +1,13 @@
-## Issue
-
 Closes #
 
-## Change
+## Değişiklik
 
-<!-- Describe the user-visible or technical result. -->
+<!-- Ne değişti? Kısa Türkçe yaz. -->
 
-## Scope and overlap
+## Kontrol
 
-- [ ] This PR is limited to the linked issue.
-- [ ] I checked active issues/PRs for overlapping files or shared decisions.
-- [ ] Any dependency or contract change is documented in its owning document.
+- [ ] İş kapsamı ve diğer PR’larla çakışma kontrol edildi.
+- [ ] Gerekli testler çalıştırıldı; sonuçları aşağıda.
+- [ ] Sır veya özel veri eklenmedi.
 
-## Verification
-
-<!-- Commands and manual/browser steps with their results. The independent tester fills their result on the issue. -->
-
-- [ ] Relevant tests/checks run and results recorded.
-- [ ] No credentials or private data were added.
+<!-- Test komutları ve sonuçları. Bağımsız test sonucu issueya yazılır. -->

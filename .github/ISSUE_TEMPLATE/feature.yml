@@ -1,33 +1,65 @@
-name: Feature
-description: Propose a user-visible capability
-title: "feature: "
+name: Özellik isteği
+description: Yeni bir kullanıcı özelliği öner
+title: "özellik: "
+labels: ["enhancement"]
 body:
   - type: textarea
     id: need
     attributes:
-      label: User need
-      description: Who needs this and what are they trying to do?
+      label: İhtiyaç
+      description: Kullanıcı ne yapmak istiyor?
     validations:
       required: true
   - type: textarea
     id: behavior
     attributes:
-      label: Expected behavior
-      description: Describe the smallest useful end-to-end result.
+      label: Beklenen sonuç
+      description: Özelliğin en küçük işe yarar halini anlat.
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Acceptance criteria
-      description: Observable conditions that prove the feature works.
+      label: Tamamlanma ölçütü
+      description: Özelliğin çalıştığını nasıl anlayacağız?
       placeholder: "- [ ] …"
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: Scope, dependencies, and non-goals
-      description: Link related issues/docs and call out excluded V2 work.
+      label: İlgili işler ve kapsam
+      description: Bağımlılıkları ve bu işe dahil olmayanları belirt.
     validations:
       required: false
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Öncelik
+      options:
+        - P2 — Normal
+        - P1 — Yüksek
+        - P0 — Acil canlı hatası
+        - P3 — Düşük
+    validations:
+      required: true
+  - type: dropdown
+    id: points
+    attributes:
+      label: Büyüklük puanı
+      options:
+        - "1 — Çok küçük"
+        - "2 — Küçük"
+        - "3 — Orta"
+        - "5 — Büyük"
+        - "8 — Alt işlere böl"
+    validations:
+      required: true
+  - type: textarea
+    id: coordination
+    attributes:
+      label: İş sırası ve çakışma
+      description: Önkoşul issue, etkilenen alanlar ve paralel uygunluk. Yoksa Yok yaz.
+      placeholder: "Önkoşul: Yok. Alan: frontend. Paralel: uygun."
+    validations:
+      required: true
