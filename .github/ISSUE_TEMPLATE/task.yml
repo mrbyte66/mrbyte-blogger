@@ -1,0 +1,26 @@
+name: Task
+description: Track maintenance or technical work
+title: "task: "
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What concrete result should this task produce, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Completion criteria
+      description: List verifiable results and relevant checks.
+      placeholder: "- [ ] …"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and affected areas
+      description: Link related issues/docs and note likely files/modules.
+    validations:
+      required: false

@@ -25,6 +25,7 @@ This repository contains separate frontend and backend applications.
 | Scene featured writing/series and future member recommendations | `docs/features/personalized-recommendations.md` |
 | Frontend implementation/design/tests | `frontend/AGENTS.md` |
 | Backend implementation/API/domain/tests | `backend/AGENTS.md` |
+| AI-assisted issue, coding, and test workflow | `docs/ai-workflow.md` |
 
 Keep product requirements and cross-application contracts here. Keep frontend design and implementation rules in `frontend/`; backend architecture and test rules belong in `backend/`. Update the document that owns a decision when it changes.
 
