@@ -94,3 +94,12 @@ Bilgisayar kapalıyken veya hesap limiti doluyken çalışma devam ediyormuş gi
 Yerel bir tetikleyici kurulursa kodlayıcı kendi `agent:*` + `Todo` + engellenmemiş işlerini; testçi kendi `test:*` + `In Test` işlerini tarar. Her çalıştırmada güncel kayıt tekrar okunur; aktif iş ikinci kez başlatılmaz. Entegrasyon kilidi varsa başka kod işi alınmaz. Testçi PASS/FAIL kaydı ve durum güncellemesi yapar; tarayıcı kendiliğinden merge yapmaz.
 
 Claude tarafında yaklaşık 20 dakikalık yerel tarama planlandığı bildirildi; kurulumu burada doğrulanmadı. Codex tarafında periyodik tetikleyici henüz kurulmadı. Bu belge zamanlayıcı oluşturmaz.
+
+## Panoda sorumlu ve görev devri
+
+Satir Project’inde `Aktif sorumlu` (Codex/Claude/Kullanıcı; yeni ekip üyesi için seçenek eklenir), `Kodlayıcı` ve `Testçi` alanları bulunur. İş Akışı kartlarında başlık, Assignee, bağlı PR, etiketler ve alt iş ilerlemesi korunur. Ajan bilgisi kartta yalnız `agent:*` / `test:*` etiketleriyle gösterilir; aynı isimleri tekrar eden Aktif sorumlu/Kodlayıcı/Testçi alanları kartta gizlenir, issue ayrıntılarında korunur. Kodlayıcı/Testçi metin alanlarında gerekirse çalışma örneği de belirtilir. GitHub Assignee gerçek hesap olarak kalır; ajan sorumluluğu bu alanlarda ve etiketlerde tutulur.
+
+- Todo: kodlayıcı ve varsa testçi planı yazılır; Aktif sorumlu boş kalır. In Progress: işi gerçekten alan kodlayıcı aktif sorumludur. In Test: testi devralan testçi aktif sorumludur. In Test tek başına testin başladığı anlamına gelmez; devir yorumunda başladı/bekliyor belirtilir. Done’da aktif sorumlu temizlenir, kodlayıcı/testçi geçmişi korunur.
+- Kullanıcının “#N testini sen yap” demesi devir için yeterlidir. Yeni testçi Testçi/Aktif sorumlu alanlarını ve `test:*` etiketini günceller; önceki testçiye işin devredildiğini GitHub yorumuyla kaydeder. Başka sağlayıcı veya ayrı bağımsız çalışma örneği seçilebilir; uygulayan örnek kendi işine bağımsız PASS veremez.
+- FAIL: kanıt ve hatalar yazılır, In Progress’e dönülür; Aktif sorumlu düzeltmeyi alan kodlayıcıya geçirilir. Testçi alanı korunur veya açık devirle değiştirilir. PASS ve merge kuralları değişmez.
+- Alan, etiket ve yorumlar ajan tarafından birlikte güncellenir; mevcut Project otomasyonu bunları kendiliğinden eşitlemez. Uyumsuzluk varsa son açık kullanıcı devri ve GitHub kaydı esas alınarak düzeltilir. Başka ajanın yerel durumuna güvenilmez.
