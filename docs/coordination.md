@@ -200,3 +200,12 @@ Açık kararlar: roadmap/özellik belgeleri arasında rozet ve ileri raporların
 Kitaplık iç görünümü hesap kimliğine göre yeniden kurulur. Başka hesaba geçiş ve çıkış/yeniden giriş koleksiyon formunu, seçili koleksiyonu, aramayı ve sıralamayı sıfırlar; kalıcı kayıtlar korunur. Aynı hesabın profil güncellemesi yeniden kurulum tetiklemez.
 
 İki regresyon senaryosu önce eski kodda başarısız oldu; düzeltme sonrası 32 dosyada 200 test, typecheck ve production build geçti. Bağımsız kontrol sonucu GitHub issue #5 üzerinde tutulur.
+
+
+## 2026-10-07 — Backend entegrasyon kararı
+
+Main’in backend temeli Claude’un `feature/backend-v1-slices-6-8` dalı olacak. Entegrasyonu Claude, bağımsız testi Codex yapar; PR hazır olmadan veya PASS olmadan merge edilmez. Kodun Claude makinesinde olduğu bildirildi: inceleme için remote branch ve commit zorunludur. Entegrasyon main’e girene kadar başka kod işi başlatılmaz.
+
+Kapsam: sekiz V1 dilimi, frontend API bağlantıları ve Studio düzeltmeleri. #5’in hesap değişiminde kitaplık formu/filtrelerini temizleme davranışı sunucuya bağlı kitaplığa taşınmalı. Bildirilen 153 backend testi, 200 frontend testi, typecheck/build ve tam yığın kontrolü bağımsız doğrulama bekler; bu kayıt PASS değildir.
+
+`chatgpt/backend-v1-implementation` korunur, birleştirilmez. Entegrasyondan sonra ayrı issue adayları: Studio içerik arşivi dışa/içe aktarma (ArchiveCodec), koddan OpenAPI üretimi, e-posta jetonları için AES-GCM ve SMTP yokken 503, prototip içerik dönüşüm betiği. Her aday yeni main ile karşılaştırılıp ihtiyaç varsa açılır; migration numarası yeni main’deki ilk boş numaradır (V12/V13 sabit kabul edilmez). Bu adaylar şimdiki entegrasyon kapsamına eklenmez.
