@@ -174,8 +174,10 @@ public final class ApiClient {
     private Response send(HttpRequest.Builder builder, Map<String, String> headers) {
         headers.forEach(builder::header);
         try {
-            HttpResponse<byte[]> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+            HttpRequest request = builder.build();
+            HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
             byte[] bytes = response.body();
+            OpenApiContract.checkResponse(request.method(), request.uri(), response.statusCode(), response.headers(), bytes);
             String type = response.headers().firstValue("Content-Type").orElse("");
             JsonNode json = bytes.length == 0 || !type.contains("json") ? null : JSON.readTree(bytes);
             return new Response(response.statusCode(), response.headers(), json, bytes);
