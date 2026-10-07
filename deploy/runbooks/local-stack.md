@@ -43,10 +43,10 @@ docker compose -f deploy/compose.local.yml up -d --build backend frontend
 Site boş açılmasın diye (sahip hesabı oluşturulduktan sonra):
 
 ```sh
-docker compose -f deploy/compose.local.yml run --rm backend seed-demo
+docker compose -f deploy/compose.local.yml run --rm backend seed-demo --file=/opt/satir/seed/demo.json
 ```
 
-25 yazı (yayında, taslak, planlı, kilitli; bir kısmı kapaklı), 4 seri, 2 ek kategori ve doğrulanmış üç üye ekler: `uye1@gmail.com` … `uye3@gmail.com`, parola `uyeN_123456789`. İçerik `backend/src/main/resources/seed/demo.json` dosyasındadır. Tekrar çalıştırmak güvenlidir: var olan yazı, seri ve hesaplara dokunmaz. Yalnız `dev` profilinde çalışır; üretimde reddedilir.
+25 yazı (yayında, taslak, planlı, kilitli; bir kısmı kapaklı), 4 seri, 2 ek kategori ve doğrulanmış üç üye ekler (`uye1@gmail.com` … `uye3@gmail.com`). İçerik ve üye parolaları `deploy/seed/demo.json` dosyasındadır; yığın onu salt okunur bağlar, dosya imaja ve jar'a girmez. Tekrar çalıştırmak güvenlidir: var olan yazı, seri ve hesaplara dokunmaz. Yalnız `dev` profilinde çalışır; üretimde reddedilir.
 
 ## Durdurma ve sıfırlama
 

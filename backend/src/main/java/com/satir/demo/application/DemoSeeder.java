@@ -9,6 +9,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -53,14 +55,14 @@ import com.satir.reading.application.HistoryService;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Loads {@code seed/demo.json} through the same application services the API uses (revisions, slugs,
+ * Loads a seed file (the repository keeps one in {@code deploy/seed/demo.json}; it is never packaged, because it
+ * holds the test members' passwords) through the same application services the API uses (revisions, slugs,
  * lifecycle), so demo content obeys every editorial rule. Only for local development: refuses unless
  * {@code satir.seed.enabled}. Idempotent: anything whose slug or e-mail already exists is left untouched.
  */
 @Service
 public class DemoSeeder {
 
-    static final String RESOURCE = "/seed/demo.json";
     private static final String ZONE = "Europe/Istanbul";
 
     @JsonIgnoreProperties("_comment")
@@ -124,18 +126,18 @@ public class DemoSeeder {
         this.enabled = enabled;
     }
 
-    public Report seed() {
+    public Report seed(Path file) {
         if (!enabled) {
             throw new IllegalStateException("seed-demo yalnız dev ortamında çalışır (satir.seed.enabled)");
         }
         UUID owner = accounts.ownerId()
                 .orElseThrow(() -> new IllegalStateException("Önce bootstrap-owner ile site sahibini oluştur"));
-        SeedFile file = load();
+        SeedFile seed = load(file);
 
         Map<String, UUID> categoryIds = new HashMap<>();
         studio.categories().forEach(category -> categoryIds.put(category.slug(), category.id()));
         int newCategories = 0;
-        for (CategorySpec spec : file.categories()) {
+        for (CategorySpec spec : seed.categories()) {
             if (!categoryIds.containsKey(spec.slug())) {
                 categoryIds.put(spec.slug(), categories.create(spec.name(), spec.slug()));
                 newCategories++;
@@ -144,7 +146,7 @@ public class DemoSeeder {
 
         Map<String, ArticleEdit> bySlug = existingArticles();
         int newArticles = 0;
-        for (ArticleSpec spec : file.articles()) {
+        for (ArticleSpec spec : seed.articles()) {
             if (!bySlug.containsKey(spec.slug())) {
                 bySlug.put(spec.slug(), createArticle(owner, spec, categoryIds));
                 newArticles++;
@@ -153,15 +155,15 @@ public class DemoSeeder {
 
         Map<String, SeriesEdit> seriesBySlug = existingSeries();
         int newSeries = 0;
-        for (SeriesSpec spec : file.series()) {
+        for (SeriesSpec spec : seed.series()) {
             if (!seriesBySlug.containsKey(spec.slug())) {
-                createSeries(owner, spec, file.articles(), bySlug);
+                createSeries(owner, spec, seed.articles(), bySlug);
                 newSeries++;
             }
         }
 
         int newMembers = 0;
-        for (MemberSpec spec : file.members()) {
+        for (MemberSpec spec : seed.members()) {
             DemoAccounts.Member member = accounts.ensureVerifiedMember(spec.email(), spec.name(), spec.password().toCharArray());
             if (member.created()) {
                 addMemberActivity(member.id(), spec, existingArticles());
@@ -307,11 +309,11 @@ public class DemoSeeder {
         return bySlug;
     }
 
-    private SeedFile load() {
-        try (InputStream in = DemoSeeder.class.getResourceAsStream(RESOURCE)) {
-            if (in == null) {
-                throw new IllegalStateException(RESOURCE + " bulunamadı");
-            }
+    private SeedFile load(Path file) {
+        if (!Files.isRegularFile(file)) {
+            throw new IllegalStateException("Tohum dosyası bulunamadı: " + file);
+        }
+        try (InputStream in = Files.newInputStream(file)) {
             return json.readValue(in, SeedFile.class);
         } catch (IOException e) {
             throw new UncheckedIOException(e);

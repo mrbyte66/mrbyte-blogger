@@ -5,8 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +60,9 @@ class DemoSeedIntegrationTest extends IntegrationTest {
     @Autowired
     private Clock clockBean;
 
+    /** The repository's seed file; tests run from the backend directory. */
+    private static final Path SEED = Path.of("../deploy/seed/demo.json");
+
     private long count(String sql) {
         return jdbc.sql(sql).query(Long.class).single();
     }
@@ -62,7 +70,7 @@ class DemoSeedIntegrationTest extends IntegrationTest {
     @Test
     void seedsContentAndVerifiedMembersThroughTheApplicationRules() {
         createOwner();
-        DemoSeeder.Report report = seeder.seed();
+        DemoSeeder.Report report = seeder.seed(SEED);
         assertThat(report).isEqualTo(new DemoSeeder.Report(2, 25, 4, 3));
 
         ApiClient visitor = client();
@@ -95,12 +103,12 @@ class DemoSeedIntegrationTest extends IntegrationTest {
     @Test
     void secondRunAddsNothingAndLeavesExistingContentAlone() {
         createOwner();
-        seeder.seed();
+        seeder.seed(SEED);
         long revisions = count("SELECT count(*) FROM article_revision");
         long users = count("SELECT count(*) FROM app_user");
         long bookmarks = count("SELECT count(*) FROM bookmark");
 
-        assertThat(seeder.seed()).isEqualTo(new DemoSeeder.Report(0, 0, 0, 0));
+        assertThat(seeder.seed(SEED)).isEqualTo(new DemoSeeder.Report(0, 0, 0, 0));
         assertThat(count("SELECT count(*) FROM article_revision")).isEqualTo(revisions);
         assertThat(count("SELECT count(*) FROM app_user")).isEqualTo(users);
         assertThat(count("SELECT count(*) FROM bookmark")).isEqualTo(bookmarks);
@@ -108,7 +116,7 @@ class DemoSeedIntegrationTest extends IntegrationTest {
 
     @Test
     void requiresTheOwnerAccount() {
-        assertThatThrownBy(seeder::seed).isInstanceOf(IllegalStateException.class).hasMessageContaining("bootstrap-owner");
+        assertThatThrownBy(() -> seeder.seed(SEED)).isInstanceOf(IllegalStateException.class).hasMessageContaining("bootstrap-owner");
         assertThat(count("SELECT count(*) FROM app_user")).isZero();
     }
 
@@ -117,7 +125,7 @@ class DemoSeedIntegrationTest extends IntegrationTest {
         createOwner();
         DemoSeeder production = new DemoSeeder(accounts, categories, articles, series, studio, media, library, history,
                 engagement, json, clockBean, false);
-        assertThatThrownBy(production::seed).isInstanceOf(IllegalStateException.class).hasMessageContaining("dev");
+        assertThatThrownBy(() -> production.seed(SEED)).isInstanceOf(IllegalStateException.class).hasMessageContaining("dev");
         assertThat(count("SELECT count(*) FROM app_user WHERE email LIKE 'uye%'")).isZero();
         assertThat(count("SELECT count(*) FROM article")).isZero();
 
@@ -125,5 +133,31 @@ class DemoSeedIntegrationTest extends IntegrationTest {
         try (InputStream in = getClass().getResourceAsStream("/application.yml")) {
             assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).doesNotContain("seed:");
         }
+    }
+
+    @Test
+    void theArtifactCarriesNoSeedFileOrTestPasswords() throws IOException {
+        // target/classes is exactly what the jar packages besides dependencies.
+        Path classes = Path.of("target/classes");
+        assertThat(classes).isDirectory();
+        try (Stream<Path> files = Files.walk(classes)) {
+            List<Path> leaking = files.filter(Files::isRegularFile).filter(file -> {
+                try {
+                    String text = new String(Files.readAllBytes(file), StandardCharsets.ISO_8859_1);
+                    return text.contains("_123456789") || file.getFileName().toString().equals("demo.json");
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }).toList();
+            assertThat(leaking).isEmpty();
+        }
+        assertThat(getClass().getResource("/seed/demo.json")).isNull();
+    }
+
+    @Test
+    void reportsAMissingSeedFile() {
+        createOwner();
+        assertThatThrownBy(() -> seeder.seed(Path.of("yok.json"))).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("bulunamadı");
     }
 }
