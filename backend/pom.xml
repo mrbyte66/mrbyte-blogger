@@ -22,6 +22,8 @@
         <!-- Not managed by the Boot BOM; required by Argon2PasswordEncoder. -->
         <bouncycastle.version>1.86</bouncycastle.version>
         <archunit.version>1.5.1</archunit.version>
+        <!-- Test only: checks every integration-test response against docs/openapi.yaml. -->
+        <openapi-validator.version>3.0.0</openapi-validator.version>
     </properties>
 
     <dependencies>
@@ -101,6 +103,12 @@
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
             <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.atlassian.oai</groupId>
+            <artifactId>openapi-request-validator-core</artifactId>
+            <version>${openapi-validator.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
