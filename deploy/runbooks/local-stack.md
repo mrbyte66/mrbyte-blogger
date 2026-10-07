@@ -45,11 +45,24 @@ docker compose -f deploy/compose.local.yml stop                # veriyi korur
 docker compose -f deploy/compose.local.yml down -v             # veritabanı ve medya dahil HER ŞEYİ siler
 ```
 
-Google ile giriş ve Pexels kapak araması bu yığında yapılandırılmamıştır; arayüz bunları "yapılandırılmadı" olarak gösterir.
+Pexels kapak araması bu yığında yapılandırılmamıştır; arayüz bunu "yapılandırılmadı" olarak gösterir. Google ile giriş için aşağıdaki adımlar gerekir.
 
-## Docker'sız: yerel PostgreSQL + jar
+## Google ile giriş (yerel)
 
-Kod üzerinde çalışırken site `http://localhost:3010`, backend `8080` (`dev` profili). Gerekenler: JDK 25, Node 22, PostgreSQL (16 ile elle, 18 ile testlerde denendi).
+1. Google Cloud Console → *APIs & Services → Credentials* → *OAuth client ID* (Web application).
+2. *Authorized redirect URI*: `http://127.0.0.1:3010/api/v1/auth/google/callback`. Backend bunu `PUBLIC_SITE_ORIGIN`'den türetir; siteyi bu adresle aç (`localhost` ile açılan oturum geri dönüşte kaybolur).
+3. Kimlik bilgilerini git dışı `deploy/google.local.env` dosyasına yaz (kayda, sohbete veya komut satırına girmez):
+
+   ```sh
+   SATIR_GOOGLE_CLIENT_ID=…
+   SATIR_GOOGLE_CLIENT_SECRET=…
+   ```
+
+4. `docker compose -f deploy/compose.local.yml up -d backend` (dosyayı `env_file` olarak okur). Yapılandırma doğruysa `POST /api/v1/auth/google/start` 503 `GOOGLE_NOT_CONFIGURED` yerine bir `authorizationUrl` döndürür.
+
+## Docker'sız: yerel PostgreSQL + jar (isteğe bağlı)
+
+Backend'i hızlı yeniden başlatmak gerektiğinde. Site `http://localhost:3000`, backend `8080` (`dev` profili); yukarıdaki Docker yığınıyla aynı anda çalışabilir. Gerekenler: JDK 25, Node 22, PostgreSQL (16 ile elle, 18 ile testlerde denendi).
 
 ```sh
 # 1. Boş veritabanı (dev profilinin varsayılanları: satir / satir-dev)
@@ -62,21 +75,8 @@ java -jar target/satir-backend-0.1.0-SNAPSHOT.jar migrate
 java -jar target/satir-backend-0.1.0-SNAPSHOT.jar bootstrap-owner --email=sahip@satir.localhost --username=mrbyte --name="Mr Byte" --password-file=../deploy/owner-password.local.txt
 
 # 3. Backend ve site
-SPRING_PROFILES_ACTIVE=dev PUBLIC_SITE_ORIGIN=http://localhost:3010 java -jar target/satir-backend-0.1.0-SNAPSHOT.jar
-cd ../frontend && npm ci && PORT=3010 npm run dev     # /api istekleri 127.0.0.1:8080'e gider
+SPRING_PROFILES_ACTIVE=dev java -jar target/satir-backend-0.1.0-SNAPSHOT.jar
+cd ../frontend && npm ci && npm run dev     # /api istekleri 127.0.0.1:8080'e gider
 ```
 
-Farklı bir dalın şemasıyla kurulmuş eski bir veritabanı varsa (`flyway_schema_history` main'den fazla sürüm içerir) migration başarısız olur veya sayfalar 500 verir; yedekleyip silin ve 1. adımdan kurun. E-posta gönderen akışlar için Mailpit `localhost:1025` (SMTP) / `localhost:8025` (arayüz) bekler; yoksa bu akışlar hata kaydı bırakır.
-
-### Google ile giriş (yerel)
-
-1. Google Cloud Console → *APIs & Services → Credentials* → *OAuth client ID* (Web application).
-2. *Authorized redirect URI*: `http://localhost:3010/api/v1/auth/google/callback` (backend bunu `PUBLIC_SITE_ORIGIN`'den türetir; site adresi değişirse bu da değişir).
-3. Kimlik bilgilerini git dışı `deploy/google.local.env` dosyasına yaz (kayda, sohbete veya komut satırına girmez):
-
-   ```sh
-   SATIR_GOOGLE_CLIENT_ID=…
-   SATIR_GOOGLE_CLIENT_SECRET=…
-   ```
-
-4. Backend'i bu dosyayı yükleyerek başlat: `set -a; . ../deploy/google.local.env; set +a` ve ardından 3. adımdaki komut. Yapılandırma doğruysa `POST /api/v1/auth/google/start` 503 `GOOGLE_NOT_CONFIGURED` yerine bir `authorizationUrl` döndürür.
+Farklı bir dalın şemasıyla kurulmuş eski bir veritabanı varsa (`flyway_schema_history` main'den fazla sürüm içerir) migration başarısız olur veya sayfalar 500 verir; yedekleyip silin ve 1. adımdan kurun. E-posta gönderen akışlar Mailpit'i `localhost:1025` (SMTP) bekler; yoksa bu akışlar hata kaydı bırakır.
