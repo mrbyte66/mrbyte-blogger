@@ -1,33 +1,33 @@
-name: Feature
-description: Propose a user-visible capability
-title: "feature: "
+name: Özellik isteği
+description: Yeni bir kullanıcı özelliği öner
+title: "özellik: "
 body:
   - type: textarea
     id: need
     attributes:
-      label: User need
-      description: Who needs this and what are they trying to do?
+      label: İhtiyaç
+      description: Kullanıcı ne yapmak istiyor?
     validations:
       required: true
   - type: textarea
     id: behavior
     attributes:
-      label: Expected behavior
-      description: Describe the smallest useful end-to-end result.
+      label: Beklenen sonuç
+      description: Özelliğin en küçük işe yarar halini anlat.
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Acceptance criteria
-      description: Observable conditions that prove the feature works.
+      label: Tamamlanma ölçütü
+      description: Özelliğin çalıştığını nasıl anlayacağız?
       placeholder: "- [ ] …"
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: Scope, dependencies, and non-goals
-      description: Link related issues/docs and call out excluded V2 work.
+      label: İlgili işler ve kapsam
+      description: Bağımlılıkları ve bu işe dahil olmayanları belirt.
     validations:
       required: false

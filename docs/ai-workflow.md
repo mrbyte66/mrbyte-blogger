@@ -1,5 +1,24 @@
 # AI-assisted issue workflow
 
+Issue başlıkları, açıklamaları, pull request açıklamaları ve test yorumları Türkçe ve kısa yazılır. Teknik terimler gerektiğinde korunur; her issue tek bir işi ve açık tamamlanma ölçütlerini anlatır.
+
+## Branch standardı
+
+Her iş güncel `origin/main` üzerinden ayrı branch ve worktree ile başlar:
+
+| İş | Branch |
+| --- | --- |
+| Yeni özellik | `feature/<issue>-<kisa-ad>` |
+| Hata düzeltme | `bugfix/<issue>-<kisa-ad>` |
+| Acil canlı hatası | `hotfix/<issue>-<kisa-ad>` |
+| Bakım veya doküman | `chore/<issue>-<kisa-ad>` |
+
+Adlar küçük harfli, ASCII ve tireli olur; örnek: `bugfix/13-avatar-boyutu`.
+Kalıcı `dev` veya `hotfix` branchi kullanılmaz. `main` testten geçmiş ortak sürümdür.
+PR başlığı kısa Türkçe olur ve açıklaması ilgili issueyu `Closes #13` gibi bağlar.
+PR numarasını GitHub otomatik verir; bu numara branchte kullanılan issue numarasından farklıdır.
+Bağımsız test geçmeden merge yapılmaz ve iş `Done` durumuna alınmaz.
+
 ## Roles
 
 - **Coordinator:** reviews incoming work against the roadmap and open issues, writes acceptance criteria, identifies dependencies and likely files, and assigns one owner. The coordinator integrates work and decides whether scope changes are needed.

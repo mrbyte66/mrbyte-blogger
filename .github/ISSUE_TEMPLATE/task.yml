@@ -1,26 +1,26 @@
-name: Task
-description: Track maintenance or technical work
-title: "task: "
+name: Teknik görev
+description: Bakım veya teknik çalışma kaydı aç
+title: "görev: "
 body:
   - type: textarea
     id: outcome
     attributes:
-      label: Outcome
-      description: What concrete result should this task produce, and why?
+      label: Hedef
+      description: Bu görev sonunda ne elde edeceğiz?
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Completion criteria
-      description: List verifiable results and relevant checks.
+      label: Tamamlanma ölçütü
+      description: Kontrol edilebilir sonuçları ve gerekli testleri yaz.
       placeholder: "- [ ] …"
     validations:
       required: true
   - type: textarea
     id: dependencies
     attributes:
-      label: Dependencies and affected areas
-      description: Link related issues/docs and note likely files/modules.
+      label: Bağımlılıklar ve etkilenen alanlar
+      description: İlgili işleri ve etkilenecek bölümleri belirt.
     validations:
       required: false
