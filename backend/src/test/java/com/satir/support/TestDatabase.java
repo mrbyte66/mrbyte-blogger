@@ -7,7 +7,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * Real PostgreSQL for integration tests — never H2. Uses Testcontainers when Docker is available.
  * Without Docker, set SATIR_TEST_JDBC_URL / SATIR_TEST_DB_USER / SATIR_TEST_DB_PASSWORD to a
  * disposable database of the same major version (its tables are truncated by the tests).
- * If neither is available, integration tests are skipped (reported, not silently passed).
+ * If neither is available, integration tests fail; {@code -Punit-only} explicitly runs only unit tests.
  */
 public final class TestDatabase {
 

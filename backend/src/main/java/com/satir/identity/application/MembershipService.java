@@ -146,6 +146,7 @@ public class MembershipService {
         Instant now = clock.instant();
         MembershipRepository.Token valid = consume(token, "RESET", now);
         members.setPassword(valid.userId(), passwords.encode(CharBuffer.wrap(password)), now);
+        retireCredentialTokens(valid.userId(), now);
         members.markVerified(valid.userId(), now);
         audit.record(valid.userId(), "PASSWORD_RESET", "USER", valid.userId(), AuditLog.Outcome.SUCCESS);
         return valid.userId();
@@ -155,7 +156,9 @@ public class MembershipService {
     @Transactional
     public void changePassword(UUID userId, char[] password, char[] confirmation) {
         checkNewPassword(password, confirmation);
-        members.setPassword(userId, passwords.encode(CharBuffer.wrap(password)), clock.instant());
+        Instant now = clock.instant();
+        members.setPassword(userId, passwords.encode(CharBuffer.wrap(password)), now);
+        retireCredentialTokens(userId, now);
         audit.record(userId, "PASSWORD_CHANGE", "USER", userId, AuditLog.Outcome.SUCCESS);
     }
 
@@ -205,8 +208,18 @@ public class MembershipService {
             throw new ApiException(HttpStatus.CONFLICT, "EMAIL_TAKEN", "Bu e-posta adresi artık kullanılamıyor");
         }
         members.updateEmail(valid.userId(), target.value(), target.normalized(), now);
+        retireCredentialTokens(valid.userId(), now);
         audit.record(valid.userId(), "EMAIL_CHANGE", "USER", valid.userId(), AuditLog.Outcome.SUCCESS);
         return valid.userId();
+    }
+
+    /**
+     * Links mailed before a credential change must not outlive it: an old reset link (possibly sent to a
+     * previous address) could otherwise take the account over, and a pending address change could re-route it.
+     */
+    private void retireCredentialTokens(UUID userId, Instant now) {
+        members.retireTokens(userId, "RESET", now);
+        members.retireTokens(userId, "EMAIL_CHANGE", now);
     }
 
     // ---------------------------------------------------------------- profile & preferences

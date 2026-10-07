@@ -53,7 +53,8 @@ SPRING_PROFILES_ACTIVE=dev java -jar target/satir-backend-0.1.0-SNAPSHOT.jar   #
 The `dev` profile migrates on start, uses the `satir-session-dev` non-Secure cookie, sends mail to Mailpit
 and links to `http://localhost:3000`. Frontend: `cd frontend && npm run dev` (proxies `/api` to 8080).
 Without Docker, point tests at a disposable PostgreSQL 18 with `SATIR_TEST_JDBC_URL`/`_USER`/`_PASSWORD`
-(its tables are truncated by the tests).
+(its tables are truncated by the tests). With neither, `./mvnw verify` fails on every integration class;
+`./mvnw verify -Punit-only` explicitly runs only unit/ArchUnit tests — report such a run as partial.
 
 The default (production) profile only validates the schema, requires `SATIR_RATE_LIMIT_KEY` (≥ 32 chars)
 and uses the `__Host-satir-session` / `__Host-satir-actor` Secure cookies behind HTTPS. Secrets may come

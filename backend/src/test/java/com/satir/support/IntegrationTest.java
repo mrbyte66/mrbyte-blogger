@@ -1,7 +1,5 @@
 package com.satir.support;
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
-
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
@@ -47,10 +45,13 @@ public abstract class IntegrationTest {
         }
     }
 
+    /** Fails instead of skipping, so a run without a database can never look green; see {@link TestDatabase}. */
     @BeforeAll
     static void requireDatabase() {
-        assumeTrue(TestDatabase.available(),
-                "PostgreSQL yok: Docker'ı başlat veya SATIR_TEST_JDBC_URL ayarla");
+        if (!TestDatabase.available()) {
+            throw new IllegalStateException("PostgreSQL yok: Docker'ı başlat, SATIR_TEST_JDBC_URL ayarla "
+                    + "veya yalnız birim testleri için açıkça ./mvnw verify -Punit-only kullan");
+        }
     }
 
     @DynamicPropertySource

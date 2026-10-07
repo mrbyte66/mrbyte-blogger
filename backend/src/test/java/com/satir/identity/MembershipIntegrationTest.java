@@ -117,6 +117,65 @@ class MembershipIntegrationTest extends IntegrationTest {
         assertThat(reset.code()).isEqualTo("INVALID_TOKEN");
     }
 
+    private String requestReset(String email) {
+        ApiClient anonymous = client();
+        anonymous.refreshCsrf();
+        assertThat(anonymous.post("/api/v1/auth/password/forgot", Map.of("email", email)).status()).isEqualTo(202);
+        return mail.lastToken(email).orElseThrow();
+    }
+
+    private Response useReset(String token, String password) {
+        ApiClient anonymous = client();
+        anonymous.refreshCsrf();
+        return anonymous.post("/api/v1/auth/password/reset",
+                Map.of("token", token, "password", password, "passwordConfirmation", password));
+    }
+
+    @Test
+    void passwordChangeRetiresEarlierResetLinks() {
+        ApiClient api = verifiedMember();
+        String oldLink = requestReset(EMAIL);
+
+        reauth(api, PASSWORD);
+        Map<String, String> body = Map.of("password", "baska-parola-333", "passwordConfirmation", "baska-parola-333");
+        assertThat(api.put("/api/v1/me/password", body, Map.of()).status()).isEqualTo(204);
+
+        assertThat(useReset(oldLink, "saldirgan-parola-44").code()).isEqualTo("INVALID_TOKEN");
+        assertThat(client().login(EMAIL, "baska-parola-333").status()).isEqualTo(200);
+    }
+
+    @Test
+    void passwordResetRetiresPendingEmailChange() {
+        ApiClient api = verifiedMember();
+        reauth(api, PASSWORD);
+        assertThat(api.post("/api/v1/me/email-change", Map.of("email", "yeni.adres@example.test")).status()).isEqualTo(202);
+        String emailLink = mail.lastToken("yeni.adres@example.test").orElseThrow();
+
+        assertThat(useReset(requestReset(EMAIL), "yepyeni-parola-22").status()).isEqualTo(204);
+
+        ApiClient anonymous = client();
+        anonymous.refreshCsrf();
+        assertThat(anonymous.post("/api/v1/auth/email-change/confirm", Map.of("token", emailLink)).code())
+                .isEqualTo("INVALID_TOKEN");
+        assertThat(client().login(EMAIL, "yepyeni-parola-22").status()).isEqualTo(200);
+    }
+
+    @Test
+    void emailChangeRetiresResetLinksSentToTheOldAddress() {
+        ApiClient api = verifiedMember();
+        String oldLink = requestReset(EMAIL);
+
+        reauth(api, PASSWORD);
+        assertThat(api.post("/api/v1/me/email-change", Map.of("email", "yeni.adres@example.test")).status()).isEqualTo(202);
+        ApiClient anonymous = client();
+        anonymous.refreshCsrf();
+        String token = mail.lastToken("yeni.adres@example.test").orElseThrow();
+        assertThat(anonymous.post("/api/v1/auth/email-change/confirm", Map.of("token", token)).status()).isEqualTo(204);
+
+        assertThat(useReset(oldLink, "saldirgan-parola-44").code()).isEqualTo("INVALID_TOKEN");
+        assertThat(client().login("yeni.adres@example.test", PASSWORD).status()).isEqualTo(200);
+    }
+
     @Test
     void sensitiveChangesRequireRecentReauthentication() {
         ApiClient api = verifiedMember();
