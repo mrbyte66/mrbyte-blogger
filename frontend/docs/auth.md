@@ -8,6 +8,7 @@ Owning product scope: `../../docs/features/membership.md`.
 - `AccountMenu`: guest actions or initials avatar; only the server-established Studio visitor sees the Studio link. Members use `/hesap` and `/kaydedilenler`.
 - `AccountPage`: profile/security/connections/sessions, with separated sections and a confirmed destructive action at the bottom. Browser-wide sessions are not represented as fictitious devices.
 - `SavedProvider`: per-demo-account library and collections; no default signed-in preview. Guest bookmark control requests login, Studio previews remain read-only. Old preview library import is explicit.
+- `SavedLibraryPage`: hesap kimliği değiştiğinde iç görünüm yeniden kurulur; koleksiyon formu, arama, seçili koleksiyon ve sıralama önceki hesaptan taşınmaz. Aynı hesabın profil güncellemeleri kitaplık araçlarını sıfırlamaz.
 - `ReadingTools`: member-specific scoped remount and storage keys, distinct guest notes; account changes clear prior visible marks and unsaved selection. No automatic guest import.
 - `lib/auth/studio-session.ts` / `app/studio/access.ts`: intentionally narrow server-side Studio access gate authorized by the user. Hashed credentials live in ignored `.env.local`; signed eight-hour HttpOnly/SameSite cookie guards Studio and preview. This is an explicit exception to the no-Next-backend guide; business APIs and real membership still belong to Spring Boot.
 - `StudioSession`: exposes a matching local owner identity to the UI only after the server has authorized the editor. Client role is not authorization.

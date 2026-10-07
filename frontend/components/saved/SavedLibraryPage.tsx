@@ -12,6 +12,11 @@ import { SlideLink } from "../SlideLink";
 import { useSavedLibrary } from "./SavedProvider";
 
 export function SavedLibraryPage() {
+  const { session } = useAuth();
+  return <SavedLibraryView key={session ? `member:${session.profile.id}` : "guest"} />;
+}
+
+function SavedLibraryView() {
   const { library, member, ready, error, importLegacy, create, rename, deleteCategory, remove } = useSavedLibrary();
   const auth = useAuth();
   const { articles } = useArticles();
