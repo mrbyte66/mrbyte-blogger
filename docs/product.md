@@ -28,7 +28,7 @@ Content types can expand over time: articles, notes, projects/demos, quotes, poe
 5. Implement the backend and database.
 6. Add builder features in small, independently testable increments.
 
-The backend is intentionally unimplemented until the earlier product decisions are ready.
+Backend implementation started on 2026-10-05 from the recorded architecture and API contract; progress by slice is tracked in `backend/README.md`.
 
 For the categorized, consolidated checklist of shipped prototype work, remaining V1 scope, membership V1, V2, and later ideas, see [the project roadmap](roadmap.md).
 

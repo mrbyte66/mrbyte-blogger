@@ -19,7 +19,7 @@
 .series-card-footer>span:last-child { color:var(--ink); }
 .series-detail :is(h1,h2) { font-size:clamp(26px,3.2vw,36px); line-height:1.2; letter-spacing:-.04em; font-weight:550; margin:16px 0 12px; }
 .series-start-actions { display:flex; flex-wrap:wrap; gap:12px; margin:20px 0 24px; }
-.series-primary,.series-secondary { display:inline-flex; align-items:center; justify-content:center; min-height:46px; border-radius:28px; padding:12px 20px; font-size:14px; border:1px solid var(--line); }
+.series-primary,.series-secondary,.series-continue { display:inline-flex; align-items:center; justify-content:center; min-height:46px; border-radius:28px; padding:12px 20px; font-size:14px; border:1px solid var(--line); }
 .series-start-actions .series-primary { background:var(--accent); color:var(--accent-ink,#18301d); }
 .series-secondary { background:var(--surface); color:var(--ink); }
 .series-detail { container-type:inline-size; }
@@ -43,3 +43,6 @@
 .series-permalink-content { max-width:850px; padding:60px 40px; margin:auto; }
 @media(max-width:600px) { .series-card { min-height:330px; padding:12px; gap:14px; }.series-card-content { gap:10px; }.series-permalink-content { padding:30px 20px; } }
 @media(max-width:600px) { .series-block-list .series-card { align-items:flex-start; }.series-block-list .series-card-visual { width:96px; flex-basis:96px; } }
+
+.series-start-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.series-continue { color:inherit; background:transparent; }

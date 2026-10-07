@@ -1,8 +1,8 @@
-import { act, render, renderHook, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithSite as render } from "./support/memory-site";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { articleSeries, initialSeries, isValidSeriesCoverImage, publishedSeries, upgradeDemoSeries, seriesValidationError, slugifySeriesTitle, validateSeries } from "../lib/series/model";
-import { seriesKey, useSeriesWorkspace } from "../lib/series/use-series-workspace";
+import { articleSeries, initialSeries, isValidSeriesCoverImage, publishedSeries, seriesValidationError, slugifySeriesTitle, validateSeries } from "../lib/series/model";
 import { SeriesArticleNav } from "../components/series/SeriesArticleNav";
 import { articleBodyPreview, articles } from "../lib/content";
 import { SeriesCatalog } from "../components/series/SeriesCatalog";
@@ -25,8 +25,6 @@ describe("series publishing and ordered membership", () => {
     const normalized = validateSeries(legacy);
     expect(normalized).toEqual(fixture());
     expect(normalized?.every((entry) => !("level" in entry))).toBe(true);
-    const original = [{ ...legacy[0], articleSlugs: legacy[0].articleSlugs.slice(0, 2) }];
-    expect(upgradeDemoSeries(validateSeries(original)!)).toEqual(initialSeries);
   });
   it("keeps draft series private and chapter order stable", () => {
     const saved = fixture();
@@ -42,23 +40,6 @@ describe("series publishing and ordered membership", () => {
     expect(isValidSeriesCoverImage("//images.example.com/cover.jpg")).toBe(false);
     expect(isValidSeriesCoverImage("javascript:alert(1)")).toBe(false);
     expect(validateSeries([{ ...series[0], coverImage: "javascript:alert(1)" }])).toBeNull();
-  });
-  it("synchronizes Studio saves immediately across mounted readers without accepting invalid saves", () => {
-    const studio = renderHook(useSeriesWorkspace); const reader = renderHook(useSeriesWorkspace);
-    const next = [{ ...fixture()[0], title: "Benim serim" }];
-    act(() => { expect(studio.result.current.save(next)).toBe(true); });
-    expect(reader.result.current.series[0].title).toBe("Benim serim");
-    act(() => { expect(studio.result.current.save([{ ...next[0], slug: "İzin verilmez" }])).toBe(false); });
-    expect(JSON.parse(localStorage.getItem(seriesKey)!)[0].title).toBe("Benim serim");
-    expect(studio.result.current.error).toContain("bağlantısı");
-  });
-  it("does not report failed persistent writes as success", () => {
-    const workspace = renderHook(useSeriesWorkspace);
-    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
-    act(() => { expect(workspace.result.current.save([{ ...fixture()[0], title: "Unsaved" }])).toBe(false); });
-    expect(workspace.result.current.series).toEqual(initialSeries);
-    expect(workspace.result.current.error).toContain("kaydedilemedi");
-    spy.mockRestore();
   });
 });
 describe("example content and migration", () => {
@@ -78,27 +59,6 @@ describe("example content and migration", () => {
     expect(initialSeries).toHaveLength(3);
     expect(initialSeries[0].articleSlugs).toHaveLength(10);
     expect(validateSeries(fixture())).toEqual(initialSeries);
-  });
-  it("upgrades only the exact untouched old demonstration", () => {
-    const original = [{ ...fixture()[0], articleSlugs: fixture()[0].articleSlugs.slice(0, 2) }];
-    expect(upgradeDemoSeries(original)).toEqual(initialSeries);
-    expect(upgradeDemoSeries([{ ...original[0], title: "My edited series" }])).toEqual([{ ...original[0], title: "My edited series" }]);
-    expect(upgradeDemoSeries([{ ...original[0], articleSlugs: [...original[0].articleSlugs].reverse() }])).toEqual([{ ...original[0], articleSlugs: [...original[0].articleSlugs].reverse() }]);
-    expect(upgradeDemoSeries([{ ...original[0], coverImage: "/assets/custom-cover.jpg" }])).toEqual([{ ...original[0], coverImage: "/assets/custom-cover.jpg" }]);
-    expect(upgradeDemoSeries([])).toEqual([]);
-    expect(upgradeDemoSeries([...original, { ...fixture()[1], status: "draft" }])).toEqual([...original, { ...fixture()[1], status: "draft" }]);
-  });
-  it("loads the upgraded untouched demo and preserves custom stored content", () => {
-    localStorage.setItem(seriesKey, JSON.stringify([{ ...fixture()[0], articleSlugs: fixture()[0].articleSlugs.slice(0, 2) }]));
-    const upgraded = renderHook(useSeriesWorkspace);
-    expect(upgraded.result.current.series).toEqual(initialSeries);
-    expect(JSON.parse(localStorage.getItem(seriesKey)!)).toEqual(initialSeries);
-    upgraded.unmount();
-    const edited = [{ ...fixture()[0], title: "Custom", articleSlugs: fixture()[0].articleSlugs.slice(0, 2) }];
-    localStorage.setItem(seriesKey, JSON.stringify(edited));
-    const custom = renderHook(useSeriesWorkspace);
-    expect(custom.result.current.series).toEqual(edited);
-    expect(JSON.parse(localStorage.getItem(seriesKey)!)).toEqual(edited);
   });
 });
 describe("series metadata and chapter layout", () => {

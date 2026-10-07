@@ -23,7 +23,7 @@ Two future features are recorded without simulating unavailable account or 3D be
 - Theme creation means manually selecting, arranging, and configuring blocks. AI theme generation is not requested for the initial version.
 - Content and public URLs must survive theme changes; theme support covers structure and interactions as well as colors.
 - `docs/site-builder.md` owns the shared theme/builder requirements.
-- Backend application code has not started.
+- Backend implementation follows `backend-architecture.md` slices; status lives in `backend/README.md`.
 
 ## Verification — 2026-10-02
 
@@ -194,6 +194,33 @@ Kullanıcı yönü kesinleştirdi: ayrı Next.js/React/TypeScript frontend, Java
 Önerilen temel: aynı origin reverse proxy, Spring Session JDBC, revision'lı içerik ve ayrı kart tarihi/gerçek yayın anı, transaction içinde planlı yayın+outbox, owner-only özel erişim, V1'de no-store içerik/medya ve server-rendered SEO. Üyelik Studio/yazarlık yetkisi vermez. Slug kimlik yerine geçmez; kişisel veriler oturum sahibine sınırlandırılır.
 
 Açık kararlar: roadmap/özellik belgeleri arasında rozet ve ileri raporların V1/V2 konumu; yayındaki Save ve seri explicit activation ayrıntıları; yeniden yayın maili; anonim clap kimlik süresi/birleştirme; veri saklama süreleri; domain/mail/Google/kapak/backup sağlayıcı ayarları. Mimari belgesindeki Ü1–Ü11 varsayımları uygulanmadan önce görünür biçimde değerlendirilmelidir. Eski series/builder belgelerindeki difficulty ve yalnız fixture içerik ifadeleri güncel kodla uyuşmuyor; difficulty geri eklenmeyecek. Yeni gerçek backend tamamlanmış olarak işaretlenmedi.
+
+## 2026-10-05 — Backend dilim 1: temel altyapı ve owner oturumu
+
+`backend/` altında Java 25 + Spring Boot 4.1.1 Maven projesi (Maven Wrapper 3.9.16) oluşturuldu. Flyway V1–V3: Spring Session JDBC şeması, `app_user`/`password_credential`/`user_preference` (tek OWNER kısmi unique index, owner doğrulanmış olmalı, username yalnız owner), `auth_rate_bucket`, `audit_event`. Uç noktalar: `GET /api/v1/auth/csrf`, `POST /auth/login`, `GET /auth/session`, `POST /auth/session/renew`, `POST /auth/logout`, `GET /me`; makinece okunur sözleşme `backend/docs/openapi.yaml`. Owner yalnız `bootstrap-owner` operatör komutuyla oluşturulur; parola argüman/env yerine dosya veya stdin'den alınır. `migrate` ayrı komuttur; uygulama başlangıçta yalnız şemayı doğrular.
+
+Güvenlik: Argon2id, opak HttpOnly/SameSite=Lax oturum cookie'si (`__Host-satir-session`, dev'de `satir-session-dev`), login/logout dahil CSRF, girişte session ID ve CSRF rotasyonu, owner 30dk/8sa ve üye 7g/30g süreleri, her istekte hesabın DB'den yeniden okunması, HMAC'lı DB hız sınırı (5/15dk tanımlayıcı, 30/15dk istemci), bilinmeyen JSON alanına 422, allowlist dışı her rota reddedilir, API yanıtları `no-store` + `X-Robots-Tag: noindex`.
+
+Varsayım: mail altyapısı (dilim 4) gelene kadar operatörün bootstrap işlemi owner e-posta doğrulaması sayılır. Docker bu makinede yoktu (WSL2/Hyper-V kapalı); entegrasyon testleri `SATIR_TEST_JDBC_URL` ile yerel taşınabilir PostgreSQL 18.4 üzerinde koşturuldu, Testcontainers yolu Docker kurulunca otomatik devreye girer.
+
+Doğrulama: 43 test (unit, ArchUnit, PostgreSQL entegrasyon) geçti, atlanan yok. Studio kuralı bilerek gevşetildiğinde iki erişim testi kırıldı (mutasyon kontrolü). Paketlenmiş JAR ile temiz DB'de `migrate`, tekrar `migrate` (no-op), `bootstrap-owner` (başarılı), ikinci owner/eksik argüman (exit 1) ve parolanın loglara yazılmadığı doğrulandı; dev sunucusunda health `UP`, CSRF→owner username girişi→`/auth/session`→`/me` curl ile denendi. Frontend henüz Spring oturumuna bağlanmadı: Studio geçici Next cookie kapısıyla korunmaya devam ediyor; bir sonraki adım bu kapıyı `/api/v1/auth/session` ile değiştirmek ve Next `/api` proxy'sini eklemek.
+
+## 2026-10-06 — Backend dilim 2–5 ve frontend bağlantısı
+
+Backend: editorial (yazı/sürüm/kategori/seri/slug geçmişi, durum makinesi, özel yazı), site/tema (taslak-uygula-geri yükle, UUID referanslar), medya (yeniden kodlanan JPEG/PNG, yalnız kamu içeriğinde sunulan `/media/{id}`, Pexels araması), yayın (15 sn zamanlayıcı, transactional outbox, SMTP, tercih kontrolü) ve üyelik (kayıt/doğrulama/sıfırlama/yeniden doğrulama/profil/e-posta değişikliği/Google/oturumlar/silme) uygulandı. Ayrıntı ve sapmalar `backend/README.md` içinde.
+
+Frontend: `components/data/SiteData.tsx` ziyaretçi için sunucuda çekilen yayınlanmış içeriği, Studio için API işlemlerini sağlar; mevcut hook'lar aynı arayüzü korur. Yazı/seri sayfaları içerik ve metadata'yı sunucuda üretir (canonical, OG, JSON-LD, eski slug 308, gizli içerik 404), `sitemap.xml`/`robots.txt` backend kapısına bağlıdır. Next Studio cookie kapısı ve demo üyelik kaldırıldı; Studio ve hesap ekranları Spring oturumunu kullanır. Kitaplık, notlar, alkış ve görüntülenme hâlâ tarayıcı-yerel (dilim 6–7).
+
+Doğrulama: backend testleri Docker'daki PostgreSQL 18.4 üzerinde; frontend 30 dosyada 190 test, typecheck ve production build. Uçtan uca: Compose (PostgreSQL+Mailpit), temiz DB'ye 9 migration, owner bootstrap, Studio girişi, arayüzden yazı oluşturup yayımlama, JS'siz SSR HTML/metadata kontrolü, yayın mailinin ve kayıt doğrulama postasının Mailpit'e düşmesi, doğrulama bağlantısının açık onayla tüketilmesi, hesap oturum listesi.
+
+## 6 October 2026 — Backend slices 6–8: personal space, reactions, launch files
+- Backend: `library` (collections, bookmarks, per-article state), `reading` (annotations anchored to block UUIDs with server-side quote checks, explicit guest-note import, visit/series history) and `engagement` (anonymous/member claps, deduplicated card/permalink views, public totals, owner per-article totals and member list) modules; migrations V10–V11. Account deletion removes library, notes, history and member claps in the same transaction. Implementation decisions are listed in `backend/README.md`; OpenAPI covers slices 1 and 6–7.
+- Frontend: library, member notes, claps, views and stats use the API (no browser storage for account data). Permalinks record member visits; series detail links the last opened chapter; account page has visit history; Studio has `/studio/istatistikler`. Reading anchors moved to block UUIDs with a `paragraph-N` legacy alias for older guest notes.
+- Deployment: Dockerfiles, `deploy/compose.prod.yml` (least-privilege DB roles, secrets as files, internal networks), Caddyfile, backup (pg_dump + restic) and guarded restore jobs, runbooks under `deploy/runbooks/`.
+- Verification: 153 backend tests (unit, ArchUnit, PostgreSQL 18 integration; none skipped), 192 frontend tests, typecheck and production build. Local end-to-end with the dev backend: anonymous clap and permalink view stored, member bookmark/history/series "last opened" and the owner statistics page; Caddyfile validated with Caddy 2.11.7; migrate as `satir_migrator` and run as DML-only `satir_app`; secrets read from configtree files. Docker images were not built (no Docker on the workstation) and no VPS was provisioned.
+- Open: Studio export/import, OpenAPI for slices 2–5, CI pipeline, membership benefits page, badges/advanced analytics (product decision), owner password reset command, off-site deletion journal.
+- Update (same day, Docker now available via WSL): backend `./mvnw verify` passes with Testcontainers (153 tests, none skipped). Backend/frontend images build; `deploy/compose.local.yml` runs the whole app at http://127.0.0.1:3010 (Mailpit http://127.0.0.1:8025) and passed a smoke test (SSR pages, 404, CSRF via `/api`, owner login, Studio and statistics, logout, mail delivery). `compose.prod.yml` passes `docker compose config`. Port 3010 avoids another local project on 3000/3001/5432/8080.
+- Studio fixes (same day): an untouched new article no longer blocks page navigation (it is dropped when leaving); real unsaved edits ask for confirmation instead of silently refusing. "Yayına al" explains why it is disabled (body needs a non-empty paragraph). After Studio saves, `PublicContentRefresh` re-renders the server-loaded public content (this tab and other tabs via BroadcastChannel; visitor tabs also refresh on focus, at most every 15 s), so newly published writing appears without a manual reload.
 
 ## 2026-10-07 — Kitaplık hesap geçişi (#5)
 

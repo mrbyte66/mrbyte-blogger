@@ -29,28 +29,28 @@ Bunlar yol haritasında tamamlanmış arayüz/prototip işleri olarak kayıtlıd
 
 ### Backend, veritabanı ve yayın güvenilirliği
 
-- [ ] Spring Boot API ve veritabanı mimarisini belirle; alan modeli, migration, hata/versiyonlama ve API sözleşmelerini frontend'le birlikte netleştir.
-- [ ] İçerik, temalar, medya, seriler ve hesap tercihleri için kalıcı saklama ve güvenli sahip yetkisi ekle. Tarayıcı depolamasını üretim kaynağı kabul etme.
-- [ ] Gerçek üye girişi, e-posta doğrulama, şifre sıfırlama, güvenli oturum/çıkış ve Google OAuth bağlantısını tamamla. Yerel demo girişi kimlik doğrulama sayılmaz.
-- [ ] Planlanmış yazıları sunucu tarafında, tarayıcı kapalı olsa da doğru zamanda yayımla. Saat dilimi/yaz saati, yeniden planlama, iptal, gecikmiş işler, tekrar çalışmada tek yayın ve işlem kayıtlarını ele al.
-- [ ] Yayın başarılı olduktan sonra yazara “Yazınız yayınlandı” e-postası gönder. Hesap genelindeki tercih kapalıysa gönderme; hata/tekrar denemeyi ve idempotent gönderimi kaydet.
-- [ ] Alkış, görüntülenme ve kaydedilme sayılarını gerçek ortak sunucu verisine geçir; tekrar isteklerini çift sayma ve kötüye kullanımı sınırla.
+- [x] Spring Boot API ve veritabanı mimarisini belirle; alan modeli, migration, hata/versiyonlama ve API sözleşmelerini frontend'le birlikte netleştir.
+- [x] İçerik, temalar, medya, seriler ve hesap tercihleri için kalıcı saklama ve güvenli sahip yetkisi ekle. Tarayıcı depolamasını üretim kaynağı kabul etme.
+- [x] Gerçek üye girişi, e-posta doğrulama, şifre sıfırlama, güvenli oturum/çıkış ve Google OAuth bağlantısını tamamla. Yerel demo girişi kimlik doğrulama sayılmaz.
+- [x] Planlanmış yazıları sunucu tarafında, tarayıcı kapalı olsa da doğru zamanda yayımla. Saat dilimi/yaz saati, yeniden planlama, iptal, gecikmiş işler, tekrar çalışmada tek yayın ve işlem kayıtlarını ele al.
+- [x] Yayın başarılı olduktan sonra yazara “Yazınız yayınlandı” e-postası gönder. Hesap genelindeki tercih kapalıysa gönderme; hata/tekrar denemeyi ve idempotent gönderimi kaydet.
+- [x] Alkış, görüntülenme ve kaydedilme sayılarını gerçek ortak sunucu verisine geçir; tekrar isteklerini çift sayma ve kötüye kullanımı sınırla.
 
 Ayrıntılar: [yayın planlama](features/publication-scheduling.md), [alkış ve görüntülenme](features/claps-and-sharing.md).
 
 ### Özel yazılar ve güvenli erişim
 
-- [ ] Önce site sahibine **kilitli/özel yazı** durumu ekle. Kamu katalogları, arama, seri, kalıcı URL, sitemap, API, kapak/medya, önizleme ve cache katmanlarında içeriği ifşa etme.
-- [ ] Kilitli yazının taslak/yayında/planlandı/arşiv/çöp kutusu geçişlerini açıkça tasarla. Yazı yalnız sahibin açık yayınlama işlemiyle kamuya açılsın.
-- [ ] Erişimi sadece arayüzle gizleme; sunucu kimliğine göre yetkilendir. Üyelere özel yazı desteğini ilk sürüme dahil etme.
+- [x] Önce site sahibine **kilitli/özel yazı** durumu ekle. Kamu katalogları, arama, seri, kalıcı URL, sitemap, API, kapak/medya, önizleme ve cache katmanlarında içeriği ifşa etme.
+- [x] Kilitli yazının taslak/yayında/planlandı/arşiv/çöp kutusu geçişlerini açıkça tasarla. Yazı yalnız sahibin açık yayınlama işlemiyle kamuya açılsın.
+- [x] Erişimi sadece arayüzle gizleme; sunucu kimliğine göre yetkilendir. Üyelere özel yazı desteğini ilk sürüme dahil etme.
 
 Ayrıntılar: [kilitli yazılar](features/private-articles.md).
 
 ### İçerik üretimi ve site yönetimi
 
 - [ ] Yazı ve seri için çevrimiçi, uygun lisanslı kapak bulma akışı ekle. Kaynak/lisans/atıf bilgisi sakla; elle seçme, kendi görselini kullanma ve görselsiz bırakma seçenekleri sun.
-- [ ] Yazı kapak görselini düzenleme/yükleme ve gerçek medya depolamasını tamamla. Alakasız veya lisansı belirsiz görseli otomatik seçme.
-- [ ] Üretimde kullanılacak SEO, sitemap/robots, paylaşım metaverisi ve özel içeriklerin indekslenmeme kurallarını ekle. Site herkese açılmadan indeksleme kararını kontrol et.
+- [x] Yazı kapak görselini düzenleme/yükleme ve gerçek medya depolamasını tamamla. Alakasız veya lisansı belirsiz görseli otomatik seçme.
+- [x] Üretimde kullanılacak SEO, sitemap/robots, paylaşım metaverisi ve özel içeriklerin indekslenmeme kurallarını ekle. Site herkese açılmadan indeksleme kararını kontrol et.
 - [ ] Mevcut örnek içeriklerden gerçek yazılara geçiş, yedekleme, içerik dışa aktarma ve kurtarma akışlarını belirle.
 - [ ] Proje, alıntı, şiir, öykü ve farklı sayfa türlerinin Studio içerik modelini hangi sırayla destekleyeceğine karar ver.
 - [ ] Üyelik avantajlarını açıklayan sade bir **site tanıtım/üyelik sayfası** hazırla. Yalnızca gerçek olanakları varmış gibi göster; henüz backend gerektirenleri “planlanıyor” diye ayır.
@@ -61,10 +61,10 @@ Ayrıntılar: [otomatik kapaklar](features/automatic-covers.md), [site tanıtım
 
 Üye olur olmak yazı yazma veya Studio yetkisi sağlamaz. V1 üyeler mevcut sahibin yayımladığı yazıları okur.
 
-- [ ] Gerçek hesap doğrulaması ve bulut profili; sekmeler/cihazlar arasında güvenli oturum ve hesap yönetimi.
-- [ ] Notlar, fosforlu işaretler ve okuma araçlarını üye hesabında saklama/eşitleme. Misafir notlarını içe aktarma kullanıcı tercihiyle olsun.
-- [ ] Kitaplığı ve “Genel” varsayılan koleksiyonunu hesapta saklama; kişisel koleksiyon oluşturma, taşıma, kaldırma. Bir üyenin kayıtlarını/koleksiyonlarını başka üyeye gösterme.
-- [ ] Seri/yazı ziyaret geçmişini otomatik kaydet ve üyeye kaldığı yeri göster. Ziyaret, yazının tamamlandığı anlamına gelmesin.
+- [x] Gerçek hesap doğrulaması ve bulut profili; sekmeler/cihazlar arasında güvenli oturum ve hesap yönetimi.
+- [x] Notlar, fosforlu işaretler ve okuma araçlarını üye hesabında saklama/eşitleme. Misafir notlarını içe aktarma kullanıcı tercihiyle olsun.
+- [x] Kitaplığı ve “Genel” varsayılan koleksiyonunu hesapta saklama; kişisel koleksiyon oluşturma, taşıma, kaldırma. Bir üyenin kayıtlarını/koleksiyonlarını başka üyeye gösterme.
+- [x] Seri/yazı ziyaret geçmişini otomatik kaydet ve üyeye kaldığı yeri göster. Ziyaret, yazının tamamlandığı anlamına gelmesin.
 - [ ] Üyelik faydaları için içerik kaydetme, kendi çalışma defteri ve kaldığı yere dönme akışlarını tamamla.
 - [ ] Üyenin hesabında kendi okuma ilerlemesi ve tanımlı okur rozetlerini göster.
 
@@ -72,8 +72,8 @@ Ayrıntılar: [üyelik](features/membership.md), [kişisel kitaplık](features/s
 
 ## 4. Sahip paneli — istatistikler
 
-- [ ] Yönetici üye listesini ve kararlaştırılmış hesap bilgilerini görebilsin; kişisel kitaplıklar, özel notlar ve gereksiz ayrıntılı gezinme geçmişi toplu panelden açığa çıkmasın.
-- [ ] Yazı bazında görüntülenme, alkış, kaydetme ve onaylanan diğer ölçüleri göster.
+- [x] Yönetici üye listesini ve kararlaştırılmış hesap bilgilerini görebilsin; kişisel kitaplıklar, özel notlar ve gereksiz ayrıntılı gezinme geçmişi toplu panelden açığa çıkmasın.
+- [x] Yazı bazında görüntülenme, alkış, kaydetme ve onaylanan diğer ölçüleri göster.
 - [ ] Sahip metrik, tarih aralığı, yazı, cihaz türü gibi kırılımları seçip tabloyu dinamik biçimde kurabilsin; kayıtları sıralayıp karşılaştırabilsin.
 - [ ] Görüntülenme/tekil ziyaret ve okuma süresi gibi metrikleri açıkça tanımla; sayfa arka plandayken geçen zamanı okuma diye sayma.
 - [ ] Veri amacı, saklama süresi, erişim, üyeye açıklama ve uygulanacak mahremiyet kurallarını olay toplamaya başlamadan kararlaştır.

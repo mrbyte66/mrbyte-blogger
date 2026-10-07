@@ -192,3 +192,7 @@ html[data-theme=light] .surface-night .account-danger { color:#944c5b; border-co
 .account-notification-toggle input:checked { background:var(--ink); }
 .account-notification-toggle input:checked::before { background:var(--panel); transform:translateX(16px); }
 .account-notification-toggle input:focus-visible { outline:2px solid var(--ink); outline-offset:4px; }
+
+.account-history { list-style:none; padding:0; margin:16px 0; display:grid; gap:10px; }
+.account-history li { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 12px; padding:12px 0; border-bottom:1px solid var(--line); }
+.account-history small { color:var(--muted, inherit); opacity:.75; }

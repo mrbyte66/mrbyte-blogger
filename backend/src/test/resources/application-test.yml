@@ -1,0 +1,32 @@
+# Integration tests: real PostgreSQL (Testcontainers, or SATIR_TEST_JDBC_URL when Docker is unavailable).
+server:
+  forward-headers-strategy: none
+  servlet:
+    session:
+      cookie:
+        name: satir-session-dev
+        secure: false
+
+satir:
+  engagement:
+    actor-cookie-name: satir-actor-dev
+    actor-cookie-secure: false
+  flyway:
+    mode: migrate
+  site:
+    public-origin: https://satir.test
+    indexing-enabled: true
+  media:
+    root: ${java.io.tmpdir}/satir-test-media
+  mail:
+    from: noreply@satir.test
+  jobs:
+    # Tests trigger the scheduler and outbox worker explicitly.
+    initial-delay: PT1H
+    poll-interval: PT1H
+    schedule-interval: PT1H
+  security:
+    rate-limit-key: test-only-rate-limit-key-0123456789abcdef
+    argon2:
+      memory-kib: 4096
+      iterations: 1

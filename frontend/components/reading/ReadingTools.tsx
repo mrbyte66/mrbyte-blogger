@@ -6,6 +6,8 @@ import { scrollBehavior } from "../../lib/motion";
 import { useEffect, useRef, useState } from "react";
 import { anchorRange, findAnchor, maxMarks, maxNoteLength, selectionAnchors, type ReadingMark, type ReadingMarkKind, type TextAnchor } from "../../lib/reading/model";
 import { readReadingDocument, readingStorageKey, writeReadingDocument } from "../../lib/reading/storage";
+import { createServerMark, deleteServerMark, importGuestMarks, loadServerMarks, type ServerArticle } from "../../lib/reading/server";
+import { describe } from "../../lib/api/http";
 
 type HighlightEnvironment = {
   CSS?: { highlights?: { set: (name: string, highlight: unknown) => void; delete: (name: string) => void } };
@@ -14,12 +16,17 @@ type HighlightEnvironment = {
 const highlightNames = { highlight: "mrbyte-reading-highlight", underline: "mrbyte-reading-underline", note: "mrbyte-reading-note" };
 const kindLabels = { highlight: "Fosforlu işaret", underline: "Alt çizgi", note: "Not" };
 
-export function ReadingTools(props: { articleId: string; contentRootId: string; contentRevision?: string }) {
+/**
+ * Guests keep marks in this browser only. A verified member's marks live in their account when the
+ * article is a published server article ({@code server}); guest marks are imported only on request.
+ */
+export function ReadingTools(props: { articleId: string; contentRootId: string; contentRevision?: string; server?: ServerArticle }) {
   const { session } = useAuth();
   const memberId = session?.profile.id;
-  return <ScopedReadingTools key={`${props.articleId}:${memberId ?? "guest"}`} {...props} memberId={memberId} />;
+  const account = !!(session?.profile.verified && props.server);
+  return <ScopedReadingTools key={`${props.articleId}:${memberId ?? "guest"}:${account}`} {...props} memberId={memberId} server={account ? props.server : undefined} />;
 }
-function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", memberId }: { articleId: string; contentRootId: string; contentRevision?: string; memberId?: string }) {
+function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", memberId, server }: { articleId: string; contentRootId: string; contentRevision?: string; memberId?: string; server?: ServerArticle }) {
   const [marks, setMarks] = useState<ReadingMark[]>([]);
   const [fragments, setFragments] = useState<TextAnchor[]>([]);
   const [open, setOpen] = useState(false);
@@ -31,11 +38,24 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
   const [unresolved, setUnresolved] = useState(0);
   const [ready, setReady] = useState(false);
   const [undo, setUndo] = useState<{ mark: ReadingMark; index: number } | null>(null);
+  const [guestMarks, setGuestMarks] = useState<ReadingMark[]>([]);
+  const [importing, setImporting] = useState(false);
   const noteInput = useRef<HTMLTextAreaElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const quote = fragments.map((fragment) => fragment.quote).join("\n");
 
   useEffect(() => {
+    if (server) {
+      let cancelled = false;
+      const loadAccount = () => loadServerMarks(server).then((loaded) => { if (!cancelled) { setMarks(loaded); setStorageError(null); setReady(true); } },
+        (cause) => { if (!cancelled) { setStorageError(`Notların yüklenemedi: ${describe(cause)}`); setReady(false); } });
+      void loadAccount();
+      setGuestMarks(readReadingDocument(articleId).document.marks);
+      // Another device may have changed the marks: re-read when the tab gets focus again.
+      const visible = () => { if (document.visibilityState === "visible") void loadAccount(); };
+      window.addEventListener("focus", visible);
+      return () => { cancelled = true; window.removeEventListener("focus", visible); };
+    }
     function load() {
       const loaded = readReadingDocument(articleId, memberId);
       setMarks(loaded.document.marks); setStorageError(loaded.error); setReady(true);
@@ -44,7 +64,7 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
     function sync(event: StorageEvent) { if (event.key === readingStorageKey(articleId, memberId) || event.key === null) load(); }
     load(); window.addEventListener("storage", sync);
     return () => window.removeEventListener("storage", sync);
-  }, [articleId, memberId]);
+  }, [articleId, memberId, server]);
   useEffect(() => {
     function capture() {
       const root = document.getElementById(contentRootId);
@@ -107,21 +127,48 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
     return () => { for (const name of Object.values(highlightNames)) registry?.delete(name); };
   }, [marks, contentRootId, contentRevision]);
 
-  function persist(next: ReadingMark[], message: string) {
+  /** Account mode applies the change optimistically, then confirms it with the server or rolls back. */
+  function persist(next: ReadingMark[], message: string, change: { create?: ReadingMark; remove?: ReadingMark }) {
+    if (server) {
+      const previous = marks;
+      setMarks(next); setStatus(`${message} Kaydediliyor…`);
+      const request = change.create ? createServerMark(server, change.create) : deleteServerMark(server, change.remove!.id);
+      request.then(() => { setStorageError(null); setStatus(`${message} Hesabına kaydedildi.`); },
+        (cause) => { setMarks(previous); setStorageError(`Kaydedilemedi: ${describe(cause)}`); setStatus(""); });
+      return;
+    }
     const saved = writeReadingDocument({ version: 1, articleId, marks: next }, memberId);
     setMarks(next);
     setStorageError(saved ? null : "Tarayıcı kaydı başarısız. Bu değişiklikler sayfa kapanınca kaybolabilir.");
     setStatus(saved ? `${message} Bu tarayıcıya kaydedildi.` : `${message} Yalnızca bu oturumda tutuluyor.`);
   }
+  /** Explicit, member-confirmed import of this browser's guest marks; local copies go only after success. */
+  async function importGuest() {
+    if (!server || !guestMarks.length) return;
+    setImporting(true);
+    const stored = readReadingDocument(articleId).document;
+    // One import ID per local document makes a retried import return the same result.
+    const clientImportId = stored.importId ?? crypto.randomUUID();
+    writeReadingDocument({ ...stored, importId: clientImportId });
+    try {
+      const result = await importGuestMarks(server, stored.marks, clientImportId);
+      const remaining = stored.marks.filter((mark) => !result.accepted.includes(mark.id));
+      writeReadingDocument({ version: 1, articleId, marks: remaining });
+      setGuestMarks(remaining);
+      setMarks(await loadServerMarks(server));
+      setStatus(`${result.accepted.length} misafir kaydı hesabına aktarıldı.${result.rejected ? ` ${result.rejected} kayıt metinle eşleşmediği için bu tarayıcıda bırakıldı.` : ""}`);
+    } catch (cause) { setStorageError(`İçe aktarılamadı: ${describe(cause)}`); }
+    finally { setImporting(false); }
+  }
   function add(kind: ReadingMarkKind) {
     if (!ready || !fragments.length || marks.length >= maxMarks || (kind === "note" && !note.trim())) return;
     const mark: ReadingMark = { id: crypto.randomUUID(), kind, fragments, note: kind === "note" ? note.trim() : "", createdAt: new Date().toISOString() };
-    persist([...marks, mark], `${kindLabels[kind]} eklendi.`);
+    persist([...marks, mark], `${kindLabels[kind]} eklendi.`, { create: mark });
     setFragments([]); setNote(""); setWriting(false); setUndo(null);
     window.getSelection()?.removeAllRanges();
   }
   function remove(mark: ReadingMark, index: number) {
-    persist(marks.filter((item) => item.id !== mark.id), "İşaret kaldırıldı.");
+    persist(marks.filter((item) => item.id !== mark.id), "İşaret kaldırıldı.", { remove: mark });
     setUndo({ mark, index });
   }
   function jump(mark: ReadingMark) {
@@ -142,7 +189,8 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
     </div>
     {!open && <p className="reading-hint">Metin seç, işaretle.</p>}
     {open && <section id="reading-notes-panel" className="reading-panel" aria-label="Bu yazıdaki okuma notların">
-      <header><p className="reading-eyebrow">KİŞİSEL OKUMA ALANI</p><h2>Satır aralarında.</h2><p>Notların bu tarayıcıda sana ait. Site sahibiyle veya diğer okurlarla paylaşılmaz.</p></header>
+      <header><p className="reading-eyebrow">KİŞİSEL OKUMA ALANI</p><h2>Satır aralarında.</h2><p>{server ? "Notların hesabında saklanır ve giriş yaptığın cihazlarda görünür." : "Notların bu tarayıcıda sana ait."} Site sahibiyle veya diğer okurlarla paylaşılmaz.</p></header>
+      {server && guestMarks.length > 0 && <div className="reading-availability"><p>Bu tarayıcıda hesapsız eklediğin {guestMarks.length} kayıt var. İstersen hesabına aktarabilirsin.</p><button className="reading-text-button" disabled={importing} onClick={() => void importGuest()}>{importing ? "Aktarılıyor…" : "Misafir notlarını hesabıma aktar"}</button></div>}
       {!supported && <p className="reading-availability">Bu tarayıcı metnin üzerinde renk ve çizgi göstermeyi desteklemiyor. İşaretlerin ve notların bu listede kaydedilir.</p>}
       {unresolved > 0 && <p className="reading-availability">{unresolved} işaretin metindeki yeri değişmiş olabilir. Kaydettiğin alıntılar burada korunuyor.</p>}
       {fragments.length > 0 ? <div className="reading-selection"><strong>Seçilen alıntı</strong><blockquote>{quote}</blockquote><button className="reading-text-button" onClick={() => { setFragments([]); setWriting(false); window.getSelection()?.removeAllRanges(); }}>Seçimi temizle</button></div> : <p className="reading-instruction">Yazıdan bir metin seç. Sonra fosforlu kalem, alt çizgi veya not ekle düğmesini kullan.</p>}
@@ -157,8 +205,8 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
         <button className="reading-quote-link" onClick={() => jump(mark)} aria-label={`${index + 1}. alıntının bulunduğu bölüme git`}><q>{mark.fragments.map((fragment) => fragment.quote).join("\n")}</q><span aria-hidden="true">↗</span></button>
         {mark.note && <p className="reading-authored-note">{mark.note}</p>}
       </li>)}</ol>}
-      {undo && <button className="reading-undo" onClick={() => { const restored = [...marks]; restored.splice(undo.index, 0, undo.mark); persist(restored, "Kaldırılan işaret geri alındı."); setUndo(null); }}>Son kaldırmayı geri al ↶</button>}
-      <footer>Hesapsız kullanım · yalnızca bu cihaz/tarayıcı<br />Kalıcı hesap eşitlemesi henüz yok.</footer>
+      {undo && <button className="reading-undo" onClick={() => { const restored = [...marks]; restored.splice(undo.index, 0, undo.mark); persist(restored, "Kaldırılan işaret geri alındı.", { create: undo.mark }); setUndo(null); }}>Son kaldırmayı geri al ↶</button>}
+      <footer>{server ? <>Hesabına bağlı · yalnız sen görürsün</> : <>Hesapsız kullanım · yalnızca bu cihaz/tarayıcı<br />Giriş yapıp e-postanı doğrularsan notların hesabında saklanır.</>}</footer>
     </section>}
     {storageError && <p className="reading-feedback reading-storage-error" role="alert">{storageError}</p>}
     <p className={`reading-feedback ${status ? "has-message" : ""}`} role="status">{status}</p>

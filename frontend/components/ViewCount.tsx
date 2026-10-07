@@ -2,11 +2,11 @@
 
 import { EngagementIcon } from "./EngagementIcon";
 
-import { useArticleViews } from "../lib/reactions/use-views";
+import { useArticleStats } from "../lib/reactions/use-views";
 
 export function ViewCount({ slugs, series = false }: { slugs: readonly string[]; series?: boolean }) {
-  const { totals, error } = useArticleViews(slugs[0] ?? "");
-  const count = [...new Set(slugs)].reduce((sum, slug) => sum + (totals[slug] ?? 0), 0);
-  const label = `${count} görüntülenme${series ? " · bölüm toplamı" : ""}`;
-  return <span className="view-count" aria-label={error ? "Görüntülenme sayısı okunamadı" : label} title={error || `${series ? "Seri bölüm görüntülenmeleri toplamı. " : ""}Şimdilik bu tarayıcıdaki görüntülenmeler.`}><EngagementIcon kind="view" /> {error ? "—" : count}</span>;
+  const stats = useArticleStats(slugs);
+  if (!stats) return <span className="view-count" aria-label="Görüntülenme sayısı yalnız yayındaki yazılarda gösterilir" title="Yayımlanmamış içerikte sayı yok"><EngagementIcon kind="view" /> —</span>;
+  const label = `${stats.views} görüntülenme${series ? " · bölüm toplamı" : ""}`;
+  return <span className="view-count" aria-label={label} title={series ? "Yayındaki bölümlerin görüntülenme toplamı" : "Görünen kart ve kalıcı sayfa açılışları; tekil okur sayısı değildir"}><EngagementIcon kind="view" /> {stats.views}</span>;
 }

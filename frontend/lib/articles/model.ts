@@ -23,7 +23,17 @@ export function validateArticle(value: unknown): Article | null {
   if (a.figure && (!a.figure.src || !isValidSeriesCoverImage(a.figure.src) || !text(a.figure.alt, 500) || !text(a.figure.caption, 1000) || !Number.isFinite(a.figure.width) || a.figure.width <= 0 || !Number.isFinite(a.figure.height) || a.figure.height <= 0)) return null;
   if (a.table && (!text(a.table.caption, 500) || !Array.isArray(a.table.columns) || !a.table.columns.length || a.table.columns.length > 20 || !a.table.columns.every((c) => text(c, 1000)) || !Array.isArray(a.table.rows) || a.table.rows.length > 200 || !a.table.rows.every((row) => Array.isArray(row) && row.length === a.table!.columns.length && row.every((c) => text(c, 4000))))) return null;
   if (a.presentation && (!["comfortable", "wide"].includes(a.presentation.width) || !["left", "center"].includes(a.presentation.heading) || typeof a.presentation.showMeta !== "boolean")) return null;
-  return { slug: a.slug, ...(a.status ? { status: a.status } : {}), ...(a.authored ? { authored: true } : {}), title: a.title, category: categories[0], categories: [...new Set(categories)], createdAt, publishedAt, ...(a.scheduledAt ? { scheduledAt: a.scheduledAt } : {}), eyebrow: a.eyebrow, excerpt: a.excerpt, minutes: a.minutes, paragraphs: [...a.paragraphs], ...(a.code !== undefined ? { code: a.code } : {}), ...(a.figure ? { figure: { ...a.figure } } : {}), ...(a.table ? { table: { caption: a.table.caption, columns: [...a.table.columns], rows: a.table.rows.map((r) => [...r]) } } : {}), ...(a.presentation ? { presentation: { ...a.presentation } } : {}) };
+  if (a.id !== undefined && (typeof a.id !== "string" || !/^[0-9a-f-]{36}$/.test(a.id))) return null;
+  if (a.version !== undefined && !Number.isSafeInteger(a.version)) return null;
+  if (a.visibility !== undefined && a.visibility !== "public" && a.visibility !== "private") return null;
+  if (a.coverUrl !== undefined && !isValidSeriesCoverImage(a.coverUrl)) return null;
+  const server = {
+    ...(a.id ? { id: a.id } : {}), ...(a.version !== undefined ? { version: a.version } : {}),
+    ...(a.visibility ? { visibility: a.visibility } : {}), ...(a.coverUrl ? { coverUrl: a.coverUrl } : {}),
+    ...(a.seriesId !== undefined ? { seriesId: a.seriesId } : {}),
+    ...(a.blockIds && Array.isArray(a.blockIds.paragraphs) ? { blockIds: { ...a.blockIds, paragraphs: [...a.blockIds.paragraphs] } } : {}),
+  };
+  return { ...server, slug: a.slug, ...(a.status ? { status: a.status } : {}), ...(a.authored ? { authored: true } : {}), title: a.title, category: categories[0], categories: [...new Set(categories)], createdAt, publishedAt, ...(a.scheduledAt ? { scheduledAt: a.scheduledAt } : {}), eyebrow: a.eyebrow, excerpt: a.excerpt, minutes: a.minutes, paragraphs: [...a.paragraphs], ...(a.code !== undefined ? { code: a.code } : {}), ...(a.figure ? { figure: { ...a.figure } } : {}), ...(a.table ? { table: { caption: a.table.caption, columns: [...a.table.columns], rows: a.table.rows.map((r) => [...r]) } } : {}), ...(a.presentation ? { presentation: { ...a.presentation } } : {}) };
 }
 export function parseArticles(raw: string): Article[] | null {
   try {
