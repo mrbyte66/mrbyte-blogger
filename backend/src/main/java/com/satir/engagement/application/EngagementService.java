@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.satir.editorial.application.PublicContentQuery;
 import com.satir.engagement.domain.EngagementRules;
@@ -61,16 +62,18 @@ public class EngagementService {
     private final KeyedHash keyedHash;
     private final IdGenerator ids;
     private final Clock clock;
+    private final TransactionTemplate transactions;
     private final SecureRandom random = new SecureRandom();
 
     EngagementService(EngagementRepository repository, PublicContentQuery content, RateLimiter rateLimiter,
-            KeyedHash keyedHash, IdGenerator ids, Clock clock) {
+            KeyedHash keyedHash, IdGenerator ids, Clock clock, TransactionTemplate transactions) {
         this.repository = repository;
         this.content = content;
         this.rateLimiter = rateLimiter;
         this.keyedHash = keyedHash;
         this.ids = ids;
         this.clock = clock;
+        this.transactions = transactions;
     }
 
     // ---------------------------------------------------------------- anonymous identity
@@ -108,7 +111,7 @@ public class EngagementService {
         };
     }
 
-    @Transactional
+    /** Rate limiting runs before the write transaction (see {@link RateLimiter}). */
     public ClapState setClap(UUID articleId, Actor actor, boolean clapped) {
         requirePublic(articleId);
         String key = actorKey(actor, null);
@@ -116,6 +119,10 @@ public class EngagementService {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", "Çok hızlı; biraz sonra tekrar dene", wait);
         });
         rateLimiter.record(CLAPS_PER_ACTOR, key);
+        return transactions.execute(status -> writeClap(articleId, actor, clapped));
+    }
+
+    private ClapState writeClap(UUID articleId, Actor actor, boolean clapped) {
         Instant now = clock.instant();
         switch (actor) {
             case Actor.Member member -> {
@@ -141,9 +148,9 @@ public class EngagementService {
 
     /**
      * Records a visible card or permalink view. The (actor, article, source, page view) slot counts
-     * once; the same event ID is a harmless retry, but reusing it for another payload is 409.
+     * once; the same event ID is a harmless retry, but reusing it for another payload is 409. Rate limiting
+     * runs before the write transaction (see {@link RateLimiter}).
      */
-    @Transactional
     public ImpressionResult impression(Impression event, Actor actor, String clientAddress, String userAgent) {
         if (event.eventId() == null) {
             throw new ValidationException("eventId", "REQUIRED");
@@ -164,7 +171,10 @@ public class EngagementService {
         String actorKey = actorKey(actor, clientAddress);
         limit(VIEWS_PER_ACTOR, actorKey);
         limit(VIEWS_PER_CLIENT, clientAddress == null ? "unknown" : clientAddress);
+        return transactions.execute(status -> recordImpression(event, source, actorKey, now));
+    }
 
+    private ImpressionResult recordImpression(Impression event, Source source, String actorKey, Instant now) {
         Receipt receipt = new Receipt(event.articleId(), keyedHash.hash("impression-actor", actorKey), source.name(),
                 event.pageViewId(), true);
         Optional<Receipt> previous = repository.receipt(event.eventId());
