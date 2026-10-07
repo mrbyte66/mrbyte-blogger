@@ -6,6 +6,7 @@
 - Frontend work reads `frontend/AGENTS.md` and the relevant files in `frontend/docs/`.
 - Backend work reads `backend/AGENTS.md` and the relevant files in `backend/docs/`.
 - Keep frontend and backend independently buildable. Put cross-project decisions here.
+- Use `docs/ai-workflow.md` for the shared GitHub issue, parallel-work, independent-test, and merge process.
 
 ## Current stage
 

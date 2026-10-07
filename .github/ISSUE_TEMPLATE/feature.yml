@@ -1,0 +1,33 @@
+name: Feature
+description: Propose a user-visible capability
+title: "feature: "
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: User need
+      description: Who needs this and what are they trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected behavior
+      description: Describe the smallest useful end-to-end result.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable conditions that prove the feature works.
+      placeholder: "- [ ] …"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope, dependencies, and non-goals
+      description: Link related issues/docs and call out excluded V2 work.
+    validations:
+      required: false
