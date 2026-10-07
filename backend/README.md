@@ -64,6 +64,9 @@ file name = variable name). All variables: `deploy/.env.example`; production: `d
 ## Implementation decisions (smallest safe option where the documents were silent)
 
 - Owner is created only by `bootstrap-owner`; the operator's bootstrap counts as e-mail verification.
+- Rate limits are checked and counted outside any transaction, before the caller's own transaction opens:
+  each counter update commits on its own (a failed request still uses quota) without holding a second pooled
+  connection. `RateLimiter` throws if called inside a transaction (#28).
 - Sessions store only the account UUID; role, verification and status are re-read on every request.
   Session lists expose an HMAC handle, never the cookie value.
 - Repositories use `JdbcClient` (explicit SQL for jsonb, deferred constraints, row locks); JPA remains for

@@ -21,6 +21,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.satir.identity.domain.DisplayName;
 import com.satir.identity.domain.EmailAddress;
@@ -67,9 +68,11 @@ public class MembershipService {
     private final IdGenerator ids;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    private final TransactionTemplate transactions;
 
     MembershipService(MembershipRepository members, PasswordEncoder passwords, Secrets secrets, AuthMailer mailer,
-            RateLimiter rateLimiter, AuditLog audit, IdGenerator ids, Clock clock, ApplicationEventPublisher events) {
+            RateLimiter rateLimiter, AuditLog audit, IdGenerator ids, Clock clock, ApplicationEventPublisher events,
+            TransactionTemplate transactions) {
         this.members = members;
         this.passwords = passwords;
         this.secrets = secrets;
@@ -79,16 +82,21 @@ public class MembershipService {
         this.ids = ids;
         this.clock = clock;
         this.events = events;
+        this.transactions = transactions;
     }
 
     // ---------------------------------------------------------------- registration & verification
 
-    @Transactional
+    /** Mail-sending requests are throttled before their transaction opens (see {@link RateLimiter}). */
     public void register(String name, String email, char[] password, char[] confirmation, String client) {
         String displayName = DisplayName.parse("name", name);
         EmailAddress address = EmailAddress.parse("email", email);
         checkNewPassword(password, confirmation);
         throttle(address.normalized(), client);
+        transactions.executeWithoutResult(status -> registerAccount(displayName, address, password));
+    }
+
+    private void registerAccount(String displayName, EmailAddress address, char[] password) {
         Instant now = clock.instant();
         Optional<Account> existing = members.byEmail(address.normalized());
         if (existing.isPresent()) {
@@ -107,12 +115,11 @@ public class MembershipService {
         audit.record(id, "REGISTER", "USER", id, AuditLog.Outcome.SUCCESS);
     }
 
-    @Transactional
     public void resendVerification(String email, String client) {
         String normalized = EmailAddress.parse("email", email).normalized();
         throttle(normalized, client);
-        members.byEmail(normalized).filter(a -> "PENDING".equals(a.status()))
-                .ifPresent(a -> issueVerification(a.id(), a.email(), a.displayName(), clock.instant()));
+        transactions.executeWithoutResult(status -> members.byEmail(normalized).filter(a -> "PENDING".equals(a.status()))
+                .ifPresent(a -> issueVerification(a.id(), a.email(), a.displayName(), clock.instant())));
     }
 
     /** Single-use; does not sign the user in (they log in afterwards). */
@@ -126,17 +133,16 @@ public class MembershipService {
 
     // ---------------------------------------------------------------- password recovery & change
 
-    @Transactional
     public void forgotPassword(String email, String client) {
         String normalized = EmailAddress.parse("email", email).normalized();
         throttle(normalized, client);
-        members.byEmail(normalized).filter(a -> !a.deleted()).ifPresent(account -> {
+        transactions.executeWithoutResult(status -> members.byEmail(normalized).filter(a -> !a.deleted()).ifPresent(account -> {
             Instant now = clock.instant();
             members.retireTokens(account.id(), "RESET", now);
             String token = Secrets.newToken();
             members.insertToken(ids.next(), account.id(), "RESET", Secrets.hash(token), null, now.plus(RESET_TTL), now);
             mailer.passwordReset(account.email(), account.displayName(), token);
-        });
+        }));
     }
 
     /** Proves control of the address, so a pending account becomes verified. Caller ends every session. */
@@ -182,10 +188,13 @@ public class MembershipService {
 
     // ---------------------------------------------------------------- e-mail change
 
-    @Transactional
     public void requestEmailChange(UUID userId, String email, String client) {
         EmailAddress address = EmailAddress.parse("email", email);
         throttle(address.normalized(), client);
+        transactions.executeWithoutResult(status -> issueEmailChange(userId, address));
+    }
+
+    private void issueEmailChange(UUID userId, EmailAddress address) {
         Account account = members.byId(userId, false).orElseThrow(MembershipService::unauthenticated);
         if (members.byEmail(address.normalized()).isPresent()) {
             return; // never reveal that another account uses the address
