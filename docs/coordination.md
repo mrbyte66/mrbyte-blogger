@@ -10,9 +10,7 @@
 
 ## Current stage
 
-The manual visual theme builder has its first local frontend slice. `/studio` edits a separate draft, `/preview` shows that draft, and `/` renders the applied snapshot. Scene, feed and magazine starters use the same articles, with stable `/yazilar/[slug]` routes. Review the editor before specifying backend contracts and persistence. Do not invent APIs or a database around fixture content.
-
-Blog series now have a separate local content workspace, a shared Studio page navigator, an optional page block and stable `/seriler/[slug]` routes. Explicit series saves are separate from applying a theme; publication here affects this browser only. Chapter order stays independent of article URLs. Manual completion and guest progress have been removed; account-specific automatic visit history is deferred to real authentication/backend. `docs/features/blog-series.md` owns the accepted scope and deferred extensions.
+(2026-10-08) Backend V1 (slices 1–8) is on `main` and the frontend uses its API for content, themes, accounts, libraries, notes and reactions; only guest reading notes and display preferences stay in the browser. `/studio` edits a separate theme draft, `/preview` shows it, `/` renders the applied snapshot; articles and series live at `/yazilar/[slug]` and `/seriler/[slug]`. The API contract is `docs/api-contract.md` with the machine-checked `backend/docs/openapi.yaml`. Work runs through GitHub issues and pull requests (`docs/ai-workflow.md`); CI checks every PR. Status and open backend items: `backend/README.md`; open work by topic: `docs/roadmap.md`. The dated sections below are a history log, not the current state.
 
 Two future features are recorded without simulating unavailable account or 3D behavior: a public membership introduction page and a genuinely multi-view, pointer-controlled character with return-to-rest and a dizzy-eye finish. The current single-image character stays unchanged until its asset can support the motion.
 
@@ -236,3 +234,10 @@ Main’in backend temeli Claude’un `feature/backend-v1-slices-6-8` dalı olaca
 Kapsam: sekiz V1 dilimi, frontend API bağlantıları ve Studio düzeltmeleri. #5’in hesap değişiminde kitaplık formu/filtrelerini temizleme davranışı sunucuya bağlı kitaplığa taşınmalı. Bildirilen 153 backend testi, 200 frontend testi, typecheck/build ve tam yığın kontrolü bağımsız doğrulama bekler; bu kayıt PASS değildir.
 
 `chatgpt/backend-v1-implementation` korunur, birleştirilmez. Entegrasyondan sonra ayrı issue adayları: Studio içerik arşivi dışa/içe aktarma (ArchiveCodec), koddan OpenAPI üretimi, e-posta jetonları için AES-GCM ve SMTP yokken 503, prototip içerik dönüşüm betiği. Her aday yeni main ile karşılaştırılıp ihtiyaç varsa açılır; migration numarası yeni main’deki ilk boş numaradır (V12/V13 sabit kabul edilmez). Bu adaylar şimdiki entegrasyon kapsamına eklenmez.
+
+## 2026-10-08 — V1 main'de, iş akışı ve CI
+
+- Main'e alınanlar: backend V1 entegrasyonu (#9), OpenAPI'nin tüm uçları ve yanıt sözleşme testleri (#15), eşzamanlı isteklerde DB havuzu kilitlenmesi düzeltmesi (#28), yerel ortam ve Google girişi (#32), Google dönüşünde yönlendirme (#34), `seed-demo` örnek içerik ve test üyeleri (#35), PR ve main için CI (#14), yazı sayfasında giriş penceresi odağı (#38).
+- Yerel ortam: `deploy/compose.local.yml`, site http://127.0.0.1:3010 (`deploy/runbooks/local-stack.md`).
+- Açık işler issue olarak izlenir; konu bazında bağlantılar `docs/roadmap.md` ve `backend/README.md` "Not done" içinde.
+

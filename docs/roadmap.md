@@ -2,7 +2,8 @@
 
 Bu belge konuşmalarda kararlaştırılan işleri tek listede toplar. Durumlar:
 
-- **Prototipte var:** Arayüz ve davranış tarayıcıda denenebilir; gerçek hesap, ortak sunucu verisi veya e-posta anlamına gelmez.
+- **Prototipte var:** İlk olarak tarayıcıda denenen özellikler; backend V1 main'de olduğu için çoğu artık sunucu verisiyle çalışır.
+- Açık maddelerin başındaki `(#N)` ilgili GitHub issue'sudur.
 - **Sıradaki işler:** Sahip odaklı V1'i gerçek kullanım için tamamlamak üzere bekleyen işler.
 - **Üyelik V1:** Ziyaretçi hesabı ve özel kişisel özellikler; içerik yazarlığı vermez.
 - **V2:** Talebe bağlı çok yazarlı portal ve sosyal özellikler.
@@ -48,12 +49,12 @@ Ayrıntılar: [kilitli yazılar](features/private-articles.md).
 
 ### İçerik üretimi ve site yönetimi
 
-- [ ] Yazı ve seri için çevrimiçi, uygun lisanslı kapak bulma akışı ekle. Kaynak/lisans/atıf bilgisi sakla; elle seçme, kendi görselini kullanma ve görselsiz bırakma seçenekleri sun.
+- [ ] (#27) Yazı ve seri için çevrimiçi, uygun lisanslı kapak bulma akışı ekle. Kaynak/lisans/atıf bilgisi sakla; elle seçme, kendi görselini kullanma ve görselsiz bırakma seçenekleri sun.
 - [x] Yazı kapak görselini düzenleme/yükleme ve gerçek medya depolamasını tamamla. Alakasız veya lisansı belirsiz görseli otomatik seçme.
 - [x] Üretimde kullanılacak SEO, sitemap/robots, paylaşım metaverisi ve özel içeriklerin indekslenmeme kurallarını ekle. Site herkese açılmadan indeksleme kararını kontrol et.
-- [ ] Mevcut örnek içeriklerden gerçek yazılara geçiş, yedekleme, içerik dışa aktarma ve kurtarma akışlarını belirle.
+- [ ] (#16, #21, #20) Mevcut örnek içeriklerden gerçek yazılara geçiş, yedekleme, içerik dışa aktarma ve kurtarma akışlarını belirle.
 - [ ] Proje, alıntı, şiir, öykü ve farklı sayfa türlerinin Studio içerik modelini hangi sırayla destekleyeceğine karar ver.
-- [ ] Üyelik avantajlarını açıklayan sade bir **site tanıtım/üyelik sayfası** hazırla. Yalnızca gerçek olanakları varmış gibi göster; henüz backend gerektirenleri “planlanıyor” diye ayır.
+- [ ] (#17) Üyelik avantajlarını açıklayan sade bir **site tanıtım/üyelik sayfası** hazırla. Yalnızca gerçek olanakları varmış gibi göster; henüz backend gerektirenleri “planlanıyor” diye ayır.
 
 Ayrıntılar: [otomatik kapaklar](features/automatic-covers.md), [site tanıtımı](features/site-introduction.md), [site oluşturucu](site-builder.md).
 
@@ -66,7 +67,7 @@ Ayrıntılar: [otomatik kapaklar](features/automatic-covers.md), [site tanıtım
 - [x] Kitaplığı ve “Genel” varsayılan koleksiyonunu hesapta saklama; kişisel koleksiyon oluşturma, taşıma, kaldırma. Bir üyenin kayıtlarını/koleksiyonlarını başka üyeye gösterme.
 - [x] Seri/yazı ziyaret geçmişini otomatik kaydet ve üyeye kaldığı yeri göster. Ziyaret, yazının tamamlandığı anlamına gelmesin.
 - [ ] Üyelik faydaları için içerik kaydetme, kendi çalışma defteri ve kaldığı yere dönme akışlarını tamamla.
-- [ ] Üyenin hesabında kendi okuma ilerlemesi ve tanımlı okur rozetlerini göster.
+- [ ] (#26) Üyenin hesabında kendi okuma ilerlemesi ve tanımlı okur rozetlerini göster.
 
 Ayrıntılar: [üyelik](features/membership.md), [kişisel kitaplık](features/saved-articles.md), [okuma araçları](features/reading-tools.md), [blog serileri](features/blog-series.md), [okuma rozetleri](features/reader-progress-and-analytics.md).
 
@@ -75,8 +76,8 @@ Ayrıntılar: [üyelik](features/membership.md), [kişisel kitaplık](features/s
 - [x] Yönetici üye listesini ve kararlaştırılmış hesap bilgilerini görebilsin; kişisel kitaplıklar, özel notlar ve gereksiz ayrıntılı gezinme geçmişi toplu panelden açığa çıkmasın.
 - [x] Yazı bazında görüntülenme, alkış, kaydetme ve onaylanan diğer ölçüleri göster.
 - [ ] Sahip metrik, tarih aralığı, yazı, cihaz türü gibi kırılımları seçip tabloyu dinamik biçimde kurabilsin; kayıtları sıralayıp karşılaştırabilsin.
-- [ ] Görüntülenme/tekil ziyaret ve okuma süresi gibi metrikleri açıkça tanımla; sayfa arka plandayken geçen zamanı okuma diye sayma.
-- [ ] Veri amacı, saklama süresi, erişim, üyeye açıklama ve uygulanacak mahremiyet kurallarını olay toplamaya başlamadan kararlaştır.
+- [ ] (#26) Görüntülenme/tekil ziyaret ve okuma süresi gibi metrikleri açıkça tanımla; sayfa arka plandayken geçen zamanı okuma diye sayma.
+- [ ] (#26, #19, #24) Veri amacı, saklama süresi, erişim, üyeye açıklama ve uygulanacak mahremiyet kurallarını olay toplamaya başlamadan kararlaştır.
 
 Ayrıntılar: [okuma rozetleri ve istatistikler](features/reader-progress-and-analytics.md).
 
@@ -96,7 +97,7 @@ Ayrıntılar: [çok yazarlı üyelik](features/membership.md), [kişiselleştiri
 
 ### Okuma ve yazı deneyimi
 
-- [ ] Yazıları PDF olarak dışa aktarma özelliği ekle. Bu işlemi yalnızca sisteme kayıtlı, giriş yapmış üyeler yapabilsin; dışa aktarma mevcut yazı erişim kurallarına tabi olsun.
+- [ ] (#25) Yazıları PDF olarak dışa aktarma özelliği ekle. Bu işlemi yalnızca sisteme kayıtlı, giriş yapmış üyeler yapabilsin; dışa aktarma mevcut yazı erişim kurallarına tabi olsun.
 - [ ] Sahibin herkese açık yazar notları/açıklamaları için ayrı ve açık yayımlama katmanı.
 - [ ] Okuma araçlarını panel/sahne okumasına da uyarlama; ek kalem/renk ve not dışa aktarma kararları.
 - [ ] Seri ve içerik önerilerini üyenin gerçek okuma ilgisine göre kişiselleştirme.

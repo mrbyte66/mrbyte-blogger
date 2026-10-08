@@ -29,4 +29,4 @@ This repository contains separate frontend and backend applications.
 
 Keep product requirements and cross-application contracts here. Keep frontend design and implementation rules in `frontend/`; backend architecture and test rules belong in `backend/`. Update the document that owns a decision when it changes.
 
-The intended production stack is Next.js/React frontend and Spring Boot/Java 25 LTS backend. Frontend is currently a design prototype. Do not infer API/database contracts from sample content.
+The stack is a Next.js/React frontend and a Spring Boot/Java 25 LTS backend with PostgreSQL. Backend V1 (slices 1–8) is on `main` and the frontend uses its API; status and open items live in `backend/README.md`, the contract in `docs/api-contract.md` and `backend/docs/openapi.yaml`. Do not infer API/database contracts from sample or seed content. Work is tracked in GitHub issues (`docs/ai-workflow.md`); every pull request runs CI.

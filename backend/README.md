@@ -121,12 +121,12 @@ file name = variable name). All variables: `deploy/.env.example`; production: `d
 
 ## Not done / open
 
-- Contract lint in CI (#14) and generated frontend client types (#23).
-- Studio export/import (API contract §8 `/studio/exports`, `/studio/imports`) — not implemented.
-- Badges and advanced analytics stay blocked on product decisions (Ü3); no reading-time or device data is collected.
-- An operator command to reset the owner password; an off-site account-deletion journal for restores.
-- CI pipeline itself (build/test/scan/sign/push) and image digest pinning are described in
-  `deploy/runbooks/first-deploy.md` but not automated. Both images build and run locally (`deploy/compose.local.yml`);
-  the production compose file passes `docker compose config` but has not run on a VPS.
-- Audit/session retention reports; retention jobs exist for rate buckets, idempotency, tokens, outbox,
+- Generated frontend client types from `docs/openapi.yaml` (#23). CI already runs `verify` and the OpenAPI lint (#14).
+- Studio export (#16) and import (#21) (API contract §8 `/studio/exports`, `/studio/imports`) — not implemented.
+- Badges and advanced analytics stay blocked on product decisions (Ü3, #26); no reading-time or device data is collected.
+- An operator command to reset the owner password (#13); an off-site account-deletion journal for restores (#20).
+- Image build/scan/sign/push and digest pinning (#22) are described in `deploy/runbooks/first-deploy.md` but not
+  automated. Both images build and run locally (`deploy/compose.local.yml`); the production compose file passes
+  `docker compose config` but has not run on a VPS.
+- Audit/session retention (#24); retention jobs exist for rate buckets, idempotency, tokens, outbox,
   impression receipts, anonymous actors and visit history.
