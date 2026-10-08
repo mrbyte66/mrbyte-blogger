@@ -5,9 +5,9 @@ Her agent önce `AGENTS.md`, bu belge ve ilgili uygulama talimatlarını okur.
 
 ## Roller
 
-- **Koordinatör:** işleri analiz eder, tekrarları kontrol eder, kapsam/öncelik/bağımlılık belirler ve merge sırasını yönetir.
-- **Kodlayıcı:** tek issueyu ayrı branch/worktree içinde yapar, test eder ve PR açar.
-- **Testçi:** kabul ölçütlerini bağımsız kontrol eder; uygulama dosyalarını değiştirmez.
+- **Koordinatör:** işleri analiz eder, tekrarları kontrol eder, kapsam/öncelik/bağımlılık ve merge sırasını belirler. Merge yapmaz.
+- **Kodlayıcı:** tek issueyu ayrı branch/worktree içinde yapar, test eder, PR açar; CI yeşil olunca issueyu In Test yapıp testçiye devreder. Merge yapmaz.
+- **Testçi:** kabul ölçütlerini bağımsız kontrol eder; uygulama dosyalarını değiştirmez. PASS verdiğinde PR’ı merge eder ve issueyu Done yapar.
 
 Codex ve Claude bu rollerden herhangi birini alabilir; kalıcı rol veya sağlayıcı önceliği yoktur.
 Rol ve işi alan agent issue yorumuna yazılır. Aynı işin kodlayıcısı bağımsız testçi olamaz.
@@ -57,13 +57,14 @@ PR başlığı kısa Türkçe, açıklaması `Closes #N` içerir. PR numarasın�
 `Todo → In Progress → In Test → Done`
 
 1. Koordinatör metadata ve önkoşulları kontrol eder. Kodlayıcı işi alıp In Progress yapar.
-2. Kodlayıcı kontrol sonuçlarıyla PR açar. Bağlı PR Project otomasyonuyla In Test yapar; gerçekleşmediyse koordinatör düzeltir.
+2. Kodlayıcı kontrol sonuçlarıyla PR açar. CI yeşil olunca issueyu In Test yapar, Aktif sorumluyu testçiye geçirir ve devir yorumu (base/head, testler) yazar.
 3. Bağımsız agent veya kullanıcı ölçütleri test eder ve issueya kısa sonuç yazar:
-   - **PASS:** test edilen commit, kontroller ve sonuç. Koordinatör PR’ı merge eder; sonra Done doğrulanır.
+   - **PASS:** test edilen commit, kontroller ve sonuç. Testçi PR’ı merge eder, issueyu Done yapar ve Aktif sorumluyu temizler. Koordinatör merge yapmaz.
    - **FAIL:** adımlar, hatalar ve beklenen sonuç. PR’a değişiklik talebi verilir; issue In Progress yapılır. Kodlayıcı düzeltir ve yeniden test ister.
 4. Testten sonra kod değişirse önceki PASS geçersizdir. Son commit yeniden bağımsız test edilir.
 
 Issue yorumları tek başına durumu değiştirmez; otomasyonun sonucu görünür biçimde doğrulanır.
+Durum değiştirmeden önce PR durumu, son yorumlar ve pano yeniden okunur. Merge edilmiş veya Done olan iş geri çekilmez.
 Bağımsız PASS olmadan merge veya Done yok. CI (GitHub Actions) PASS'in yerine geçmez; testçinin ortamında Docker veya ağ yoksa PR'daki yeşil CI, test edilen commit için otomatik testlerin kanıtı sayılır. Kabul ölçütlerinin davranış kontrolü yine testçide (veya kullanıcıda) kalır; kırmızı CI ile PASS verilmez.
 
 ## Tetikleme
@@ -78,7 +79,7 @@ Bilgisayar kapalıyken veya hesap limiti doluyken çalışma devam ediyormuş gi
 > #ISSUE işini yap. AGENTS.md, docs/ai-workflow.md ve ilgili uygulama talimatlarını oku. Metadata, önkoşul ve çakışmaları kontrol et. Güncel main’den standart isimli ayrı branch/worktree aç. Kapsamı uygula, testleri raporla ve issueya bağlı Türkçe PR aç. Merge yapma. Sorun/bağımlılık varsa issueya yazıp durumunu güncelle.
 
 **Testçi:**
-> #ISSUE ve #PR için bağımsız test yap. Son commiti ve tüm kabul ölçütlerini kontrol et; uygulama dosyalarını değiştirme. Issueya kısa Türkçe PASS/FAIL ve kanıt yaz. FAIL ise hataları belirtip In Progress yap; PASS ise koordinatöre merge için bildir. Merge yapma.
+> #ISSUE ve #PR için bağımsız test yap. Son commiti ve tüm kabul ölçütlerini kontrol et; uygulama dosyalarını değiştirme. Issueya kısa Türkçe PASS/FAIL ve kanıt yaz. FAIL ise hataları belirtip In Progress yap. PASS ise CI yeşilse PR’ı merge et ve issueyu Done yap.
 
 ## Yeni katılan ajan ve makineler arası devir
 
@@ -91,7 +92,7 @@ Bilgisayar kapalıyken veya hesap limiti doluyken çalışma devam ediyormuş gi
 
 ## Periyodik tarama sözleşmesi
 
-Yerel bir tetikleyici kurulursa kodlayıcı kendi `agent:*` + `Todo` + engellenmemiş işlerini; testçi kendi `test:*` + `In Test` işlerini tarar. Her çalıştırmada güncel kayıt tekrar okunur; aktif iş ikinci kez başlatılmaz. Entegrasyon kilidi varsa başka kod işi alınmaz. Testçi PASS/FAIL kaydı ve durum güncellemesi yapar; tarayıcı kendiliğinden merge yapmaz.
+Yerel bir tetikleyici kurulursa kodlayıcı kendi `agent:*` + `Todo` + engellenmemiş işlerini; testçi kendi `test:*` + `In Test` işlerini tarar. Her çalıştırmada güncel kayıt tekrar okunur; aktif iş ikinci kez başlatılmaz. Entegrasyon kilidi varsa başka kod işi alınmaz. Testçi PASS/FAIL kaydı ve durum güncellemesi yapar; merge yalnız testçinin PASS kaydından sonra testçi tarafından yapılır.
 
 Claude tarafında yaklaşık 20 dakikalık yerel tarama planlandığı bildirildi; kurulumu burada doğrulanmadı. Codex tarafında periyodik tetikleyici henüz kurulmadı. Bu belge zamanlayıcı oluşturmaz.
 
