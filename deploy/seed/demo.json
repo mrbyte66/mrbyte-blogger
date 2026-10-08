@@ -1,0 +1,818 @@
+{
+ "_comment": "seed-demo için örnek içerik. Yalnız dev/test profillerinde yüklenir (satir.seed.enabled).",
+ "categories": [
+  {
+   "slug": "kitaplar",
+   "name": "Kitaplar"
+  },
+  {
+   "slug": "gunluk",
+   "name": "Günlük"
+  }
+ ],
+ "series": [
+  {
+   "slug": "java-yeniden",
+   "title": "Java'yı Yeniden Öğrenmek",
+   "summary": "Uzun bir aradan sonra modern Java'yı adım adım yeniden keşfetmek.",
+   "ongoing": false,
+   "cover": true
+  },
+  {
+   "slug": "kisa-oyku-atolyesi",
+   "title": "Kısa Öykü Atölyesi",
+   "summary": "Her hafta bir cümle, bir teknik, bir kısa öykü denemesi.",
+   "ongoing": true,
+   "cover": false
+  },
+  {
+   "slug": "sehir-notlari",
+   "title": "Şehir Notları",
+   "summary": "Vapurdan sahafa, yokuştan çarşıya şehirde tutulan küçük notlar.",
+   "ongoing": true,
+   "cover": true
+  },
+  {
+   "slug": "backend-giris",
+   "title": "Backend'e Giriş",
+   "summary": "Bir isteğin yolculuğundan veri tutarlılığına sunucu tarafının temelleri.",
+   "ongoing": true,
+   "cover": false
+  }
+ ],
+ "articles": [
+  {
+   "slug": "java-yeniden-neden",
+   "title": "Java'yı neden yeniden öğreniyorum?",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-06-02",
+   "eyebrow": "YAZILIM",
+   "abstract": "Uzun bir aradan sonra Java'ya dönüşün ilk notları.",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "On yıl önce Java yazıyordum; sonra başka dillere, başka işlere savruldum. Geçen ay eski bir projeyi açınca tanıdığım dilin epey değiştiğini gördüm."
+    },
+    {
+     "type": "paragraph",
+     "text": "Kayıt sınıfları, desen eşleme, sanal iş parçacıkları… Hepsi bir yerden kulağıma çalınmıştı ama hiçbirini gerçekten kullanmamıştım. Bu seride sıfırdan başlıyormuş gibi ilerleyeceğim."
+    },
+    {
+     "type": "heading",
+     "text": "Hedef",
+     "level": 2
+    },
+    {
+     "type": "paragraph",
+     "text": "Her bölümde küçük, çalışan bir örnek yazacağım. Amacım ezber değil; bir özelliği neden istediğimizi anlamak."
+    }
+   ],
+   "series": "java-yeniden"
+  },
+  {
+   "slug": "java-kayit-siniflari",
+   "title": "Kayıt sınıfları: daha az tören, daha çok niyet",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-06-09",
+   "eyebrow": "YAZILIM",
+   "abstract": "Record'lar veri sınıflarını nasıl sadeleştiriyor?",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Eskiden basit bir veri taşıyıcı için yapıcı, alanlar, equals, hashCode ve toString yazardık. Kayıt sınıfları bunların hepsini tek satıra indiriyor."
+    },
+    {
+     "type": "code",
+     "text": "record Okur(String ad, String eposta) {}\n\nvar okur = new Okur(\"Ada\", \"ada@example.com\");\nSystem.out.println(okur.ad());",
+     "language": "java"
+    },
+    {
+     "type": "paragraph",
+     "text": "Asıl kazanç satır sayısı değil: kayıt, okuyana \"bu bir değerdir, kimliği yoktur\" diyor."
+    },
+    {
+     "type": "quote",
+     "text": "Kod, makineden çok okuyan insan için yazılır."
+    }
+   ],
+   "series": "java-yeniden"
+  },
+  {
+   "slug": "java-desen-eslemesi",
+   "title": "Desen eşlemesiyle switch'i yeniden keşfetmek",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-06-16",
+   "eyebrow": "YAZILIM",
+   "abstract": "Mühürlü tipler ve desen eşleme birlikte nasıl çalışır?",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "switch artık yalnız sabitlerle çalışan bir merdiven değil. Mühürlü arayüzlerle birlikte kullanıldığında derleyici bütün durumları ele alıp almadığımızı kontrol ediyor."
+    },
+    {
+     "type": "code",
+     "text": "sealed interface Sekil permits Daire, Kare {}\nrecord Daire(double r) implements Sekil {}\nrecord Kare(double a) implements Sekil {}\n\ndouble alan(Sekil s) {\n    return switch (s) {\n        case Daire d -> Math.PI * d.r() * d.r();\n        case Kare k -> k.a() * k.a();\n    };\n}",
+     "language": "java"
+    },
+    {
+     "type": "paragraph",
+     "text": "Yeni bir şekil eklediğimde unuttuğum her yer derleme hatası veriyor. Bu, test yazmaktan önce gelen bir güvence."
+    },
+    {
+     "type": "paragraph",
+     "text": "Bir sonraki bölümde sanal iş parçacıklarına bakacağız."
+    }
+   ],
+   "series": "java-yeniden"
+  },
+  {
+   "slug": "java-sanal-is-parcaciklari",
+   "title": "Sanal iş parçacıkları ve bekleme maliyeti",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-06-23",
+   "eyebrow": "YAZILIM",
+   "abstract": "Bekleyen işler için ucuz iş parçacıkları.",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Bir web sunucusunun zamanının çoğu beklemekle geçer: veritabanı, ağ, disk. Klasik iş parçacıkları bu bekleme sırasında pahalı kaynakları boşuna tutar."
+    },
+    {
+     "type": "paragraph",
+     "text": "Sanal iş parçacıkları bekleyen işi çekirdek iş parçacığından ayırıyor. Binlerce eşzamanlı isteği basit, sıralı kodla yazabiliyoruz."
+    },
+    {
+     "type": "heading",
+     "text": "Dikkat edilecekler",
+     "level": 2
+    },
+    {
+     "type": "paragraph",
+     "text": "Sınırlı kaynaklar sınırlı kalır. Veritabanı bağlantı havuzunuz sekiz bağlantıysa, sekizden fazla isteği aynı anda veritabanında tutamazsınız; bunu yakın zamanda bizzat yaşadım."
+    },
+    {
+     "type": "paragraph",
+     "text": "Seri burada bir mola veriyor; geri bildirimleriniz bir sonraki bölümün konusunu belirleyecek."
+    }
+   ],
+   "series": "java-yeniden"
+  },
+  {
+   "slug": "atolye-ilk-cumle",
+   "title": "İlk cümle",
+   "categories": [
+    "edebiyat"
+   ],
+   "displayDate": "2026-05-04",
+   "eyebrow": "EDEBİYAT",
+   "abstract": "Atölyenin ilk haftası: kapıyı aralayan cümle.",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Bir öykünün ilk cümlesi kapıyı aralar ama içeri girmeye zorlamaz. Okur, eşikte bir an durup içerinin ışığına bakar."
+    },
+    {
+     "type": "paragraph",
+     "text": "Bu atölyede her hafta bir cümleyle başlayıp o cümlenin götürdüğü yere kadar yürüyeceğiz."
+    },
+    {
+     "type": "quote",
+     "text": "Yazmak, düşünmenin yavaşlatılmış hâlidir."
+    }
+   ],
+   "series": "kisa-oyku-atolyesi"
+  },
+  {
+   "slug": "atolye-istasyon",
+   "title": "İstasyonda bekleyen adam",
+   "categories": [
+    "edebiyat"
+   ],
+   "displayDate": "2026-05-11",
+   "eyebrow": "EDEBİYAT",
+   "abstract": "Bekleyiş üzerine kısa bir öykü denemesi.",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Tren yirmi dakika gecikmişti. Adam bankın ucuna oturmuş, elindeki biletin kenarını katlayıp açıyordu."
+    },
+    {
+     "type": "paragraph",
+     "text": "Karşı perondaki çocuk ona el salladı. Adam önce arkasına baktı; el sallanacak kimse yoktu. Sonra tereddütle o da elini kaldırdı."
+    },
+    {
+     "type": "paragraph",
+     "text": "Tren geldiğinde biletin köşesi artık bir yelpaze gibi kırışmıştı. Bindi mi, binmedi mi, çocuk hiç öğrenmedi."
+    },
+    {
+     "type": "paragraph",
+     "text": "Atölye notu: öyküyü bitirmeyen son, okura bir soru bırakır. Soruyu siz de sorun: adam neyi bekliyordu?"
+    }
+   ],
+   "series": "kisa-oyku-atolyesi"
+  },
+  {
+   "slug": "atolye-diyalog",
+   "title": "Diyalogda söylenmeyen",
+   "categories": [
+    "edebiyat"
+   ],
+   "displayDate": "2026-05-18",
+   "eyebrow": "EDEBİYAT",
+   "abstract": "Karakterler konuşurken asıl söylenen ne?",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "İyi bir diyalogda karakterler aslında başka bir şey konuşur. \"Çay ister misin?\" sorusu bazen \"Gitme\" demektir."
+    },
+    {
+     "type": "paragraph",
+     "text": "Bu hafta iki karakteri bir mutfağa koyun ve asıl meseleyi hiç adını anmadan anlatmaya çalışın."
+    },
+    {
+     "type": "paragraph",
+     "text": "İpucu: Eylemler sözlerden daha çok şey söyler. Fincanı masaya sertçe bırakmak, uzun bir paragraftan daha anlamlıdır."
+    }
+   ],
+   "series": "kisa-oyku-atolyesi"
+  },
+  {
+   "slug": "sehir-notlari-vapur",
+   "title": "Vapurda sabah",
+   "categories": [
+    "kultur",
+    "gunluk"
+   ],
+   "displayDate": "2026-04-06",
+   "eyebrow": "KÜLTÜR",
+   "abstract": "Karşıya geçerken tutulan küçük notlar.",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Sabah yedi otuz vapuru, şehrin en sessiz kalabalığıdır. Herkes birlikte yolculuk eder ama herkes yalnızdır."
+    },
+    {
+     "type": "paragraph",
+     "text": "Simit kırıntısı bekleyen martılar, çay ocağının buharı, telefonuna gömülmüş öğrenci… Her sabah aynı tablo, her sabah biraz farklı ışıkla."
+    },
+    {
+     "type": "paragraph",
+     "text": "Karşıya varmadan önceki son beş dakikada insanlar başlarını kaldırır. Kıyı yaklaşırken şehir yeniden konuşmaya başlar."
+    }
+   ],
+   "series": "sehir-notlari"
+  },
+  {
+   "slug": "sehir-notlari-sahaf",
+   "title": "Sahafın arka odası",
+   "categories": [
+    "kultur",
+    "kitaplar"
+   ],
+   "displayDate": "2026-04-13",
+   "eyebrow": "KÜLTÜR",
+   "abstract": "Eski kitapların arasında unutulmuş hikâyeler.",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Sahafın vitrininde yeni baskılar durur; asıl hazine arka odadadır. Tozlu raflarda, kenarına not düşülmüş, ithaflı kitaplar."
+    },
+    {
+     "type": "paragraph",
+     "text": "Bugün bir şiir kitabının arasında 1987 tarihli bir sinema bileti buldum. Kimin, hangi film için aldığını hiç bilmeyeceğim."
+    },
+    {
+     "type": "paragraph",
+     "text": "Kitabı biletle birlikte aldım. Bazı kitaplar yalnız yazarlarının değil, okurlarının da izini taşır."
+    }
+   ],
+   "series": "sehir-notlari"
+  },
+  {
+   "slug": "sehir-notlari-yokus",
+   "title": "Yokuşun ortasındaki dükkân",
+   "categories": [
+    "kultur"
+   ],
+   "displayDate": "2026-04-20",
+   "eyebrow": "KÜLTÜR",
+   "abstract": "Kırk yıllık bir saatçiden zamana dair.",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Mahallenin dik yokuşunun tam ortasında, kırk yıldır açık bir saatçi var. Ustaya göre saatler değil, insanlar acele eder."
+    },
+    {
+     "type": "paragraph",
+     "text": "Dükkânda her saat başka bir zamanı gösteriyor. \"Hepsi doğru,\" diyor usta, \"sadece farklı yerlerin saati.\""
+    },
+    {
+     "type": "quote",
+     "text": "Zaman tamir edilmez, sadece ayarlanır.",
+     "attribution": "Saatçi Hüsnü Usta"
+    }
+   ],
+   "series": "sehir-notlari"
+  },
+  {
+   "slug": "backend-istek-yolculugu",
+   "title": "Bir isteğin yolculuğu",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-07-07",
+   "eyebrow": "YAZILIM",
+   "abstract": "Düğmeye bastıktan sonra neler oluyor?",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Tarayıcıda bir düğmeye bastığınızda isteğiniz kısa ama kalabalık bir yolculuğa çıkar: DNS, TLS, ters vekil, uygulama, veritabanı ve geri dönüş."
+    },
+    {
+     "type": "heading",
+     "text": "Katmanlar",
+     "level": 2
+    },
+    {
+     "type": "paragraph",
+     "text": "Bu seride her katmanı tek tek açacağız. Amaç bir çerçeveyi öğrenmek değil; hangi sorunun hangi katmanda çözüldüğünü görmek."
+    },
+    {
+     "type": "code",
+     "text": "GET /api/v1/articles?page=0&size=20\nAccept: application/json",
+     "language": "plain"
+    }
+   ],
+   "series": "backend-giris"
+  },
+  {
+   "slug": "backend-idempotency",
+   "title": "Aynı isteği iki kez göndermek",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-07-14",
+   "eyebrow": "YAZILIM",
+   "abstract": "Tekrarlanan istekler neden çift kayıt üretmemeli?",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Ağ güvenilmezdir. Kullanıcı düğmeye iki kez basar, mobil bağlantı kopar, istemci isteği yeniden dener. Sunucu bu tekrarları nasıl ayırt eder?"
+    },
+    {
+     "type": "paragraph",
+     "text": "Idempotency anahtarı, istemcinin her işlem için ürettiği benzersiz bir kimliktir. Sunucu aynı anahtarı ikinci kez görünce işlemi tekrarlamaz, ilk sonucu döndürür."
+    },
+    {
+     "type": "code",
+     "text": "POST /api/v1/studio/articles\nIdempotency-Key: 9b1f…\n\n{ \"title\": \"Taslak\" }",
+     "language": "plain"
+    },
+    {
+     "type": "paragraph",
+     "text": "Önemli ayrıntı: anahtar kaydı ile asıl değişiklik aynı transaction içinde yazılmalı. Aksi hâlde yarım kalmış işlemler kalıcı olabilir."
+    }
+   ],
+   "series": "backend-giris"
+  },
+  {
+   "slug": "backend-iyimser-kilit",
+   "title": "Sürüm numarasıyla iyimser kilit",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-07-21",
+   "eyebrow": "YAZILIM",
+   "abstract": "Kayıp güncellemeleri önlemenin sade yolu.",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "İki sekmede aynı yazıyı düzenlediğinizi düşünün. İkincisini kaydettiğinizde ilkindeki değişiklikler sessizce kaybolmamalı."
+    },
+    {
+     "type": "paragraph",
+     "text": "Her kaynağın bir sürüm numarası olur. İstemci yazarken bildiği sürümü If-Match başlığıyla gönderir; sunucudaki sürüm farklıysa 412 döner."
+    },
+    {
+     "type": "paragraph",
+     "text": "Böylece çakışmayı kullanıcıya gösterebilir, hangi değişikliği tutacağına onun karar vermesini sağlarız."
+    }
+   ],
+   "series": "backend-giris"
+  },
+  {
+   "slug": "okuma-listesi-ekim",
+   "title": "Ekim okuma listesi",
+   "categories": [
+    "kitaplar"
+   ],
+   "displayDate": "2026-10-01",
+   "eyebrow": "KİTAPLAR",
+   "abstract": "Bu ay okumak istediğim kısa romanlar.",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Bu ay kısa romanlara ağırlık verdim. Uzun bir yazdan sonra iki yüz sayfalık kitaplar insana iyi geliyor."
+    },
+    {
+     "type": "heading",
+     "text": "Listede neler var?",
+     "level": 2
+    },
+    {
+     "type": "paragraph",
+     "text": "Bir deniz kenarı kasabasında geçen bir aile romanı, yarım bırakılmış bir mektuplaşmanın hikâyesi ve bir dil üzerine denemeler."
+    },
+    {
+     "type": "paragraph",
+     "text": "Her birini bitirdikçe buraya kısa notlar ekleyeceğim. Önerileriniz varsa listeye eklemeye hazırım."
+    }
+   ]
+  },
+  {
+   "slug": "not-defteri-aliskanligi",
+   "title": "Kâğıt not defteri alışkanlığı",
+   "categories": [
+    "gunluk"
+   ],
+   "displayDate": "2026-09-15",
+   "eyebrow": "GÜNLÜK",
+   "abstract": "Elle yazmanın düşünmeye etkisi üzerine.",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Bütün notlarım uygulamalarda dururken yeniden kâğıt deftere döndüm. Sebebi nostalji değil, yavaşlık."
+    },
+    {
+     "type": "paragraph",
+     "text": "Elle yazarken her cümleyi bir kez daha düşünüyorum. Silmek zor olduğu için baştan daha dikkatli yazıyorum."
+    },
+    {
+     "type": "paragraph",
+     "text": "Dijital notları arşiv, kâğıdı ise düşünme alanı olarak kullanıyorum."
+    }
+   ]
+  },
+  {
+   "slug": "kod-incelemesi-nezaket",
+   "title": "Kod incelemesinde nezaket",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-09-03",
+   "eyebrow": "YAZILIM",
+   "abstract": "İyi incelemenin teknik olmayan tarafı.",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Kod incelemesi bir sınav değil, ortak bir okuma seansıdır. Yorumların amacı kodu iyileştirmek; yazarı küçültmek değil."
+    },
+    {
+     "type": "heading",
+     "text": "Birkaç küçük kural",
+     "level": 2
+    },
+    {
+     "type": "paragraph",
+     "text": "Soru sormak, hüküm vermekten daha verimlidir: \"Bu durumda ne olur?\" demek, \"Bu yanlış\" demekten daha çok kapı açar."
+    },
+    {
+     "type": "paragraph",
+     "text": "Övgüyü de yazın. İyi bir çözümü fark ettiğinizi söylemek, ekipteki güveni büyütür."
+    },
+    {
+     "type": "paragraph",
+     "text": "Son olarak: büyük değişiklikleri küçük parçalara bölmek, incelemeyi herkes için kolaylaştırır."
+    },
+    {
+     "type": "paragraph",
+     "text": "Zor bir yorum yazacaksanız, önce kendi kodunuza aynı gözle baktığınızı hayal edin."
+    },
+    {
+     "type": "paragraph",
+     "text": "Kod gider, ekip kalır."
+    }
+   ]
+  },
+  {
+   "slug": "siirde-tekrar",
+   "title": "Şiirde tekrarın gücü",
+   "categories": [
+    "edebiyat"
+   ],
+   "displayDate": "2026-08-20",
+   "eyebrow": "EDEBİYAT",
+   "abstract": "Aynı sözcük her dönüşünde neden başka duyulur?",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Tekrar, düzyazıda çoğu zaman kusur sayılır; şiirde ise ritmin ve vurgunun en eski aracıdır."
+    },
+    {
+     "type": "paragraph",
+     "text": "Aynı dizenin her dönüşünde anlam biraz kayar. Okur, tanıdık sözcüklerde yeni bir ağırlık hisseder."
+    },
+    {
+     "type": "quote",
+     "text": "Söz bir kez söylenir, şiirde ise her seferinde ilk kez."
+    }
+   ]
+  },
+  {
+   "slug": "sergi-isik-ve-golge",
+   "title": "Sergi notu: Işık ve gölge",
+   "categories": [
+    "kultur"
+   ],
+   "displayDate": "2026-08-02",
+   "eyebrow": "KÜLTÜR",
+   "abstract": "Bir fotoğraf sergisinden izlenimler.",
+   "status": "published",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Hafta sonu gittiğim fotoğraf sergisi tek bir soruya odaklanıyordu: Gölge, ışığın yokluğu mu yoksa kendi başına bir biçim mi?"
+    },
+    {
+     "type": "paragraph",
+     "text": "En çok etkilendiğim kare, öğle güneşinde bir merdivenin basamaklarına düşen korkuluk gölgeleriydi. Nesne sıradan; gölgesi bir müzik notası gibi."
+    },
+    {
+     "type": "paragraph",
+     "text": "Sergi ay sonuna kadar açık. Sabah saatlerinde gitmenizi öneririm; salonlar sakin oluyor."
+    }
+   ]
+  },
+  {
+   "slug": "terminal-ipuclari",
+   "title": "Her gün kullandığım beş terminal kısayolu",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-07-28",
+   "eyebrow": "YAZILIM",
+   "abstract": "Küçük alışkanlıklar, büyük zaman kazancı.",
+   "status": "published",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Terminalde geçirdiğim zamanın çoğu aynı birkaç komutu tekrar etmekle geçiyor. Bu kısayollar bana her gün dakikalar kazandırıyor."
+    },
+    {
+     "type": "code",
+     "text": "ctrl+r   # geçmişte ara\nctrl+a   # satır başına git\nctrl+e   # satır sonuna git\n!!       # son komutu tekrarla\ncd -     # önceki klasöre dön",
+     "language": "bash"
+    },
+    {
+     "type": "paragraph",
+     "text": "Hepsini bir anda ezberlemeye çalışmayın; her hafta birini alışkanlık hâline getirin."
+    }
+   ]
+  },
+  {
+   "slug": "taslak-yapay-zeka-ile-yazmak",
+   "title": "Yapay zekâ ile birlikte yazmak",
+   "categories": [
+    "yazilim",
+    "edebiyat"
+   ],
+   "displayDate": "2026-10-05",
+   "eyebrow": "TASLAK",
+   "abstract": "Henüz bitmemiş düşünceler.",
+   "status": "draft",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Bu yazı henüz taslak. Yapay zekâ araçlarının yazma alışkanlıklarımı nasıl değiştirdiğini düşünüyorum."
+    },
+    {
+     "type": "paragraph",
+     "text": "Notlar: araç bir taslak üretiyor ama ses benim olmalı. Düzeltme süreci, yazmaktan daha çok zaman alıyor mu?"
+    }
+   ]
+  },
+  {
+   "slug": "taslak-kis-listesi",
+   "title": "Kış için okuma listesi",
+   "categories": [
+    "kitaplar"
+   ],
+   "displayDate": "2026-10-06",
+   "eyebrow": "TASLAK",
+   "abstract": "Kesinleşmemiş bir liste.",
+   "status": "draft",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Kış listesi için aday kitaplar: uzun romanlar, mektuplar, gezi yazıları."
+    },
+    {
+     "type": "paragraph",
+     "text": "Liste kesinleşince yayımlanacak."
+    }
+   ]
+  },
+  {
+   "slug": "planli-kasim-guncesi",
+   "title": "Kasım güncesi",
+   "categories": [
+    "gunluk"
+   ],
+   "displayDate": "2026-11-01",
+   "eyebrow": "GÜNLÜK",
+   "abstract": "Zamanı gelince yayımlanacak bir sayfa.",
+   "status": "scheduled",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Kasımın ilk gününe yazılmış, planlanmış bir günce sayfası."
+    },
+    {
+     "type": "paragraph",
+     "text": "Yağmurlu sabahlar, kısalan günler ve sıcak çay. Bu sayfa belirlenen saatte kendiliğinden yayımlanacak."
+    }
+   ],
+   "scheduleInDays": 7
+  },
+  {
+   "slug": "planli-backend-onbellek",
+   "title": "Önbellek ne zaman yardım eder, ne zaman zarar?",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-11-10",
+   "eyebrow": "YAZILIM",
+   "abstract": "Hız ile tazelik arasındaki denge.",
+   "status": "scheduled",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Önbellek, yavaş bir işin sonucunu saklayıp yeniden kullanmaktır. Doğru yerde hızlandırır; yanlış yerde eski veri gösterir."
+    },
+    {
+     "type": "paragraph",
+     "text": "Bu yazı planlı olarak yayımlanacak ve Backend'e Giriş serisine sonradan eklenebilir."
+    }
+   ],
+   "scheduleInDays": 14
+  },
+  {
+   "slug": "kilitli-yillik-degerlendirme",
+   "title": "Yıllık değerlendirme (özel)",
+   "categories": [
+    "gunluk"
+   ],
+   "displayDate": "2026-09-30",
+   "eyebrow": "ÖZEL",
+   "abstract": "Yalnız sahibe görünen kişisel notlar.",
+   "status": "draft",
+   "cover": false,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Bu yazı yalnız site sahibine görünür. Yıl içindeki hedefler ve gerçekleşenler üzerine kişisel notlar."
+    },
+    {
+     "type": "paragraph",
+     "text": "Herkese açık olmayan içerik katalogda, aramada, site haritasında ve kalıcı bağlantıda görünmez."
+    }
+   ],
+   "private": true
+  },
+  {
+   "slug": "kilitli-proje-fikirleri",
+   "title": "Proje fikirleri (özel)",
+   "categories": [
+    "yazilim"
+   ],
+   "displayDate": "2026-10-02",
+   "eyebrow": "ÖZEL",
+   "abstract": "Paylaşılmamış proje taslakları.",
+   "status": "draft",
+   "cover": true,
+   "blocks": [
+    {
+     "type": "paragraph",
+     "text": "Henüz paylaşmak istemediğim proje fikirleri: okuma istatistikleri, sesli makale, çevrimdışı okuma."
+    },
+    {
+     "type": "paragraph",
+     "text": "Fikirler olgunlaştıkça herkese açık yazılara dönüşebilir."
+    }
+   ],
+   "private": true
+  }
+ ],
+ "members": [
+  {
+   "email": "uye1@gmail.com",
+   "name": "uye1",
+   "password": "uye1_123456789",
+   "collection": "Hafta sonu okumaları",
+   "bookmarks": [
+    "java-kayit-siniflari",
+    "sehir-notlari-vapur",
+    "okuma-listesi-ekim",
+    "kod-incelemesi-nezaket"
+   ],
+   "inCollection": [
+    "sehir-notlari-vapur",
+    "okuma-listesi-ekim"
+   ],
+   "visits": [
+    "java-yeniden-neden",
+    "java-kayit-siniflari",
+    "java-desen-eslemesi",
+    "sehir-notlari-vapur",
+    "okuma-listesi-ekim"
+   ],
+   "claps": [
+    "java-kayit-siniflari",
+    "kod-incelemesi-nezaket",
+    "sehir-notlari-vapur"
+   ]
+  },
+  {
+   "email": "uye2@gmail.com",
+   "name": "uye2",
+   "password": "uye2_123456789",
+   "collection": null,
+   "bookmarks": [
+    "atolye-istasyon",
+    "siirde-tekrar"
+   ],
+   "inCollection": [],
+   "visits": [
+    "atolye-ilk-cumle",
+    "atolye-istasyon",
+    "siirde-tekrar"
+   ],
+   "claps": [
+    "atolye-istasyon"
+   ]
+  },
+  {
+   "email": "uye3@gmail.com",
+   "name": "uye3",
+   "password": "uye3_123456789",
+   "collection": null,
+   "bookmarks": [],
+   "inCollection": [],
+   "visits": [
+    "backend-istek-yolculugu"
+   ],
+   "claps": [
+    "backend-istek-yolculugu",
+    "terminal-ipuclari"
+   ]
+  }
+ ]
+}

@@ -1,20 +1,21 @@
 openapi: 3.1.0
 info:
   title: Satır API
-  version: 1.0.0-slices-1-and-6-7
+  version: 1.0.0
   description: |
-    Machine-readable contract for implemented endpoints. The behavioural source of truth is
-    docs/api-contract.md. Covered here: slice 1 (auth/session) and slices 6–7 (library, reading,
-    engagement, owner totals). Slices 2–5 (editorial, site/media, publishing, membership) are
-    implemented but not yet described in this file (see backend README "Not done").
+    Machine-readable contract for every implemented endpoint (slices 1–7). The behavioural source of truth is
+    docs/api-contract.md; backend tests check every response they receive against this file and that it lists
+    exactly the operations the application serves.
     All responses are `Cache-Control: no-store` and `X-Robots-Tag: noindex`. Errors use
     `application/problem+json`. Unsafe methods require the `X-CSRF-TOKEN` header obtained from
     `GET /auth/csrf` (fetch a new token after login and logout). Unknown request fields are rejected (422).
+    Access: public reads need no session; `/me/**` needs a verified account; `/studio/**` needs the OWNER role.
 servers:
   - url: /api/v1
 security:
   - sessionCookie: []
 tags:
+  - name: public
   - name: auth
   - name: me
   - name: library
@@ -109,6 +110,182 @@ paths:
         '204': {description: Signed out (also when already anonymous)}
         '403': {$ref: '#/components/responses/Problem'}
 
+  # ---------------------------------------------------------------- slice 5: membership
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: register
+      security: [{csrfHeader: []}]
+      summary: Create a pending member and mail a verification link
+      description: Always 202 with the same body, also for an existing address (no account enumeration). Rate limited per address and client.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterRequest'}
+      responses:
+        '202': {$ref: '#/components/responses/Accepted'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+
+  /auth/verification/resend:
+    post:
+      tags: [auth]
+      operationId: resendVerification
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Mail a new verification link to a pending account (generic 202)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailRequest'}
+      responses:
+        '202': {$ref: '#/components/responses/Accepted'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+
+  /auth/verification/confirm:
+    post:
+      tags: [auth]
+      operationId: confirmVerification
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Single-use verification token; does not sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TokenRequest'}
+      responses:
+        '204': {description: Verified}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {description: '`INVALID_TOKEN` (unknown, used or expired)', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /auth/password/forgot:
+    post:
+      tags: [auth]
+      operationId: forgotPassword
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Mail a 30-minute reset link (generic 202; earlier links stop working)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailRequest'}
+      responses:
+        '202': {$ref: '#/components/responses/Accepted'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+
+  /auth/password/reset:
+    post:
+      tags: [auth]
+      operationId: resetPassword
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Set a new password with a reset token
+      description: Also verifies a pending account. Ends every session and retires other reset and pending e-mail change links.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PasswordReset'}
+      responses:
+        '204': {description: Password changed; all sessions ended}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {description: '`INVALID_TOKEN` or `VALIDATION_FAILED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /auth/email-change/confirm:
+    post:
+      tags: [auth]
+      operationId: confirmEmailChange
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Confirm a new address from the link sent to it
+      description: Ends every session and retires earlier reset links; sign-in continues with the new address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TokenRequest'}
+      responses:
+        '204': {description: Address changed; all sessions ended}
+        '403': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`EMAIL_TAKEN`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {description: '`INVALID_TOKEN`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /auth/reauthenticate:
+    post:
+      tags: [auth]
+      operationId: reauthenticate
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Password re-authentication for sensitive actions (valid for 5 minutes)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password]
+              properties:
+                password: {type: string, format: password}
+      responses:
+        '200':
+          description: Re-authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [validUntil]
+                properties:
+                  validUntil: {type: string, format: date-time}
+        '401': {description: '`INVALID_CREDENTIALS` or no session', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '403': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`PASSWORD_NOT_SET` (Google-only account: use Google start with purpose `reauth`)', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+
+  /auth/google/start:
+    post:
+      tags: [auth]
+      operationId: startGoogle
+      security: [{csrfHeader: []}, {sessionCookie: [], csrfHeader: []}]
+      summary: Begin Google sign-in, or re-authentication for a signed-in member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                returnTo: {type: [string, 'null'], description: Allowlisted same-origin relative path; defaults to `/`}
+                purpose: {type: [string, 'null'], enum: [login, reauth, null], default: login}
+      responses:
+        '200': {$ref: '#/components/responses/AuthorizationUrl'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '503': {description: '`GOOGLE_NOT_CONFIGURED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /auth/google/callback:
+    get:
+      tags: [auth]
+      operationId: googleCallback
+      security: []
+      summary: Provider redirect target; always 303 to the allowlisted return path
+      description: The outcome is appended as `google=signed_in|linked|reauthenticated` or `google_error=<code>`. Tokens never appear in the URL.
+      parameters:
+        - {name: state, in: query, schema: {type: string}}
+        - {name: code, in: query, schema: {type: string}}
+        - {name: error, in: query, schema: {type: string}}
+      responses:
+        '303':
+          description: Back to the frontend
+          headers:
+            Location: {schema: {type: string}}
+            Referrer-Policy: {schema: {type: string, const: no-referrer}}
+
   /me:
     get:
       tags: [me]
@@ -126,6 +303,232 @@ paths:
           content:
             application/problem+json:
               schema: {$ref: '#/components/schemas/Problem'}
+
+    patch:
+      tags: [me]
+      operationId: updateProfile
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Change name and/or avatar
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: {type: string, minLength: 1, maxLength: 80}
+                avatar: {type: [string, 'null'], description: One of the 60 built-in avatar keys; null removes it}
+      responses:
+        '200': {$ref: '#/components/responses/ProfileWithEtag'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [me]
+      operationId: deleteAccount
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Delete the own account (recent re-authentication required)
+      description: Personal data, library, notes, history and claps are removed in the same transaction; the account row is kept as a tombstone. Every session ends.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmation]
+              properties:
+                confirmation: {type: string, const: DELETE}
+      responses:
+        '204': {description: Deleted; all sessions ended}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {description: '`REAUTH_REQUIRED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '409': {description: '`OWNER_DELETE_REQUIRES_MIGRATION`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  /me/preferences:
+    patch:
+      tags: [me]
+      operationId: updatePreferences
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Account-wide publication e-mail and time zone (shares the profile version)
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                publicationEmail: {type: boolean}
+                timeZone: {type: string, description: IANA zone}
+      responses:
+        '200': {$ref: '#/components/responses/ProfileWithEtag'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /me/password:
+    put:
+      tags: [me]
+      operationId: changePassword
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Set a new password (recent re-authentication required)
+      description: Also adds a password to a Google-only account. Ends every session and retires earlier reset and pending e-mail change links.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password, passwordConfirmation]
+              properties:
+                password: {type: string, minLength: 12, maxLength: 128, format: password}
+                passwordConfirmation: {type: string, format: password}
+      responses:
+        '204': {description: Changed; all sessions ended}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {description: '`REAUTH_REQUIRED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  /me/email-change:
+    post:
+      tags: [me]
+      operationId: requestEmailChange
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Mail a confirmation link to a new address (recent re-authentication required)
+      description: Generic 202, also when another account uses the address. The current address stays until confirmation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailRequest'}
+      responses:
+        '202': {$ref: '#/components/responses/Accepted'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {description: '`REAUTH_REQUIRED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+
+  /me/connections:
+    get:
+      tags: [me]
+      operationId: listConnections
+      summary: Linked sign-in providers (never provider tokens or subjects)
+      responses:
+        '200':
+          description: Connections
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [provider, connectedAt]
+                      properties:
+                        provider: {type: string, enum: [google]}
+                        connectedAt: {type: string, format: date-time}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+
+  /me/connections/google/start:
+    post:
+      tags: [me]
+      operationId: startGoogleLink
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Begin linking a Google account (recent re-authentication required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                returnTo: {type: [string, 'null']}
+      responses:
+        '200': {$ref: '#/components/responses/AuthorizationUrl'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '503': {description: '`GOOGLE_NOT_CONFIGURED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /me/connections/google:
+    delete:
+      tags: [me]
+      operationId: unlinkGoogle
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Unlink Google (recent re-authentication required)
+      responses:
+        '204': {description: Unlinked (also when not linked)}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`LAST_LOGIN_METHOD`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /me/sessions:
+    get:
+      tags: [me]
+      operationId: listSessions
+      summary: Own signed-in devices with opaque management IDs
+      responses:
+        '200':
+          description: Sessions, current first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, current, deviceLabel, createdAt, lastSeenAt, expiresAt]
+                      properties:
+                        id: {type: string, description: 'Opaque handle, not the session cookie'}
+                        current: {type: boolean}
+                        deviceLabel: {type: [string, 'null']}
+                        createdAt: {type: string, format: date-time}
+                        lastSeenAt: {type: string, format: date-time}
+                        expiresAt: {type: string, format: date-time}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+
+  /me/sessions/{id}:
+    delete:
+      tags: [me]
+      operationId: revokeSession
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: End one own session (the current one signs out)
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '204': {description: Ended}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {description: Unknown or another account's session, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /me/sessions/revoke-others:
+    post:
+      tags: [me]
+      operationId: revokeOtherSessions
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: End every other session (recent re-authentication required)
+      responses:
+        '204': {description: Other sessions ended}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
 
   # ---------------------------------------------------------------- slice 6: library
   /me/collections:
@@ -215,10 +618,11 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - {$ref: '#/components/schemas/PageMeta'}
-                  - {type: object, properties: {items: {type: array, items: {$ref: '#/components/schemas/BookmarkItem'}}}}
+                $ref: '#/components/schemas/BookmarkPage'
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
         '404': {description: Foreign or missing collectionId, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {description: '`INVALID_PAGE`, `INVALID_SORT` or `INVALID_QUERY`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
   /me/bookmarks/{articleId}:
     parameters: [{name: articleId, in: path, required: true, schema: {type: string, format: uuid}}]
     put:
@@ -237,6 +641,8 @@ paths:
                 collectionId: {type: string, format: uuid}
       responses:
         '200': {description: Saved, content: {application/json: {schema: {$ref: '#/components/schemas/Bookmark'}}}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
         '404': {description: Hidden article (new save) or foreign collection, content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
         '409': {description: '`LIBRARY_FULL` (1000 bookmarks)', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
     delete:
@@ -281,8 +687,8 @@ paths:
                 required: [articleId, items]
                 properties:
                   articleId: {type: string, format: uuid}
-                  available: {type: boolean, description: Present (false) only when the article is hidden}
-                  revisionId: {type: string, format: uuid, description: Current public revision}
+                  available: {type: [boolean, 'null'], description: false only when the article is hidden; otherwise null}
+                  revisionId: {type: [string, 'null'], format: uuid, description: Current public revision; null when hidden}
                   items:
                     type: array
                     items:
@@ -397,20 +803,7 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - {$ref: '#/components/schemas/PageMeta'}
-                  - type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          type: object
-                          required: [articleId, available]
-                          properties:
-                            articleId: {type: string, format: uuid}
-                            available: {type: boolean}
-                            article: {$ref: '#/components/schemas/ArticleSummary'}
-                            lastVisitedAt: {type: string, format: date-time}
+                $ref: '#/components/schemas/HistoryPage'
     delete:
       tags: [reading]
       operationId: clearHistory
@@ -474,6 +867,7 @@ paths:
             schema: {type: object, additionalProperties: false, required: [clapped], properties: {clapped: {type: boolean}}}
       responses:
         '200': {description: New state and public total, content: {application/json: {schema: {type: object, properties: {clapped: {type: boolean}, claps: {type: integer, format: int64}}}}}}
+        '403': {description: '`CSRF_INVALID`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
         '404': {$ref: '#/components/responses/Problem'}
         '429': {description: '`RATE_LIMITED` with Retry-After', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
   /impressions:
@@ -528,11 +922,7 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - {$ref: '#/components/schemas/PageMeta'}
-                  - type: object
-                    properties:
-                      items: {type: array, items: {type: object, properties: {articleId: {type: string, format: uuid}, title: {type: string}, views: {type: integer}, claps: {type: integer}, saves: {type: integer}}}}
+                $ref: '#/components/schemas/OwnerArticleStatsPage'
         '403': {$ref: '#/components/responses/Problem'}
   /studio/members:
     get:
@@ -549,12 +939,733 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - {$ref: '#/components/schemas/PageMeta'}
-                  - type: object
-                    properties:
-                      items: {type: array, items: {type: object, properties: {id: {type: string, format: uuid}, name: {type: [string, 'null']}, email: {type: string}, status: {type: string, enum: [active, pending]}, createdAt: {type: string, format: date-time}}}}
+                $ref: '#/components/schemas/MemberPage'
         '403': {$ref: '#/components/responses/Problem'}
+
+  # ---------------------------------------------------------------- slice 2: public reading and SEO
+  /site:
+    get:
+      tags: [public]
+      operationId: getSite
+      security: []
+      summary: Applied theme and public site settings (never the draft); hidden references are null
+      responses:
+        '200': {description: Public site, content: {application/json: {schema: {$ref: '#/components/schemas/PublicSite'}}}}
+
+  /categories:
+    get:
+      tags: [public]
+      operationId: listPublicCategories
+      security: []
+      summary: Categories used by at least one public article
+      responses:
+        '200':
+          description: Categories in editorial order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/Category'}}
+
+  /articles:
+    get:
+      tags: [public]
+      operationId: listArticles
+      security: []
+      summary: Public articles
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+        - {$ref: '#/components/parameters/Query'}
+        - {name: categoryId, in: query, schema: {type: string, format: uuid}}
+        - {name: sort, in: query, schema: {type: string, enum: [date_desc, date_asc, title_asc], default: date_desc}}
+        - {name: expand, in: query, schema: {type: string, enum: [document]}, description: Also return body blocks and presentation}
+      responses:
+        '200': {description: Page of summaries, content: {application/json: {schema: {$ref: '#/components/schemas/ArticleSummaryPage'}}}}
+        '422': {description: '`INVALID_PAGE`, `INVALID_SORT` or `INVALID_QUERY`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /articles/by-slug/{slug}:
+    get:
+      tags: [public]
+      operationId: getArticleBySlug
+      security: []
+      summary: Public article, or a redirect answer for a former slug
+      parameters: [{$ref: '#/components/parameters/Slug'}]
+      responses:
+        '200':
+          description: The article, or where its canonical path is now (the frontend answers 308)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/ArticleDetail'}
+                  - {$ref: '#/components/schemas/Redirect'}
+        '404': {description: 'Missing, private, draft, scheduled, archived or trashed', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /series:
+    get:
+      tags: [public]
+      operationId: listSeries
+      security: []
+      summary: Public series with at least one public chapter
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+        - {$ref: '#/components/parameters/Query'}
+      responses:
+        '200': {description: Page of series, content: {application/json: {schema: {$ref: '#/components/schemas/SeriesSummaryPage'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  /series/by-slug/{slug}:
+    get:
+      tags: [public]
+      operationId: getSeriesBySlug
+      security: []
+      summary: Public series, or a redirect answer for a former slug
+      parameters: [{$ref: '#/components/parameters/Slug'}]
+      responses:
+        '200':
+          description: The series or its canonical path
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: '#/components/schemas/SeriesDetail'}
+                  - {$ref: '#/components/schemas/Redirect'}
+        '404': {description: 'Missing, hidden or without public chapters', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /series/{id}/chapters:
+    get:
+      tags: [public]
+      operationId: listChapters
+      security: []
+      summary: Public chapters in position order with consecutive chapter numbers
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200': {description: Page of chapters (summaries with `chapterNumber`), content: {application/json: {schema: {$ref: '#/components/schemas/ArticleSummaryPage'}}}}
+        '404': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  /seo/urls:
+    get:
+      tags: [public]
+      operationId: listSeoUrls
+      security: []
+      summary: Indexable public paths for the sitemap; empty while indexing is off
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 50}}
+      responses:
+        '200': {description: Page of paths, content: {application/json: {schema: {$ref: '#/components/schemas/SeoUrlPage'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  /media/{id}:
+    get:
+      tags: [public]
+      operationId: getMedia
+      security: [{}, {sessionCookie: []}]
+      summary: Image bytes; public when a public resource references it, otherwise owner only
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200':
+          description: Re-encoded image without metadata
+          headers:
+            Content-Disposition: {schema: {type: string, const: inline}}
+            X-Content-Type-Options: {schema: {type: string, const: nosniff}}
+          content:
+            image/jpeg: {schema: {type: string, format: binary}}
+            image/png: {schema: {type: string, format: binary}}
+            image/webp: {schema: {type: string, format: binary}}
+        '404': {description: 'Missing, not ready, or not visible to the caller', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  # ---------------------------------------------------------------- slice 2: Studio editorial (OWNER)
+  /studio/articles:
+    get:
+      tags: [studio]
+      operationId: studioListArticles
+      summary: All articles in any state
+      parameters:
+        - {name: status, in: query, schema: {type: string, enum: [draft, scheduled, published, archived, trashed]}}
+        - {name: visibility, in: query, schema: {type: string, enum: [public, private]}}
+        - {name: seriesId, in: query, schema: {type: string, format: uuid}}
+        - {$ref: '#/components/parameters/Query'}
+        - {name: sort, in: query, schema: {type: string, enum: [date_desc, created_asc, scheduled_asc, scheduled_desc, title_asc]}, description: 'Default date_desc; scheduled_asc when status=scheduled'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200': {description: Page of edit views, content: {application/json: {schema: {$ref: '#/components/schemas/ArticleEditPage'}}}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+    post:
+      tags: [studio]
+      operationId: studioCreateArticle
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Create a draft (slug and display date may be derived)
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ArticleCreate'}
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: {schema: {type: string}}
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ArticleEdit'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {description: 'Unknown category, series or media', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '409': {description: '`SLUG_TAKEN` (with `suggestedSlug`), `ARTICLE_IN_OTHER_SERIES`, `MEDIA_NOT_READY`, `IDEMPOTENCY_KEY_REUSED`, `IDEMPOTENCY_IN_PROGRESS`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/articles/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      tags: [studio]
+      operationId: studioGetArticle
+      summary: One article with its current version
+      responses:
+        '200': {$ref: '#/components/responses/ArticleEdit'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+    put:
+      tags: [studio]
+      operationId: studioUpdateArticle
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Replace the editable content (a published article updates live)
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ArticleWrite'}
+      responses:
+        '200': {$ref: '#/components/responses/ArticleEdit'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`SLUG_TAKEN`, `ARTICLE_IN_OTHER_SERIES`, `SCHEDULE_ALREADY_DUE`, `MEDIA_NOT_READY`, `ASSET_SHARED_ACROSS_VISIBILITY`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [studio]
+      operationId: studioTrashArticle
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Move to trash (same as the `trash` action; no hard delete)
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      responses:
+        '204': {description: Trashed}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '412': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/articles/{id}/actions:
+    post:
+      tags: [studio]
+      operationId: studioArticleAction
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Lifecycle transition (publish, schedule, archive, trash, restore, visibility)
+      description: Same-state actions are no-ops. Private articles cannot be published or scheduled (`PRIVATE_NOT_PUBLISHABLE`).
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {$ref: '#/components/parameters/IfMatch'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ArticleAction'}
+      responses:
+        '200': {$ref: '#/components/responses/ArticleEdit'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`INVALID_TRANSITION`, `PRIVATE_NOT_PUBLISHABLE`, `CONTENT_REQUIRED`, `SERIES_NOT_DRAFT`, `IDEMPOTENCY_KEY_REUSED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {description: '`VALIDATION_FAILED` (e.g. scheduledAt `IN_PAST`)', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/series:
+    get:
+      tags: [studio]
+      operationId: studioListSeries
+      summary: All series in any state
+      parameters:
+        - {name: status, in: query, schema: {type: string, enum: [draft, published, archived, trashed]}}
+        - {$ref: '#/components/parameters/Query'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200': {description: Page of edit views, content: {application/json: {schema: {$ref: '#/components/schemas/SeriesEditPage'}}}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+    post:
+      tags: [studio]
+      operationId: studioCreateSeries
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Create a draft series
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SeriesWrite'}
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: {schema: {type: string}}
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SeriesEdit'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`SLUG_TAKEN`, `ARTICLE_IN_OTHER_SERIES`, `IDEMPOTENCY_KEY_REUSED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/series/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      tags: [studio]
+      operationId: studioGetSeries
+      summary: One series with its current version
+      responses:
+        '200': {$ref: '#/components/responses/SeriesEdit'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+    put:
+      tags: [studio]
+      operationId: studioUpdateSeries
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Replace content, membership and chapter order atomically
+      description: Articles added or removed must be listed in `articleVersions`; a pure reorder needs none.
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SeriesWrite'}
+      responses:
+        '200': {$ref: '#/components/responses/SeriesEdit'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`SLUG_TAKEN`, `ARTICLE_IN_OTHER_SERIES`, `DUPLICATE`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [studio]
+      operationId: studioTrashSeries
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Move to trash; its articles do not change
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      responses:
+        '204': {description: Trashed}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '412': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/series/{id}/actions:
+    post:
+      tags: [studio]
+      operationId: studioSeriesAction
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Series lifecycle transition
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {$ref: '#/components/parameters/IfMatch'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [action]
+              properties:
+                action: {type: string, enum: [publish, save-draft, archive, trash, restore]}
+      responses:
+        '200': {$ref: '#/components/responses/SeriesEdit'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`INVALID_TRANSITION`, `SERIES_EMPTY`, `IDEMPOTENCY_KEY_REUSED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/categories:
+    get:
+      tags: [studio]
+      operationId: studioListCategories
+      summary: Every category, also those used only by hidden articles
+      responses:
+        '200':
+          description: Categories in position order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/StudioCategory'}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+    post:
+      tags: [studio]
+      operationId: studioCreateCategory
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Create a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CategoryWrite'}
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: {schema: {type: string}}
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StudioCategory'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`CATEGORY_EXISTS`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  /studio/categories/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+    patch:
+      tags: [studio]
+      operationId: studioUpdateCategory
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Rename or re-slug a category
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CategoryWrite'}
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StudioCategory'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`CATEGORY_EXISTS`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [studio]
+      operationId: studioDeleteCategory
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Delete an unused category
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      responses:
+        '204': {description: Deleted}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`CATEGORY_IN_USE`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  # ---------------------------------------------------------------- slice 4: publishing jobs (OWNER)
+  /studio/publication-jobs:
+    get:
+      tags: [studio]
+      operationId: studioListPublicationJobs
+      summary: Publication e-mail jobs (no message bodies or credentials)
+      parameters:
+        - {name: state, in: query, schema: {type: string, enum: [pending, running, done, failed, skipped]}}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200': {description: Page of jobs, content: {application/json: {schema: {$ref: '#/components/schemas/JobPage'}}}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+
+  /studio/publication-jobs/{id}/retry:
+    post:
+      tags: [studio]
+      operationId: studioRetryPublicationJob
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Make a FAILED job eligible again (same generation and idempotency)
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '204': {description: Queued again}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`JOB_NOT_FAILED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  # ---------------------------------------------------------------- slice 3: site, theme and media (OWNER)
+  /studio/site:
+    get:
+      tags: [studio]
+      operationId: studioGetSiteSettings
+      summary: Site settings with the deployment indexing gate
+      responses:
+        '200': {$ref: '#/components/responses/SiteSettings'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+    patch:
+      tags: [studio]
+      operationId: studioUpdateSiteSettings
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Change author name, site SEO and the indexing switch
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                authorPublicName: {type: [string, 'null'], maxLength: 80}
+                seo: {$ref: '#/components/schemas/SiteSeo'}
+                indexingEnabled: {type: boolean}
+      responses:
+        '200': {$ref: '#/components/responses/SiteSettings'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/theme:
+    get:
+      tags: [studio]
+      operationId: studioGetTheme
+      summary: Theme workspace (draft and applied documents)
+      responses:
+        '200': {$ref: '#/components/responses/ThemeWorkspace'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+
+  /studio/theme/draft:
+    put:
+      tags: [studio]
+      operationId: studioSaveThemeDraft
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Save the draft; the public site does not change
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ThemeDocument'}
+      responses:
+        '200': {$ref: '#/components/responses/ThemeWorkspace'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {description: 'Unknown article, series or category reference', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '413': {description: '`THEME_TOO_LARGE` (256 KiB)', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/theme/apply:
+    post:
+      tags: [studio]
+      operationId: studioApplyTheme
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Publish the given draft revision as the public theme
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [draftRevisionId]
+              properties:
+                draftRevisionId: {type: string, format: uuid}
+      responses:
+        '200': {$ref: '#/components/responses/ThemeWorkspace'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`DRAFT_CHANGED` or `NOT_PUBLIC` reference', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/theme/restore:
+    post:
+      tags: [studio]
+      operationId: studioRestoreTheme
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Start a new draft from the applied theme; the public site does not change
+      parameters: [{$ref: '#/components/parameters/IfMatch'}]
+      responses:
+        '200': {$ref: '#/components/responses/ThemeWorkspace'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`NOTHING_APPLIED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '412': {$ref: '#/components/responses/Problem'}
+        '428': {$ref: '#/components/responses/Problem'}
+
+  /studio/media:
+    post:
+      tags: [studio]
+      operationId: studioUploadMedia
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Upload an image (re-encoded, metadata stripped; 10 MB)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '202':
+          description: Accepted
+          headers:
+            Location: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MediaStatus'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '413': {description: '`MEDIA_TOO_LARGE` or `PAYLOAD_TOO_LARGE`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '415': {description: '`MEDIA_TYPE_UNSUPPORTED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '422': {description: '`MEDIA_EMPTY`, `MEDIA_DECODE_FAILED`, `MEDIA_TOO_MANY_PIXELS`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /studio/media/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      tags: [studio]
+      operationId: studioGetMedia
+      summary: Upload state and metadata (no storage paths)
+      responses:
+        '200': {description: Media, content: {application/json: {schema: {$ref: '#/components/schemas/MediaStatus'}}}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [studio]
+      operationId: studioDeleteMedia
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Delete an unused upload
+      responses:
+        '204': {description: Deleted (also when absent)}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '409': {description: '`MEDIA_IN_USE`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /studio/cover-jobs:
+    post:
+      tags: [studio]
+      operationId: studioSearchCovers
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Search licensed cover candidates for an article or series
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [resourceType, resourceId]
+              properties:
+                resourceType: {type: string, enum: [article, series]}
+                resourceId: {type: string, format: uuid}
+                resourceVersion: {type: [integer, 'null'], format: int64}
+                query: {type: [string, 'null'], maxLength: 100, description: Required for private articles (titles are never sent to the provider)}
+      responses:
+        '202': {description: Search job, content: {application/json: {schema: {$ref: '#/components/schemas/CoverJob'}}}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '409': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '503': {description: '`COVER_PROVIDER_UNAVAILABLE`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+
+  /studio/cover-jobs/{id}:
+    get:
+      tags: [studio]
+      operationId: studioGetCoverJob
+      summary: Search job state and candidates
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: Job, content: {application/json: {schema: {$ref: '#/components/schemas/CoverJob'}}}}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+
+  /studio/cover-jobs/{id}/select:
+    post:
+      tags: [studio]
+      operationId: studioSelectCover
+      security: [{sessionCookie: [], csrfHeader: []}]
+      summary: Download one candidate into media storage with its attribution
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [candidateId]
+              properties:
+                candidateId: {type: string}
+      responses:
+        '200':
+          description: Stored asset
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assetId, url]
+                properties:
+                  assetId: {type: string, format: uuid}
+                  url: {type: string}
+        '401': {$ref: '#/components/responses/Problem'}
+        '403': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '422': {description: '`VALIDATION_FAILED` with candidateId `UNKNOWN` for a candidate not in the job', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
+        '502': {description: '`COVER_DOWNLOAD_FAILED`', content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}}
 
 components:
   securitySchemes:
@@ -572,6 +1683,8 @@ components:
     IfMatch: {name: If-Match, in: header, required: true, schema: {type: string, examples: ['"3"']}}
     Page: {name: page, in: query, schema: {type: integer, minimum: 0, maximum: 1000, default: 0}}
     Size: {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
+    Query: {name: q, in: query, schema: {type: string, minLength: 1, maxLength: 100}, description: Trimmed search text}
+    Slug: {name: slug, in: path, required: true, schema: {type: string, maxLength: 100}}
 
   responses:
     Problem:
@@ -579,6 +1692,66 @@ components:
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}
+    RateLimited:
+      description: '`RATE_LIMITED`'
+      headers:
+        Retry-After: {schema: {type: integer, minimum: 1}}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Accepted:
+      description: Accepted; the same answer whether or not an account exists
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message]
+            properties:
+              message: {type: string}
+    AuthorizationUrl:
+      description: Redirect the browser here
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [authorizationUrl]
+            properties:
+              authorizationUrl: {type: string, format: uri}
+    ProfileWithEtag:
+      description: Own profile
+      headers:
+        ETag: {schema: {type: string}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Profile'}
+    ArticleEdit:
+      description: Article edit view
+      headers:
+        ETag: {schema: {type: string}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ArticleEdit'}
+    SeriesEdit:
+      description: Series edit view
+      headers:
+        ETag: {schema: {type: string}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/SeriesEdit'}
+    SiteSettings:
+      description: Site settings
+      headers:
+        ETag: {schema: {type: string}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/SiteSettings'}
+    ThemeWorkspace:
+      description: Theme workspace
+      headers:
+        ETag: {schema: {type: string}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ThemeWorkspace'}
 
   schemas:
     CsrfToken:
@@ -628,15 +1801,20 @@ components:
 
     Problem:
       type: object
+      description: RFC 9457 problem details; further extension members may be added (e.g. `suggestedSlug`)
+      additionalProperties: true
       required: [type, title, status, code, requestId]
       properties:
         type: {type: string, examples: ['urn:satir:problem:validation-failed']}
         title: {type: string}
         status: {type: integer}
+        detail: {type: string}
+        instance: {type: string, description: Request path}
         code:
           type: string
           examples: [VALIDATION_FAILED, UNAUTHENTICATED, FORBIDDEN, CSRF_INVALID, EMAIL_VERIFICATION_REQUIRED,
-                     INVALID_CREDENTIALS, RATE_LIMITED, NOT_FOUND, MALFORMED_REQUEST]
+                     INVALID_CREDENTIALS, RATE_LIMITED, NOT_FOUND, MALFORMED_REQUEST, STALE_VERSION,
+                     PRECONDITION_REQUIRED, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_REUSED, REAUTH_REQUIRED]
         requestId: {type: string}
         errors:
           type: array
@@ -647,15 +1825,78 @@ components:
               field: {type: string}
               code: {type: string, examples: [REQUIRED, LENGTH, FORMAT, UNKNOWN_FIELD, INVALID]}
 
-    PageMeta:
+    BookmarkPage:
       type: object
       required: [items, page, size, totalElements, totalPages, sort]
       properties:
+        items: {type: array, items: {$ref: '#/components/schemas/BookmarkItem'}}
         page: {type: integer}
         size: {type: integer}
         totalElements: {type: integer, format: int64}
         totalPages: {type: integer}
-        sort: {type: string}
+        sort: {type: [string, 'null']}
+
+    HistoryPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [articleId, available]
+            properties:
+              articleId: {type: string, format: uuid}
+              available: {type: boolean}
+              article: {$ref: '#/components/schemas/ArticleSummary'}
+              lastVisitedAt: {type: string, format: date-time}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
+
+    OwnerArticleStatsPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [articleId, title, views, claps, saves]
+            properties:
+              articleId: {type: string, format: uuid}
+              title: {type: string}
+              views: {type: integer, format: int64}
+              claps: {type: integer, format: int64}
+              saves: {type: integer, format: int64}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
+
+    MemberPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, name, email, status, createdAt]
+            properties:
+              id: {type: string, format: uuid}
+              name: {type: [string, 'null']}
+              email: {type: string, format: email}
+              status: {type: string, enum: [active, pending]}
+              createdAt: {type: string, format: date-time}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
 
     ArticleStats:
       type: object
@@ -667,12 +1908,9 @@ components:
 
     ArticleSummary:
       type: object
-      description: Public article summary (API contract §2); see docs/api-contract.md for all fields
+      description: Public article summary (API contract §2). Optional members are omitted when empty
       required: [id, slug, url, title, categories, displayDate, readingMinutes, stats]
       properties:
-        categories:
-          type: array
-          items: {type: object, properties: {id: {type: string, format: uuid}, slug: {type: string}, name: {type: string}}}
         id: {type: string, format: uuid}
         slug: {type: string}
         url: {type: string}
@@ -680,9 +1918,14 @@ components:
         eyebrow: {type: string}
         abstract: {type: string}
         bodyPreview: {type: string}
+        categories: {type: array, items: {$ref: '#/components/schemas/Category'}}
         displayDate: {type: string, format: date}
-        readingMinutes: {type: integer}
+        readingMinutes: {type: integer, minimum: 1}
+        cover: {$ref: '#/components/schemas/MediaPublic'}
         stats: {$ref: '#/components/schemas/ArticleStats'}
+        presentation: {$ref: '#/components/schemas/ArticlePresentation'}
+        document: {$ref: '#/components/schemas/Document', description: 'Only with `expand=document`'}
+        chapterNumber: {type: integer, description: Only in series chapter lists}
 
     Collection:
       type: object
@@ -711,13 +1954,16 @@ components:
         version: {type: integer, format: int64}
 
     BookmarkItem:
-      allOf:
-        - {$ref: '#/components/schemas/Bookmark'}
-        - type: object
-          required: [available]
-          properties:
-            available: {type: boolean}
-            article: {$ref: '#/components/schemas/ArticleSummary'}
+      type: object
+      description: Bookmark plus availability; a hidden article carries no article metadata
+      required: [articleId, collectionId, savedAt, version, available]
+      properties:
+        articleId: {type: string, format: uuid}
+        collectionId: {type: string, format: uuid}
+        savedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64}
+        available: {type: boolean}
+        article: {$ref: '#/components/schemas/ArticleSummary'}
 
     ArticleState:
       type: object
@@ -762,3 +2008,758 @@ components:
         note: {type: string}
         createdAt: {type: string, format: date-time}
         version: {type: integer, format: int64}
+
+    # ---------------------------------------------------------------- slice 5: membership
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [name, email, password, passwordConfirmation]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 80}
+        email: {type: string, format: email, maxLength: 254}
+        password: {type: string, minLength: 12, maxLength: 128, format: password}
+        passwordConfirmation: {type: string, format: password}
+
+    EmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: {type: string, format: email, maxLength: 254}
+
+    TokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: {type: string}
+
+    PasswordReset:
+      type: object
+      additionalProperties: false
+      required: [token, password, passwordConfirmation]
+      properties:
+        token: {type: string}
+        password: {type: string, minLength: 12, maxLength: 128, format: password}
+        passwordConfirmation: {type: string, format: password}
+
+    # ---------------------------------------------------------------- slice 2: editorial
+    Category:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id: {type: string, format: uuid}
+        slug: {type: string}
+        name: {type: string}
+
+    StudioCategory:
+      type: object
+      required: [id, slug, name, position, version]
+      properties:
+        id: {type: string, format: uuid}
+        slug: {type: string}
+        name: {type: string}
+        position: {type: integer}
+        version: {type: integer, format: int64}
+
+    CategoryWrite:
+      type: object
+      additionalProperties: false
+      properties:
+        name: {type: string, minLength: 1, maxLength: 60}
+        slug: {$ref: '#/components/schemas/SlugValue'}
+
+    SlugValue: {type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', minLength: 1, maxLength: 100}
+
+    Attribution:
+      type: object
+      description: Present for provider images; fields may be omitted
+      properties:
+        provider: {type: string}
+        photographer: {type: string}
+        photographerUrl: {type: string}
+        sourceUrl: {type: string}
+        licenseUrl: {type: string}
+
+    MediaPublic:
+      type: object
+      required: [id, url]
+      properties:
+        id: {type: string, format: uuid}
+        url: {type: string, examples: [/api/v1/media/0b6f1c1e-0000-4000-8000-000000000000]}
+        width: {type: integer}
+        height: {type: integer}
+        attribution: {$ref: '#/components/schemas/Attribution'}
+
+    Link:
+      type: object
+      required: [id, slug, title, url]
+      properties:
+        id: {type: string, format: uuid}
+        slug: {type: string}
+        title: {type: string}
+        url: {type: string}
+
+    Redirect:
+      type: object
+      required: [resolution, canonicalPath]
+      properties:
+        resolution: {type: string, const: redirect}
+        canonicalPath: {type: string}
+
+    ArticlePresentation:
+      type: object
+      additionalProperties: false
+      required: [width, heading, showMeta]
+      properties:
+        width: {type: string, enum: [comfortable, wide]}
+        heading: {type: string, enum: [left, center]}
+        showMeta: {type: boolean}
+
+    SeriesPresentation:
+      type: object
+      additionalProperties: false
+      required: [heading, chapterStyle]
+      properties:
+        heading: {type: string, enum: [left, center]}
+        chapterStyle: {type: string, enum: [cards, rows]}
+
+    Seo:
+      type: object
+      additionalProperties: false
+      required: [indexable]
+      properties:
+        title: {type: [string, 'null'], maxLength: 200}
+        description: {type: [string, 'null'], maxLength: 400}
+        indexable: {type: boolean}
+
+    Document:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, blocks]
+      properties:
+        schemaVersion: {type: integer, const: 1}
+        blocks: {type: array, maxItems: 500, items: {$ref: '#/components/schemas/Block'}}
+
+    Block:
+      description: Plain-text body block; IDs stay stable across revisions so annotations can anchor
+      oneOf:
+        - {$ref: '#/components/schemas/ParagraphBlock'}
+        - {$ref: '#/components/schemas/HeadingBlock'}
+        - {$ref: '#/components/schemas/QuoteBlock'}
+        - {$ref: '#/components/schemas/CodeBlock'}
+        - {$ref: '#/components/schemas/ImageBlock'}
+        - {$ref: '#/components/schemas/TableBlock'}
+      discriminator:
+        propertyName: type
+        mapping:
+          paragraph: '#/components/schemas/ParagraphBlock'
+          heading: '#/components/schemas/HeadingBlock'
+          quote: '#/components/schemas/QuoteBlock'
+          code: '#/components/schemas/CodeBlock'
+          image: '#/components/schemas/ImageBlock'
+          table: '#/components/schemas/TableBlock'
+
+    ParagraphBlock:
+      type: object
+      additionalProperties: false
+      required: [type, id, text]
+      properties:
+        type: {type: string, const: paragraph}
+        id: {type: string, format: uuid}
+        text: {type: string, maxLength: 20000}
+
+    HeadingBlock:
+      type: object
+      additionalProperties: false
+      required: [type, id, text, level]
+      properties:
+        type: {type: string, const: heading}
+        id: {type: string, format: uuid}
+        text: {type: string, minLength: 1, maxLength: 300}
+        level: {type: integer, enum: [2, 3]}
+
+    QuoteBlock:
+      type: object
+      additionalProperties: false
+      required: [type, id, text]
+      properties:
+        type: {type: string, const: quote}
+        id: {type: string, format: uuid}
+        text: {type: string, minLength: 1, maxLength: 4000}
+        attribution: {type: string, maxLength: 200}
+
+    CodeBlock:
+      type: object
+      additionalProperties: false
+      required: [type, id, text]
+      properties:
+        type: {type: string, const: code}
+        id: {type: string, format: uuid}
+        text: {type: string, maxLength: 50000}
+        language: {type: string, enum: [plain, java, javascript, typescript, python, bash, sql, json, yaml, html, css, kotlin, go, rust, csharp, cpp]}
+        caption: {type: string, maxLength: 300}
+
+    ImageBlock:
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      description: Exactly one of `assetId` (uploaded media) or `staticPath` (trusted `/assets/…` file)
+      properties:
+        type: {type: string, const: image}
+        id: {type: string, format: uuid}
+        assetId: {type: string, format: uuid}
+        staticPath: {type: string, pattern: '^/assets/[a-zA-Z0-9._/-]{1,200}$'}
+        alt: {type: string, maxLength: 500}
+        caption: {type: string, maxLength: 1000}
+        width: {type: integer, minimum: 1}
+        height: {type: integer, minimum: 1}
+
+    TableBlock:
+      type: object
+      additionalProperties: false
+      required: [type, id, columns, rows]
+      properties:
+        type: {type: string, const: table}
+        id: {type: string, format: uuid}
+        caption: {type: string, maxLength: 300}
+        columns: {type: array, minItems: 1, maxItems: 20, items: {type: string, maxLength: 200}}
+        rows: {type: array, maxItems: 200, items: {type: array, items: {type: string, maxLength: 2000}}, description: Each row has as many cells as there are columns}
+
+    CoverInput:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode: {type: string, enum: [auto, manual, none]}
+        assetId: {type: [string, 'null'], format: uuid, description: Required for manual; must be null for none}
+
+    CoverView:
+      type: object
+      required: [mode, assetId, media]
+      properties:
+        mode: {type: string, enum: [auto, manual, none]}
+        assetId: {type: [string, 'null'], format: uuid}
+        media: {oneOf: [{$ref: '#/components/schemas/MediaPublic'}, {type: 'null'}]}
+
+    VersionRef:
+      type: object
+      additionalProperties: false
+      required: [id, version]
+      properties:
+        id: {type: string, format: uuid}
+        version: {type: integer, format: int64}
+
+    ArticleStatsInline:
+      type: object
+      required: [views, claps, saves]
+      properties:
+        views: {type: integer, format: int64}
+        claps: {type: integer, format: int64}
+        saves: {type: integer, format: int64}
+
+    ArticleDetail:
+      type: object
+      required: [id, slug, url, title, categories, displayDate, readingMinutes, stats, revisionId, document, presentation, seo]
+      properties:
+        id: {type: string, format: uuid}
+        slug: {type: string}
+        url: {type: string}
+        title: {type: string}
+        eyebrow: {type: [string, 'null']}
+        abstract: {type: [string, 'null']}
+        bodyPreview: {type: [string, 'null']}
+        categories: {type: array, items: {$ref: '#/components/schemas/Category'}}
+        displayDate: {type: string, format: date}
+        readingMinutes: {type: integer, minimum: 1}
+        cover: {oneOf: [{$ref: '#/components/schemas/MediaPublic'}, {type: 'null'}]}
+        stats: {$ref: '#/components/schemas/ArticleStatsInline'}
+        revisionId: {type: string, format: uuid}
+        document: {$ref: '#/components/schemas/Document'}
+        presentation: {$ref: '#/components/schemas/ArticlePresentation'}
+        seo: {$ref: '#/components/schemas/Seo'}
+        firstPublishedAt: {type: [string, 'null'], format: date-time}
+        publicModifiedAt: {type: [string, 'null'], format: date-time}
+        series:
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [id, slug, title, position, total, previous, next]
+              properties:
+                id: {type: string, format: uuid}
+                slug: {type: string}
+                title: {type: string}
+                position: {type: integer, description: Public chapter number}
+                total: {type: integer}
+                previous: {oneOf: [{$ref: '#/components/schemas/Link'}, {type: 'null'}]}
+                next: {oneOf: [{$ref: '#/components/schemas/Link'}, {type: 'null'}]}
+
+    ArticleWrite:
+      type: object
+      additionalProperties: false
+      description: Full replacement of the editable content
+      properties:
+        title: {type: string, maxLength: 200, description: Non-blank to publish}
+        slug: {$ref: '#/components/schemas/SlugValue'}
+        eyebrow: {type: [string, 'null'], maxLength: 160}
+        abstract: {type: [string, 'null'], maxLength: 4000}
+        displayDate: {type: string, format: date}
+        categoryIds: {type: array, maxItems: 10, uniqueItems: true, items: {type: string, format: uuid}}
+        document: {$ref: '#/components/schemas/Document'}
+        presentation: {$ref: '#/components/schemas/ArticlePresentation'}
+        seo: {$ref: '#/components/schemas/Seo'}
+        cover: {$ref: '#/components/schemas/CoverInput'}
+        seriesPlacement:
+          oneOf:
+            - type: 'null'
+            - {type: object, additionalProperties: false, required: [seriesId], properties: {seriesId: {type: string, format: uuid}}}
+        seriesVersions: {type: array, items: {$ref: '#/components/schemas/VersionRef'}, description: Versions of the old and new series when membership changes}
+
+    ArticleCreate:
+      type: object
+      additionalProperties: false
+      description: ArticleWrite fields; slug and displayDate may be omitted. Visibility can only be chosen here
+      properties:
+        title: {type: string, maxLength: 200}
+        slug: {$ref: '#/components/schemas/SlugValue'}
+        eyebrow: {type: [string, 'null'], maxLength: 160}
+        abstract: {type: [string, 'null'], maxLength: 4000}
+        displayDate: {type: string, format: date}
+        categoryIds: {type: array, maxItems: 10, uniqueItems: true, items: {type: string, format: uuid}}
+        document: {$ref: '#/components/schemas/Document'}
+        presentation: {$ref: '#/components/schemas/ArticlePresentation'}
+        seo: {$ref: '#/components/schemas/Seo'}
+        cover: {$ref: '#/components/schemas/CoverInput'}
+        seriesPlacement:
+          oneOf:
+            - type: 'null'
+            - {type: object, additionalProperties: false, required: [seriesId], properties: {seriesId: {type: string, format: uuid}}}
+        seriesVersions: {type: array, items: {$ref: '#/components/schemas/VersionRef'}}
+        visibility: {type: string, enum: [public, private], default: public}
+
+    ArticleAction:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: {type: string, enum: [save-draft, publish, schedule, cancel-schedule, archive, trash, restore, make-private, prepare-public]}
+        scheduledAt: {type: [string, 'null'], format: date-time, description: Required for schedule; must be in the future}
+        timeZone: {type: [string, 'null'], description: IANA zone the owner scheduled in}
+        publishSeries: {type: [boolean, 'null'], description: Also publish the article's draft series in the same transaction}
+        seriesVersion: {type: [integer, 'null'], format: int64}
+
+    ArticleEdit:
+      type: object
+      required: [id, version, createdAt, updatedAt, status, visibility, scheduledAt, scheduleZone, firstPublishedAt,
+                 lastPublishedAt, revisionId, title, slug, url, eyebrow, abstract, displayDate, categoryIds, document,
+                 presentation, seo, cover, seriesPlacement, readingMinutes]
+      properties:
+        id: {type: string, format: uuid}
+        version: {type: integer, format: int64}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        status: {type: string, enum: [draft, scheduled, published, archived, trashed]}
+        visibility: {type: string, enum: [public, private]}
+        scheduledAt: {type: [string, 'null'], format: date-time}
+        scheduleZone: {type: [string, 'null']}
+        firstPublishedAt: {type: [string, 'null'], format: date-time}
+        lastPublishedAt: {type: [string, 'null'], format: date-time}
+        revisionId: {type: string, format: uuid}
+        title: {type: string}
+        slug: {type: string}
+        url: {type: string}
+        eyebrow: {type: [string, 'null']}
+        abstract: {type: [string, 'null']}
+        displayDate: {type: string, format: date}
+        categoryIds: {type: array, items: {type: string, format: uuid}}
+        document: {$ref: '#/components/schemas/Document'}
+        presentation: {$ref: '#/components/schemas/ArticlePresentation'}
+        seo: {$ref: '#/components/schemas/Seo'}
+        cover: {$ref: '#/components/schemas/CoverView'}
+        seriesPlacement:
+          oneOf:
+            - type: 'null'
+            - {type: object, required: [seriesId], properties: {seriesId: {type: string, format: uuid}}}
+        readingMinutes: {type: integer}
+
+    ChapterRef:
+      type: object
+      required: [id, slug, title]
+      properties:
+        id: {type: string, format: uuid}
+        slug: {type: string}
+        title: {type: string}
+
+    SeriesSummary:
+      type: object
+      required: [id, slug, url, title, summary, ongoing, cover, chapterCount, stats, presentation, chapters]
+      properties:
+        id: {type: string, format: uuid}
+        slug: {type: string}
+        url: {type: string}
+        title: {type: string}
+        summary: {type: [string, 'null']}
+        ongoing: {type: boolean}
+        cover: {oneOf: [{$ref: '#/components/schemas/MediaPublic'}, {type: 'null'}]}
+        chapterCount: {type: integer, description: Public chapters only}
+        stats: {$ref: '#/components/schemas/ArticleStatsInline'}
+        presentation: {$ref: '#/components/schemas/SeriesPresentation'}
+        chapters: {type: array, items: {$ref: '#/components/schemas/ChapterRef'}, description: Public chapters in order}
+
+    SeriesDetail:
+      type: object
+      required: [id, slug, url, title, summary, ongoing, cover, chapterCount, stats, presentation, chapters, seo, publicModifiedAt]
+      properties:
+        id: {type: string, format: uuid}
+        slug: {type: string}
+        url: {type: string}
+        title: {type: string}
+        summary: {type: [string, 'null']}
+        ongoing: {type: boolean}
+        cover: {oneOf: [{$ref: '#/components/schemas/MediaPublic'}, {type: 'null'}]}
+        chapterCount: {type: integer}
+        stats: {$ref: '#/components/schemas/ArticleStatsInline'}
+        presentation: {$ref: '#/components/schemas/SeriesPresentation'}
+        chapters: {type: array, items: {$ref: '#/components/schemas/ChapterRef'}}
+        seo: {$ref: '#/components/schemas/Seo'}
+        publicModifiedAt: {type: [string, 'null'], format: date-time}
+
+    SeriesWrite:
+      type: object
+      additionalProperties: false
+      properties:
+        title: {type: string, minLength: 1, maxLength: 160}
+        slug: {$ref: '#/components/schemas/SlugValue'}
+        summary: {type: [string, 'null'], maxLength: 1000}
+        ongoing: {type: boolean}
+        cover: {$ref: '#/components/schemas/CoverInput'}
+        presentation: {$ref: '#/components/schemas/SeriesPresentation'}
+        seo: {$ref: '#/components/schemas/Seo'}
+        chapterIds: {type: array, maxItems: 200, uniqueItems: true, items: {type: string, format: uuid}}
+        articleVersions: {type: array, items: {$ref: '#/components/schemas/VersionRef'}, description: Versions of articles added or removed}
+
+    SeriesEdit:
+      type: object
+      required: [id, version, status, createdAt, updatedAt, title, slug, url, summary, ongoing, cover, presentation, seo, chapterIds]
+      properties:
+        id: {type: string, format: uuid}
+        version: {type: integer, format: int64}
+        status: {type: string, enum: [draft, published, archived, trashed]}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        title: {type: string}
+        slug: {type: string}
+        url: {type: string}
+        summary: {type: [string, 'null']}
+        ongoing: {type: boolean}
+        cover: {$ref: '#/components/schemas/CoverView'}
+        presentation: {$ref: '#/components/schemas/SeriesPresentation'}
+        seo: {$ref: '#/components/schemas/Seo'}
+        chapterIds: {type: array, items: {type: string, format: uuid}}
+
+    ArticleSummaryPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/ArticleSummary'}}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
+
+    ArticleEditPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/ArticleEdit'}}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
+
+    SeriesSummaryPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/SeriesSummary'}}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
+
+    SeriesEditPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/SeriesEdit'}}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
+
+    SeoUrlPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [path, lastModified]
+            properties:
+              path: {type: string, description: Relative to the canonical origin}
+              lastModified: {type: [string, 'null'], format: date-time}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
+
+    # ---------------------------------------------------------------- slice 4: publishing jobs
+    JobPage:
+      type: object
+      required: [items, page, size, totalElements, totalPages, sort]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, type, aggregateId, generation, state, attempts, lastErrorCode, availableAt, createdAt, updatedAt]
+            properties:
+              id: {type: string, format: uuid}
+              type: {type: string, examples: [PUBLICATION_EMAIL]}
+              aggregateId: {type: string, format: uuid, description: The article}
+              generation: {type: integer, format: int64}
+              state: {type: string, enum: [pending, running, done, failed, skipped]}
+              attempts: {type: integer}
+              lastErrorCode: {type: [string, 'null']}
+              availableAt: {type: string, format: date-time}
+              createdAt: {type: string, format: date-time}
+              updatedAt: {type: string, format: date-time}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        sort: {type: [string, 'null']}
+
+    # ---------------------------------------------------------------- slice 3: site, theme, media
+    SiteSeo:
+      type: object
+      additionalProperties: false
+      properties:
+        title: {type: [string, 'null'], maxLength: 200}
+        description: {type: [string, 'null'], maxLength: 400}
+
+    PublicSite:
+      type: object
+      required: [indexingEnabled]
+      properties:
+        siteName: {type: string}
+        theme: {$ref: '#/components/schemas/ThemeDocument'}
+        authorPublicName: {type: string}
+        seo: {$ref: '#/components/schemas/SiteSeo'}
+        indexingEnabled: {type: boolean, description: Owner switch and deployment gate combined}
+        canonicalOrigin: {type: string}
+
+    SiteSettings:
+      type: object
+      required: [authorPublicName, seo, indexingEnabled, deploymentIndexingEnabled, canonicalOrigin, version]
+      properties:
+        authorPublicName: {type: [string, 'null']}
+        seo: {$ref: '#/components/schemas/SiteSeo'}
+        indexingEnabled: {type: boolean}
+        deploymentIndexingEnabled: {type: boolean, description: Read-only deployment gate}
+        canonicalOrigin: {type: [string, 'null'], description: Read-only deployment configuration}
+        version: {type: integer, format: int64}
+
+    ThemeWorkspace:
+      type: object
+      required: [version, draftRevisionId, appliedRevisionId, draft, applied]
+      properties:
+        version: {type: integer, format: int64}
+        draftRevisionId: {type: [string, 'null'], format: uuid}
+        appliedRevisionId: {type: [string, 'null'], format: uuid}
+        draft: {oneOf: [{$ref: '#/components/schemas/ThemeDocument'}, {type: 'null'}]}
+        applied: {oneOf: [{$ref: '#/components/schemas/ThemeDocument'}, {type: 'null'}]}
+
+    ThemeDocument:
+      type: object
+      additionalProperties: false
+      description: Builder allowlist (256 KiB). Header first, one lead (intro XOR scene) after it, footer last; block ids and kinds unique
+      required: [schemaVersion, name, siteName, accent, typography, surface, width, spacing, blocks]
+      properties:
+        schemaVersion: {type: integer, const: 1}
+        name: {type: string, maxLength: 80}
+        siteName: {type: string, maxLength: 40}
+        accent: {type: string, description: 'mint, violet, amber or #rrggbb', pattern: '^(mint|violet|amber|#[0-9a-fA-F]{6})$'}
+        typography: {type: string, enum: [modern, editorial, mono]}
+        surface: {type: string, enum: [paper, night, warm]}
+        width: {type: string, enum: [reading, wide]}
+        spacing: {type: string, enum: [airy, compact]}
+        blocks: {type: array, items: {$ref: '#/components/schemas/ThemeBlock'}}
+
+    ThemeBlock:
+      oneOf:
+        - {$ref: '#/components/schemas/ThemeHeader'}
+        - {$ref: '#/components/schemas/ThemeIntro'}
+        - {$ref: '#/components/schemas/ThemeScene'}
+        - {$ref: '#/components/schemas/ThemeArticles'}
+        - {$ref: '#/components/schemas/ThemeSeries'}
+        - {$ref: '#/components/schemas/ThemeQuote'}
+        - {$ref: '#/components/schemas/ThemeAbout'}
+        - {$ref: '#/components/schemas/ThemeProjects'}
+        - {$ref: '#/components/schemas/ThemeFooter'}
+      discriminator:
+        propertyName: kind
+        mapping:
+          header: '#/components/schemas/ThemeHeader'
+          intro: '#/components/schemas/ThemeIntro'
+          scene: '#/components/schemas/ThemeScene'
+          articles: '#/components/schemas/ThemeArticles'
+          series: '#/components/schemas/ThemeSeries'
+          quote: '#/components/schemas/ThemeQuote'
+          about: '#/components/schemas/ThemeAbout'
+          projects: '#/components/schemas/ThemeProjects'
+          footer: '#/components/schemas/ThemeFooter'
+
+    ThemeBlockId: {type: string, pattern: '^[a-zA-Z0-9-]{1,80}$'}
+
+    ThemeHeader:
+      type: object
+      additionalProperties: false
+      required: [kind, id]
+      properties:
+        kind: {type: string, const: header}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+
+    ThemeIntro:
+      type: object
+      additionalProperties: false
+      required: [kind, id, title, description, eyebrow, layout]
+      properties:
+        kind: {type: string, const: intro}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+        title: {type: string, maxLength: 160}
+        description: {type: string, maxLength: 4000}
+        eyebrow: {type: string, maxLength: 120}
+        layout: {type: string, enum: [statement, centered, split]}
+
+    ThemeScene:
+      type: object
+      additionalProperties: false
+      required: [kind, id, title, emphasis, description, featuredArticleId, showFeaturedArticle, featuredSeriesId, showFeaturedSeries]
+      properties:
+        kind: {type: string, const: scene}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+        title: {type: string, maxLength: 160}
+        emphasis: {type: string, maxLength: 160}
+        description: {type: string, maxLength: 4000}
+        featuredArticleId: {type: [string, 'null'], format: uuid, description: Null in the public site when the article is hidden}
+        showFeaturedArticle: {type: boolean}
+        featuredSeriesId: {type: [string, 'null'], format: uuid}
+        showFeaturedSeries: {type: boolean}
+
+    ThemeArticles:
+      type: object
+      additionalProperties: false
+      required: [kind, id, title, categoryId, display, loading]
+      properties:
+        kind: {type: string, const: articles}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+        title: {type: string, maxLength: 160}
+        categoryId: {type: [string, 'null'], format: uuid}
+        display: {type: string, enum: [rows, cards]}
+        loading: {type: string, enum: [all, progressive]}
+
+    ThemeSeries:
+      type: object
+      additionalProperties: false
+      required: [kind, id, title, display]
+      properties:
+        kind: {type: string, const: series}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+        title: {type: string, maxLength: 160}
+        display: {type: string, enum: [cards, list]}
+
+    ThemeQuote:
+      type: object
+      additionalProperties: false
+      required: [kind, id, text, attribution, display]
+      properties:
+        kind: {type: string, const: quote}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+        text: {type: string, maxLength: 8000}
+        attribution: {type: string, maxLength: 120}
+        display: {type: string, enum: [band, card]}
+
+    ThemeAbout:
+      type: object
+      additionalProperties: false
+      required: [kind, id, title, text]
+      properties:
+        kind: {type: string, const: about}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+        title: {type: string, maxLength: 160}
+        text: {type: string, maxLength: 8000}
+
+    ThemeProjects:
+      type: object
+      additionalProperties: false
+      required: [kind, id, title]
+      properties:
+        kind: {type: string, const: projects}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+        title: {type: string, maxLength: 160}
+
+    ThemeFooter:
+      type: object
+      additionalProperties: false
+      required: [kind, id, text]
+      properties:
+        kind: {type: string, const: footer}
+        id: {$ref: '#/components/schemas/ThemeBlockId'}
+        text: {type: string, maxLength: 160}
+
+    MediaStatus:
+      type: object
+      required: [id, state]
+      properties:
+        id: {type: string, format: uuid}
+        state: {type: string, enum: [quarantined, ready, failed]}
+        mime: {type: string, enum: [image/jpeg, image/png, image/webp]}
+        size: {type: integer, format: int64}
+        width: {type: integer}
+        height: {type: integer}
+        url: {type: string}
+        provider: {type: string}
+        photographer: {type: string}
+        photographerUrl: {type: string}
+        sourceUrl: {type: string}
+        licenseUrl: {type: string}
+        errorCode: {type: string}
+
+    CoverJob:
+      type: object
+      required: [id, state, candidates, errorCode]
+      properties:
+        id: {type: string, format: uuid}
+        state: {type: string, enum: [done, failed]}
+        candidates:
+          type: array
+          items:
+            type: object
+            required: [candidateId, thumbnailUrl, sourceUrl, photographer, licenseUrl]
+            properties:
+              candidateId: {type: string}
+              thumbnailUrl: {type: string}
+              downloadUrl: {type: [string, 'null']}
+              sourceUrl: {type: string}
+              photographer: {type: [string, 'null']}
+              photographerUrl: {type: [string, 'null']}
+              licenseUrl: {type: string}
+              alt: {type: [string, 'null']}
+        errorCode: {type: [string, 'null']}

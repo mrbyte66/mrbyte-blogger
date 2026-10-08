@@ -17,8 +17,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Fixed-window counters persisted in PostgreSQL so limits survive restarts and are shared by every
@@ -45,8 +45,8 @@ public class RateLimiter {
     }
 
     /** Returns how long the caller must wait if {@code subject} has exhausted {@code limit}, otherwise empty. */
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public Optional<Duration> blockedFor(Limit limit, String subject) {
+        requireNoTransaction();
         Instant now = clock.instant();
         return jdbc.sql("SELECT count, expires_at FROM auth_rate_bucket WHERE key_hash = :key AND expires_at > :now")
                 .param("key", hash(limit, subject))
@@ -58,9 +58,9 @@ public class RateLimiter {
                 .flatMap(result -> result);
     }
 
-    /** Counts one event; committed independently so a rolled-back caller still consumes quota. */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    /** Counts one event in its own single-statement commit, so a caller that fails afterwards still consumes quota. */
     public void record(Limit limit, String subject) {
+        requireNoTransaction();
         Instant now = clock.instant();
         jdbc.sql("""
                 INSERT INTO auth_rate_bucket (key_hash, window_start, count, expires_at)
@@ -85,6 +85,18 @@ public class RateLimiter {
         jdbc.sql("DELETE FROM auth_rate_bucket WHERE expires_at <= :now")
                 .param("now", Timestamp.from(clock.instant()))
                 .update();
+    }
+
+    /**
+     * Limits are checked and counted before the caller opens its transaction. From inside one, a separate
+     * commit needs a second pooled connection while the first is held, and enough simultaneous requests then
+     * wait for the pool until it times out (#28); joining the caller's transaction instead would let a
+     * rolled-back request take its quota back.
+     */
+    private static void requireNoTransaction() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("RateLimiter must be called outside a transaction");
+        }
     }
 
     private String hash(Limit limit, String subject) {

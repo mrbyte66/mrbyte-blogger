@@ -208,7 +208,7 @@ Export/import dosyası max100 MiB, açılmış200 MiB ve entry sayısı sınırl
 
 ## 9. OpenAPI ve frontend geçişi
 
-Bu Markdown davranış sözleşmesidir; henüz makinece doğrulanan OpenAPI dosyası yok. Uygulama dilimi0'da `backend/docs/openapi.yaml` OpenAPI3.1 oluşturulmalı: operationId, securitySchemes(cookie+CSRF), required/nullability/enum/limit, discriminators, her HTTP response ve örnekler. Auth callback dışı bütün iş API'si /v1. CI: spec lint, breaking-change diff, runtime MockMvc contract testleri; mümkünse DTO/client types üretimi. Entity'den otomatik türeyen spec tek tasarım kaynağı sayılmaz; sözleşmeyle uyumu kontrol edilir. V1 içinde additive değişiklik, alan anlamı/silme değişimi /v2 gerektirir.
+Bu Markdown davranış sözleşmesidir. Makinece doğrulanan karşılığı `backend/docs/openapi.yaml` (OpenAPI 3.1) bütün çalışan uçları kapsar; backend testleri her yanıtı bu dosyaya karşı denetler (backend README "Contract tests"). Dosyanın içermesi gerekenler: operationId, securitySchemes(cookie+CSRF), required/nullability/enum/limit, discriminators, her HTTP response ve örnekler. Auth callback dışı bütün iş API'si /v1. CI: spec lint, breaking-change diff, runtime MockMvc contract testleri; mümkünse DTO/client types üretimi. Entity'den otomatik türeyen spec tek tasarım kaynağı sayılmaz; sözleşmeyle uyumu kontrol edilir. V1 içinde additive değişiklik, alan anlamı/silme değişimi /v2 gerektirir.
 
 Frontend migration adapter'ı yalnız geçiş katmanıdır:
 - Article slug identity→UUID; `publishedAt`→displayDate; paragraphs/code/figure/table→sabit kimlikli document block. Gizli/demo roller ve sayaçlar taşınmaz.

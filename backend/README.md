@@ -3,7 +3,7 @@
 Java 25 LTS + Spring Boot 4.1 modular monolith, PostgreSQL 18, Flyway. Design sources:
 [architecture](../docs/backend-architecture.md), [API contract](../docs/api-contract.md),
 [VPS plan](../docs/deployment-vps.md). [`docs/openapi.yaml`](docs/openapi.yaml) (OpenAPI 3.1, Redocly-lint clean)
-covers slice 1 and slices 6–7 (see "Not done").
+describes every served operation; tests keep it honest (see "Contract tests").
 
 ## Status
 
@@ -47,6 +47,7 @@ cd backend
 ./mvnw package -DskipTests
 java -jar target/satir-backend-0.1.0-SNAPSHOT.jar migrate          # needs SATIR_RATE_LIMIT_KEY, DB_* (dev defaults below)
 java -jar target/satir-backend-0.1.0-SNAPSHOT.jar bootstrap-owner --email=... --username=... --name="..." [--password-file=...]
+SPRING_PROFILES_ACTIVE=dev java -jar target/satir-backend-0.1.0-SNAPSHOT.jar seed-demo --file=../deploy/seed/demo.json   # demo content + test members, dev only
 SPRING_PROFILES_ACTIVE=dev java -jar target/satir-backend-0.1.0-SNAPSHOT.jar   # http://localhost:8080
 ```
 
@@ -64,6 +65,9 @@ file name = variable name). All variables: `deploy/.env.example`; production: `d
 ## Implementation decisions (smallest safe option where the documents were silent)
 
 - Owner is created only by `bootstrap-owner`; the operator's bootstrap counts as e-mail verification.
+- Rate limits are checked and counted outside any transaction, before the caller's own transaction opens:
+  each counter update commits on its own (a failed request still uses quota) without holding a second pooled
+  connection. `RateLimiter` throws if called inside a transaction (#28).
 - Sessions store only the account UUID; role, verification and status are re-read on every request.
   Session lists expose an HMAC handle, never the cookie value.
 - Repositories use `JdbcClient` (explicit SQL for jsonb, deferred constraints, row locks); JPA remains for
@@ -105,9 +109,19 @@ file name = variable name). All variables: `deploy/.env.example`; production: `d
 - Production DB roles: `satir_migrator` (owner/DDL, used only by `migrate`), `satir_app` (DML via default
   privileges), `satir_backup` (`pg_read_all_data`). Verified locally: migrate as migrator, run as `satir_app`.
 
+## Contract tests
+
+- `ApiClient` checks every response an integration test receives against `docs/openapi.yaml` (operation,
+  status, headers and body schema; undocumented properties fail). Requests are not checked because tests send
+  invalid ones on purpose. A mismatch fails the test that caused it and prints the body.
+- `OpenApiCoverageIntegrationTest` fails when an operation is served but not documented, or documented but not served.
+- `OpenApiContractIntegrationTest` reaches success responses the behavioural tests do not. Not exercised:
+  a successful `POST /studio/cover-jobs/{id}/select` (downloads only from images.pexels.com).
+- Lint: `npx @redocly/cli lint docs/openapi.yaml` (no errors; remaining warnings are style-only).
+
 ## Not done / open
 
-- OpenAPI 3.1 for slices 2–5, contract lint in CI and generated client types.
+- Contract lint in CI (#14) and generated frontend client types (#23).
 - Studio export/import (API contract §8 `/studio/exports`, `/studio/imports`) — not implemented.
 - Badges and advanced analytics stay blocked on product decisions (Ü3); no reading-time or device data is collected.
 - An operator command to reset the owner password; an off-site account-deletion journal for restores.

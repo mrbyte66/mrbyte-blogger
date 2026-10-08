@@ -17,6 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * <pre>
  *   java -jar satir-backend.jar migrate
  *   java -jar satir-backend.jar bootstrap-owner --email=... --username=... --name=... [--password-file=...]
+ *   java -jar satir-backend.jar seed-demo        (dev profile only)
  * </pre>
  *
  * Commands start without a web server and exit with a non-zero status on failure.
@@ -25,7 +26,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class SatirApplication {
 
-    private static final Set<String> COMMANDS = Set.of("migrate", "bootstrap-owner");
+    private static final Set<String> COMMANDS = Set.of("migrate", "bootstrap-owner", "seed-demo");
 
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(SatirApplication.class);

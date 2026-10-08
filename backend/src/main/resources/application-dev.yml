@@ -30,3 +30,6 @@ satir:
     mode: migrate
   security:
     rate-limit-key: ${SATIR_RATE_LIMIT_KEY:dev-only-rate-limit-key-not-for-production}
+  # seed-demo command (demo content and test members); never set outside dev/test.
+  seed:
+    enabled: true
