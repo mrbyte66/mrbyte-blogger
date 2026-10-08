@@ -4,7 +4,7 @@
 
 ## Güncelleme
 
-1. Yeni sürüm CI'da `./mvnw verify` + frontend test/typecheck/build'den geçmiş, imajlar digest ile yayımlanmış olmalı. Release manifest: git SHA, iki imaj digest'i, son Flyway sürümü.
+1. Yeni sürüm CI'da `./mvnw verify` + frontend test/typecheck/build'den geçmiş, imajlar **Images** iş akışıyla taranmış, imzalanmış ve digest ile yayımlanmış olmalı. Release manifest (git SHA, iki imaj digest'i, son Flyway sürümü) o çalıştırmanın özetinde ve `release-manifest-<commit>` artefaktındadır; imzayı [first-deploy.md](first-deploy.md) §3'teki `cosign verify` ile doğrula.
 2. Mevcut `release.env`'i `release.env.<tarih>` olarak sakla (geri dönüş noktası).
 3. Yedek al: `$COMPOSE run --rm backup && $COMPOSE run --rm offsite`.
 4. `release.env` içinde `BACKEND_IMAGE`, `FRONTEND_IMAGE`, `APP_RELEASE` değerlerini yeni digest'lerle güncelle; `$COMPOSE pull`.

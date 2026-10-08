@@ -125,8 +125,8 @@ file name = variable name). All variables: `deploy/.env.example`; production: `d
 - Studio export (#16) and import (#21) (API contract §8 `/studio/exports`, `/studio/imports`) — not implemented.
 - Badges and advanced analytics stay blocked on product decisions (Ü3, #26); no reading-time or device data is collected.
 - An operator command to reset the owner password (#13); an off-site account-deletion journal for restores (#20).
-- Image build/scan/sign/push and digest pinning (#22) are described in `deploy/runbooks/first-deploy.md` but not
-  automated. Both images build and run locally (`deploy/compose.local.yml`); the production compose file passes
-  `docker compose config` but has not run on a VPS.
+- Images are built, scanned, pushed to GHCR and signed by `.github/workflows/images.yml` after CI passes on `main`;
+  `release.env` takes the digests from its release manifest. Base images in the Dockerfiles are not digest-pinned yet.
+  The production compose file passes `docker compose config` but has not run on a VPS.
 - Audit/session retention (#24); retention jobs exist for rate buckets, idempotency, tokens, outbox,
   impression receipts, anonymous actors and visit history.
