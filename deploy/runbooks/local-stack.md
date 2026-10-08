@@ -38,6 +38,16 @@ Sonra `/studio`'dan kullanıcı adı veya e-posta ile gir. Okur hesabı için si
 docker compose -f deploy/compose.local.yml up -d --build backend frontend
 ```
 
+## Örnek içerik ve test üyeleri
+
+Site boş açılmasın diye (sahip hesabı oluşturulduktan sonra):
+
+```sh
+docker compose -f deploy/compose.local.yml run --rm backend seed-demo --file=/opt/satir/seed/demo.json
+```
+
+25 yazı (yayında, taslak, planlı, kilitli; bir kısmı kapaklı), 4 seri, 2 ek kategori ve doğrulanmış üç üye ekler (`uye1@gmail.com` … `uye3@gmail.com`). İçerik ve üye parolaları `deploy/seed/demo.json` dosyasındadır; yığın onu salt okunur bağlar, dosya imaja ve jar'a girmez. Tekrar çalıştırmak güvenlidir: var olan yazı, seri ve hesaplara dokunmaz. Yalnız `dev` profilinde çalışır; üretimde reddedilir.
+
 ## Durdurma ve sıfırlama
 
 ```sh

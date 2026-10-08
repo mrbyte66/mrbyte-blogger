@@ -47,6 +47,7 @@ cd backend
 ./mvnw package -DskipTests
 java -jar target/satir-backend-0.1.0-SNAPSHOT.jar migrate          # needs SATIR_RATE_LIMIT_KEY, DB_* (dev defaults below)
 java -jar target/satir-backend-0.1.0-SNAPSHOT.jar bootstrap-owner --email=... --username=... --name="..." [--password-file=...]
+SPRING_PROFILES_ACTIVE=dev java -jar target/satir-backend-0.1.0-SNAPSHOT.jar seed-demo --file=../deploy/seed/demo.json   # demo content + test members, dev only
 SPRING_PROFILES_ACTIVE=dev java -jar target/satir-backend-0.1.0-SNAPSHOT.jar   # http://localhost:8080
 ```
 

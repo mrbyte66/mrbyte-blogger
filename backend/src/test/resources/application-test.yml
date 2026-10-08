@@ -27,6 +27,8 @@ satir:
     schedule-interval: PT1H
   security:
     rate-limit-key: test-only-rate-limit-key-0123456789abcdef
+  seed:
+    enabled: true
     argon2:
       memory-kib: 4096
       iterations: 1

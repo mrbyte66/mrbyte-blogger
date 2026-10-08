@@ -18,4 +18,6 @@ public interface UserAccountRepository extends JpaRepository<UserAccountEntity, 
     boolean existsByOwnerUsername(String ownerUsername);
 
     boolean existsByRole(Role role);
+
+    Optional<UserAccountEntity> findFirstByRole(Role role);
 }

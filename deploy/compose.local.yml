@@ -51,6 +51,8 @@ services:
         required: false
     volumes:
       - media:/var/lib/satir/media
+      # Dev-only seed for `seed-demo` (holds test passwords; never part of the image).
+      - ./seed:/opt/satir/seed:ro
     depends_on:
       postgres:
         condition: service_healthy
