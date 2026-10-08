@@ -1,0 +1,65 @@
+# Checks every pull request and every push to main (#14). Images, signing and deployment are separate (#22).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    name: Backend (verify)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      # Unit, ArchUnit and PostgreSQL integration tests (Testcontainers uses the runner's Docker).
+      # Without a database the integration classes fail instead of being skipped, so this cannot pass silently.
+      - name: ./mvnw clean verify
+        run: ./mvnw -B -ntp clean verify
+      - name: OpenAPI lint
+        run: npx --yes @redocly/cli@2 lint docs/openapi.yaml
+      - name: Test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-reports
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+  frontend:
+    name: Frontend (typecheck, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Tests
+        run: npx vitest run
+      - name: Build
+        run: npm run build

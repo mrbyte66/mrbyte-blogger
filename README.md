@@ -1,5 +1,7 @@
 # mrbyte-blogger
 
+[![CI](https://github.com/mrbyte66/mrbyte-blogger/actions/workflows/ci.yml/badge.svg)](https://github.com/mrbyte66/mrbyte-blogger/actions/workflows/ci.yml)
+
 Personal publishing and website-builder monorepo. Open this root in your editor to see both applications together.
 
 ```text
@@ -30,3 +32,5 @@ docker compose -f deploy/compose.local.yml up -d --build
 Then create the owner account once (password from a file, see the runbook). Details: `deploy/runbooks/local-stack.md`. Production deployment (single VPS, Docker Compose, Caddy): `deploy/runbooks/first-deploy.md`.
 
 Start with `AGENTS.md`. The project and app guides live beside the work they govern.
+
+CI (`.github/workflows/ci.yml`) runs on every pull request and push to `main`: backend `./mvnw clean verify` (JDK 25, PostgreSQL via Testcontainers) plus OpenAPI lint, and frontend `npm ci`, `tsc --noEmit`, `vitest run`, `npm run build`.
