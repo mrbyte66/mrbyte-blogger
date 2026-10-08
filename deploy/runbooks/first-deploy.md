@@ -33,16 +33,27 @@ sudo sh -c 'umask 077; printf "RESTIC_REPOSITORY=<repo-url>\n" > restic.env'   #
 
 ## 3. İmajlar
 
-CI (veya yerel güvenilir makine) sırasıyla: `backend: ./mvnw verify` (PostgreSQL entegrasyon testleri atlanmadan), `frontend: npm ci && npm test && npm run typecheck && npm run build`, ardından:
+İmajları GitHub Actions üretir (`.github/workflows/images.yml`); üretim VPS'inde build yapılmaz.
+
+1. Bir commit main'e girer → CI (`./mvnw verify` entegrasyon testleriyle, frontend test/typecheck/build) yeşil biter.
+2. **Images** iş akışı aynı commit için backend ve frontend imajlarını derler, Trivy ile tarar (düzeltmesi olan kritik açık işi durdurur), `ghcr.io/mrbyte66/satir-backend` ve `ghcr.io/mrbyte66/satir-frontend` olarak push eder (`:sha-<commit>` ve `:main` etiketleri) ve cosign ile anahtarsız imzalar.
+3. Çalıştırma sayfasında (Actions → Images) **release manifest** yazılır ve `release-manifest-<commit>` artefaktı olarak 90 gün saklanır: `BACKEND_IMAGE=…@sha256:…`, `FRONTEND_IMAGE=…@sha256:…`, `APP_RELEASE=<commit>` ve son Flyway sürümü.
+
+`release.env` içine bu satırları **digest'leriyle** yaz; `POSTGRES_IMAGE`, `CADDY_IMAGE`, `RESTIC_IMAGE` için de digest sabitle. `latest` veya `:main` kullanma.
+
+GHCR paketleri özelse VPS'te bir kez giriş yap (yalnız `read:packages` yetkili bir token; token kayda ve komut geçmişine girmez):
 
 ```sh
-docker build -t <registry>/satir-backend:<git-sha> backend
-docker build -t <registry>/satir-frontend:<git-sha> frontend
-docker push <registry>/satir-backend:<git-sha>
-docker push <registry>/satir-frontend:<git-sha>
+docker login ghcr.io -u <github-kullanıcı> --password-stdin < /root/ghcr-token
 ```
 
-`release.env` içine `BACKEND_IMAGE`/`FRONTEND_IMAGE` olarak **digest** (`...@sha256:...`) yaz; `POSTGRES_IMAGE`, `CADDY_IMAGE`, `RESTIC_IMAGE` için de digest sabitle. `latest` kullanma. Üretim VPS'inde build yapılmaz.
+İmzayı çekmeden önce doğrula (cosign kurulu olmalı):
+
+```sh
+cosign verify "$BACKEND_IMAGE" \
+  --certificate-identity "https://github.com/mrbyte66/mrbyte-blogger/.github/workflows/images.yml@refs/heads/main" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 ## 4. Veritabanı, migration ve sahip hesabı
 

@@ -35,4 +35,4 @@ Start with `AGENTS.md`. The project and app guides live beside the work they gov
 
 Status: backend V1 (slices 1–8) and the frontend's API integration are on `main`. Remaining work is tracked as GitHub issues ([open issues](https://github.com/mrbyte66/mrbyte-blogger/issues)); `docs/roadmap.md` links them by topic. Demo content for an empty local site: `seed-demo` (`deploy/runbooks/local-stack.md`).
 
-CI (`.github/workflows/ci.yml`) runs on every pull request and push to `main`: backend `./mvnw clean verify` (JDK 25, PostgreSQL via Testcontainers) plus OpenAPI lint, and frontend `npm ci`, `tsc --noEmit`, `vitest run`, `npm run build`.
+CI (`.github/workflows/ci.yml`) runs on every pull request and push to `main`: backend `./mvnw clean verify` (JDK 25, PostgreSQL via Testcontainers) plus OpenAPI lint, and frontend `npm ci`, `tsc --noEmit`, `vitest run`, `npm run build`. After a green CI run on `main`, `.github/workflows/images.yml` builds, scans (Trivy), pushes (GHCR) and signs (cosign) both images and publishes a release manifest with their digests (`deploy/runbooks/first-deploy.md` §3).
