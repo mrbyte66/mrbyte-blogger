@@ -3,7 +3,7 @@ import { AccountMenu } from "./auth/AccountMenu";
 import { articleCategories } from "../lib/articles/metadata";
 
 import { useEffect, useRef, useState, type Dispatch, type PointerEvent } from "react";
-import { topics } from "../lib/content";
+import { useContent } from "./data/SiteData";
 import { publicArticles } from "../lib/editorial/store";
 import { useArticles } from "../lib/articles/use-articles";
 import { useEdgeElasticity } from "../lib/use-edge-elasticity";
@@ -25,6 +25,8 @@ export function ContentPanel({ navigation, dispatch, siteName = "SATIR" }: { nav
   const { series } = useSeriesWorkspace();
   const { articles: storedArticles } = useArticles();
   const articles = publicArticles(storedArticles);
+  const { categories } = useContent();
+  const topics = ["Tümü", ...new Set(categories?.map((c) => c.name) ?? articles.flatMap(articleCategories))];
   const [backward, setBackward] = useState(false);
   const [animated, setAnimated] = useState(false);
   const lastAction = useRef<NavigationAction["type"] | null>(null);

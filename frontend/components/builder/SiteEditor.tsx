@@ -61,7 +61,8 @@ export function SiteEditor() {
   }
   function addArticle() {
     if (dirty && !confirmLeave()) { setNotice("Yeni bir yazı açmadan önce düzenlemelerini kaydet veya geri al."); return; }
-    const record = createArticle();
+    const firstCategory = content.categories?.[0];
+    const record = { ...createArticle(), category: firstCategory?.name ?? "", categories: firstCategory ? [firstCategory.name] : [], categoryIds: firstCategory ? [firstCategory.id] : undefined };
     setNewArticle(record); setTarget({ kind: "article", slug: record.slug }); setNotice(""); setSaveError(null);
   }
   const navigation = <PageNavigator target={target} articles={availableArticles} series={content.series} ready={content.ready} onNavigate={navigate} onCreateArticle={addArticle} />;

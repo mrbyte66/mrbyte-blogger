@@ -1,4 +1,4 @@
-import { articles as fixtures, topics, type Article } from "../content";
+import { articles as fixtures, type Article } from "../content";
 import { isArticleDate, legacyArticleDate, localCalendarDate } from "./metadata";
 import { isValidSeriesCoverImage } from "../series/model";
 
@@ -6,9 +6,10 @@ export function validateArticle(value: unknown): Article | null {
   if (!value || typeof value !== "object") return null;
   const a = value as Article;
   const text = (v: unknown, max: number) => typeof v === "string" && v.length <= max;
-  if (!isArticleSlug(a.slug) || !text(a.title, 160) || !a.title.trim() || !text(a.excerpt, 4000) || !text(a.eyebrow, 200) || !topics.slice(1).includes(a.category) || !Number.isInteger(a.minutes) || a.minutes < 1 || a.minutes > 240) return null;
+  if (!isArticleSlug(a.slug) || !text(a.title, 160) || !a.title.trim() || !text(a.excerpt, 4000) || !text(a.eyebrow, 200) || !text(a.category, 80) || !a.category.trim() || !Number.isInteger(a.minutes) || a.minutes < 1 || a.minutes > 240) return null;
+  if (a.categoryIds !== undefined && (!Array.isArray(a.categoryIds) || !a.categoryIds.length || new Set(a.categoryIds).size !== a.categoryIds.length || !a.categoryIds.every((id) => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)) || a.categoryIds.length !== (a.categories ?? [a.category]).length)) return null;
   const categories = a.categories ?? [a.category];
-  if (!Array.isArray(categories) || !categories.length || categories.length > topics.length - 1 || !categories.every((c) => topics.slice(1).includes(c))) return null;
+  if (!Array.isArray(categories) || !categories.length || categories.length > 10 || new Set(categories).size !== categories.length || !categories.every((c) => text(c, 80) && c.trim() && c !== "Tümü")) return null;
   if (a.publishedAt !== undefined && !isArticleDate(a.publishedAt)) return null;
   if (a.createdAt !== undefined && (typeof a.createdAt !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(a.createdAt) || !Number.isFinite(Date.parse(a.createdAt)))) return null;
   const fixture = fixtures.find((f) => f.slug === a.slug);
@@ -33,7 +34,7 @@ export function validateArticle(value: unknown): Article | null {
     ...(a.seriesId !== undefined ? { seriesId: a.seriesId } : {}),
     ...(a.blockIds && Array.isArray(a.blockIds.paragraphs) ? { blockIds: { ...a.blockIds, paragraphs: [...a.blockIds.paragraphs] } } : {}),
   };
-  return { ...server, slug: a.slug, ...(a.status ? { status: a.status } : {}), ...(a.authored ? { authored: true } : {}), title: a.title, category: categories[0], categories: [...new Set(categories)], createdAt, publishedAt, ...(a.scheduledAt ? { scheduledAt: a.scheduledAt } : {}), eyebrow: a.eyebrow, excerpt: a.excerpt, minutes: a.minutes, paragraphs: [...a.paragraphs], ...(a.code !== undefined ? { code: a.code } : {}), ...(a.figure ? { figure: { ...a.figure } } : {}), ...(a.table ? { table: { caption: a.table.caption, columns: [...a.table.columns], rows: a.table.rows.map((r) => [...r]) } } : {}), ...(a.presentation ? { presentation: { ...a.presentation } } : {}) };
+  return { ...server, slug: a.slug, ...(a.status ? { status: a.status } : {}), ...(a.authored ? { authored: true } : {}), title: a.title, category: categories[0], categories: [...new Set(categories)], ...(a.categoryIds ? { categoryIds: [...a.categoryIds] } : {}), createdAt, publishedAt, ...(a.scheduledAt ? { scheduledAt: a.scheduledAt } : {}), eyebrow: a.eyebrow, excerpt: a.excerpt, minutes: a.minutes, paragraphs: [...a.paragraphs], ...(a.code !== undefined ? { code: a.code } : {}), ...(a.figure ? { figure: { ...a.figure } } : {}), ...(a.table ? { table: { caption: a.table.caption, columns: [...a.table.columns], rows: a.table.rows.map((r) => [...r]) } } : {}), ...(a.presentation ? { presentation: { ...a.presentation } } : {}) };
 }
 export function parseArticles(raw: string): Article[] | null {
   try {

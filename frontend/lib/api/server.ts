@@ -1,6 +1,6 @@
 // Server-only: used by Server Components, route metadata, sitemap and robots. Never imported by client UI.
 import { cache } from "react";
-import type { ArticleDetailDto, ArticleSummaryDto, PublicSiteDto, SeriesSummaryDto } from "./mapping";
+import type { ArticleDetailDto, ArticleSummaryDto, CategoryDto, PublicSiteDto, SeriesSummaryDto } from "./mapping";
 
 /** Fixed internal backend origin (never derived from request headers). */
 const backendOrigin = (process.env.BACKEND_INTERNAL_URL ?? "http://127.0.0.1:8080").replace(/\/+$/, "");
@@ -35,16 +35,17 @@ async function allPages<T>(path: string): Promise<T[]> {
   return items;
 }
 
-export type PublicContent = { site: PublicSiteDto; articles: ArticleSummaryDto[]; series: SeriesSummaryDto[] };
+export type PublicContent = { site: PublicSiteDto; articles: ArticleSummaryDto[]; series: SeriesSummaryDto[]; categories: CategoryDto[] };
 
 /** Published content for the visitor-facing theme (memoized per request; never shared across requests). */
 export const loadPublicContent = cache(async (): Promise<PublicContent> => {
-  const [site, articles, series] = await Promise.all([
+  const [site, articles, series, categories] = await Promise.all([
     backend<PublicSiteDto>("/api/v1/site"),
     allPages<ArticleSummaryDto>("/api/v1/articles?expand=document"),
     allPages<SeriesSummaryDto>("/api/v1/series"),
+    backend<{ items: CategoryDto[] }>("/api/v1/categories"),
   ]);
-  return { site: site.data ?? { indexingEnabled: false, canonicalOrigin: "" }, articles, series };
+  return { site: site.data ?? { indexingEnabled: false, canonicalOrigin: "" }, articles, series, categories: categories.data?.items ?? [] };
 });
 
 export type Resolved<T> = { kind: "found"; value: T } | { kind: "redirect"; path: string } | { kind: "missing" };

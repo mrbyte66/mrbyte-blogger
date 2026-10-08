@@ -1,7 +1,7 @@
-import type { Article, ArticleStats, Topic } from "../content";
+import type { Article, ArticleStats } from "../content";
 import type { BlogSeries } from "../series/model";
 import type { PageBlock, Theme } from "../builder/model";
-import { topicIds, topicOfId } from "./categories";
+import { categoryIds, categoryNames, type Category } from "./categories";
 
 /** API contract shapes (docs/api-contract.md). Only fields the frontend uses are typed. */
 export type BlockDto =
@@ -34,7 +34,7 @@ export type CoverSelectionDto = { assetId: string; url: string };
 
 export const mediaUrl = (assetId: string) => `/api/v1/media/${assetId}`;
 const mediaPattern = /^\/api\/v1\/media\/([0-9a-f-]{36})$/;
-type Topicish = Exclude<Topic, "Tümü">;
+
 
 /** Body blocks → the editor's paragraph/figure/code/table model (render order preserved on save). */
 function fromDocument(document: DocumentDto): Pick<Article, "paragraphs" | "figure" | "code" | "table" | "blockIds"> {
@@ -69,15 +69,10 @@ export function toDocument(article: Article): DocumentDto {
   return { schemaVersion: 1, blocks };
 }
 
-function topicsOf(categories: { id: string }[] | string[]): Topicish[] {
-  const names = categories.map((c) => topicOfId(typeof c === "string" ? c : c.id)).filter((t): t is Topicish => !!t);
-  return names.length ? names : ["Yazılım"];
-}
-
 export function articleFromPublic(dto: ArticleSummaryDto | ArticleDetailDto): Article {
-  const categories = topicsOf(dto.categories);
+  const categories = dto.categories.map((c) => c.name);
   return {
-    id: dto.id, slug: dto.slug, authored: true, status: "published", title: dto.title, category: categories[0], categories,
+    id: dto.id, slug: dto.slug, authored: true, status: "published", title: dto.title, category: categories[0] ?? "", categories, categoryIds: dto.categories.map((c) => c.id),
     publishedAt: dto.displayDate, eyebrow: dto.eyebrow, excerpt: dto.abstract, minutes: Math.max(1, dto.readingMinutes),
     ...(dto.presentation ? { presentation: dto.presentation } : {}),
     ...(dto.cover ? { coverUrl: dto.cover.url } : {}),
@@ -87,11 +82,11 @@ export function articleFromPublic(dto: ArticleSummaryDto | ArticleDetailDto): Ar
   };
 }
 
-export function articleFromEdit(dto: ArticleEditDto): Article {
-  const categories = topicsOf(dto.categoryIds);
+export function articleFromEdit(dto: ArticleEditDto, registry: readonly Category[] = []): Article {
+  const categories = categoryNames(dto.categoryIds, registry);
   return {
     id: dto.id, version: dto.version, slug: dto.slug, authored: true, status: dto.status, visibility: dto.visibility,
-    title: dto.title || "Adsız yazı", category: categories[0], categories, createdAt: dto.createdAt, publishedAt: dto.displayDate,
+    title: dto.title || "Adsız yazı", category: categories[0] ?? "", categories, categoryIds: [...dto.categoryIds], createdAt: dto.createdAt, publishedAt: dto.displayDate,
     ...(dto.scheduledAt ? { scheduledAt: new Date(dto.scheduledAt).toISOString() } : {}),
     eyebrow: dto.eyebrow, excerpt: dto.abstract, minutes: Math.max(1, dto.readingMinutes), presentation: dto.presentation,
     ...(dto.cover.media ? { coverUrl: dto.cover.media.url } : {}),
@@ -101,11 +96,11 @@ export function articleFromEdit(dto: ArticleEditDto): Article {
 }
 
 /** Request body for create/update. The server derives reading time, previews and canonical URLs. */
-export function articleWrite(article: Article, seriesId: string | null, seriesVersions: { id: string; version: number }[]) {
+export function articleWrite(article: Article, seriesId: string | null, seriesVersions: { id: string; version: number }[], registry: readonly Category[] = []) {
   const cover = article.coverUrl && mediaPattern.exec(article.coverUrl);
   return {
     title: article.title, slug: article.slug, eyebrow: article.eyebrow, abstract: article.excerpt, displayDate: article.publishedAt,
-    categoryIds: (article.categories ?? [article.category]).map((topic) => topicIds[topic]),
+    categoryIds: article.categoryIds ?? categoryIds(article.categories ?? [article.category], registry),
     document: toDocument(article), presentation: article.presentation ?? { width: "comfortable", heading: "left", showMeta: true },
     seo: { indexable: true }, cover: cover ? { mode: "manual", assetId: cover[1] } : { mode: "auto" },
     seriesPlacement: seriesId ? { seriesId } : null, seriesVersions,
@@ -131,7 +126,7 @@ export function seriesWrite(series: BlogSeries, idOfArticle: (slug: string) => s
 }
 
 /** Theme references travel as UUIDs; the editor keeps slugs/topic names. Unknown references become empty. */
-export function themeFromDto(dto: ThemeDto, slugOfArticle: (id: string) => string | undefined, slugOfSeries: (id: string) => string | undefined): Theme {
+export function themeFromDto(dto: ThemeDto, slugOfArticle: (id: string) => string | undefined, slugOfSeries: (id: string) => string | undefined, registry: readonly Category[] = []): Theme {
   const blocks = dto.blocks.map((block) => {
     if (block.kind === "scene") {
       const { featuredArticleId, featuredSeriesId, ...rest } = block as Record<string, unknown>;
@@ -139,14 +134,14 @@ export function themeFromDto(dto: ThemeDto, slugOfArticle: (id: string) => strin
     }
     if (block.kind === "articles") {
       const { categoryId, ...rest } = block as Record<string, unknown>;
-      return { ...rest, category: topicOfId(categoryId as string | null) ?? "Tümü" };
+      return { ...rest, categoryId: categoryId ?? null, category: categoryId ? registry.find((c) => c.id === categoryId)?.name ?? "Kategori bulunamadı" : "Tümü" };
     }
     return { ...block };
   }) as unknown as PageBlock[];
   return { name: dto.name, siteName: dto.siteName, accent: dto.accent, typography: dto.typography, surface: dto.surface, width: dto.width, spacing: dto.spacing, blocks };
 }
 
-export function themeToDto(theme: Theme, idOfArticle: (slug: string) => string | undefined, idOfSeries: (slug: string) => string | undefined): ThemeDto {
+export function themeToDto(theme: Theme, idOfArticle: (slug: string) => string | undefined, idOfSeries: (slug: string) => string | undefined, registry: readonly Category[] = []): ThemeDto {
   const blocks = theme.blocks.map((block) => {
     if (block.kind === "scene") {
       const { featuredArticleSlug, featuredSeriesSlug, ...rest } = block;
@@ -154,7 +149,7 @@ export function themeToDto(theme: Theme, idOfArticle: (slug: string) => string |
     }
     if (block.kind === "articles") {
       const { category, ...rest } = block;
-      return { ...rest, categoryId: category === "Tümü" ? null : topicIds[category] };
+      return { ...rest, categoryId: block.categoryId ?? (category === "Tümü" ? null : categoryIds([category], registry)[0]) };
     }
     return { ...block };
   }) as ThemeBlockDto[];

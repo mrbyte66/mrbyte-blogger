@@ -1,5 +1,4 @@
-export const topics = ["Tümü", "Yazılım", "Edebiyat", "Kültür"] as const;
-export type Topic = (typeof topics)[number];
+export type Topic = string;
 /** Public totals from the server: visible-card/permalink views, active claps and member saves. */
 export type ArticleStats = { views: number; claps: number; saves: number };
 export type Article = {
@@ -23,6 +22,8 @@ export type Article = {
   title: string;
   category: Exclude<Topic, "Tümü">;
   categories?: readonly Exclude<Topic, "Tümü">[];
+  /** Stable API identities survive category renames. */
+  categoryIds?: readonly string[];
   createdAt?: string;
   publishedAt?: string;
   scheduledAt?: string;
