@@ -347,3 +347,25 @@ html[data-theme=dark] .studio .studio-state.status-published { color:#bee69d; }h
 .insights-search input { font-size:16px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; }
 
 .document-actions .document-actions-hint { margin:2px 12px 8px; padding:8px 10px; border-radius:6px; background:#f6efdc; color:#6b4f12; font-size:12.5px; }
+/* Online cover search (Studio cover panel). Grid cells shrink to the inspector width; no horizontal overflow at 390px. */
+.cover-search { border-top:1px solid var(--line); padding-top:20px; margin-bottom:24px; min-width:0; }
+.cover-search-label { display:block; font-size:15px; font-weight:500; margin-bottom:9px; }
+.cover-search-row { display:flex; gap:8px; min-width:0; }
+.cover-search-row input { flex:1; min-width:0; border:1px solid #cbd5c5; border-radius:6px; padding:11px 13px; font:16px/1.5 'DM Sans',sans-serif; color:var(--ink); background:#fafbf7; }
+.cover-search-row .studio-secondary { flex:0 0 auto; padding:11px 16px; }
+.cover-search-hint,.cover-provider,.cover-search-empty,.cover-credit,.cover-search-status { font-size:12px; line-height:1.7; color:var(--muted); margin:10px 0 0; overflow-wrap:anywhere; }
+.cover-search-status:empty { display:none; }
+.cover-search-error { margin-top:12px; padding:12px 14px; border:1px solid #d8b8ae; background:#fdf8f5; border-radius:6px; font-size:13px; line-height:1.7; color:#8a4035; }
+.cover-search-error p { margin:0 0 10px; }
+.cover-chosen { margin-top:12px; padding:12px 14px; border:1px solid var(--line); border-radius:6px; font-size:13px; }
+.cover-chosen .cover-credit { margin-top:4px; }
+.cover-candidates { list-style:none; padding:0; margin:12px 0 0; display:grid; grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr)); gap:14px; min-width:0; }
+.cover-candidate { min-width:0; }
+.cover-candidate-pick { display:block; width:100%; padding:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fafbf7; position:relative; cursor:pointer; }
+.cover-candidate-pick img { display:block; width:100%; aspect-ratio:4/3; object-fit:cover; background:#eef1e8; }
+.cover-candidate-pick span { position:absolute; right:8px; bottom:8px; font-size:12px; font-weight:500; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.92); color:var(--ink); }
+.cover-candidate-pick:hover,.cover-candidate-pick:focus-visible { border-color:var(--ink); }
+.cover-candidate-pick:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+.cover-candidate-pick:disabled { cursor:progress; opacity:.75; }
+.cover-candidate-pick[aria-busy="true"] { opacity:1; border-color:var(--ink); }
+.cover-credit a,.cover-provider a { color:inherit; text-decoration:underline; text-underline-offset:2px; }

@@ -48,6 +48,11 @@ export class MemorySite {
   readonly studio: StudioOperations = {
     reload: async () => { this.changed(); },
     uploadImage: async (file) => { this.guard(`upload ${file.name}`); return `/api/v1/media/${uuid()}`; },
+    searchCovers: async (resource, query) => {
+      this.guard(`search covers ${resource.type} ${query}`);
+      return { id: uuid(), state: "done", errorCode: null, candidates: [1, 2].map((n) => ({ candidateId: `p${n}`, thumbnailUrl: `https://images.pexels.com/photos/${n}/thumb.jpeg`, sourceUrl: `https://www.pexels.com/photo/${n}/`, photographer: `Fotoğrafçı ${n}`, photographerUrl: `https://www.pexels.com/@f${n}`, licenseUrl: "https://www.pexels.com/license/", alt: `Sonuç ${n}` })) };
+    },
+    selectCover: async (jobId, candidateId) => { this.guard(`select cover ${candidateId}`); const assetId = uuid(); return { assetId, url: `/api/v1/media/${assetId}` }; },
     createSeries: async (record) => {
       this.guard("create series");
       if (this.series.some((s) => s.slug === record.slug)) throw new ApiError(409, "SLUG_TAKEN", "Bu seri bağlantısı kullanılıyor");

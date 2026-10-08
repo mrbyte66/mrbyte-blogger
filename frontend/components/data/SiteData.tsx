@@ -8,7 +8,7 @@ import { parseWorkspace } from "../../lib/builder/model";
 import { allPages, api, browserTimeZone, describe, ApiError } from "../../lib/api/http";
 import {
   articleFromEdit, articleFromPublic, articleWrite, seriesFromEdit, seriesFromPublic, seriesWrite, themeFromDto, themeToDto,
-  type ArticleEditDto, type ArticleSummaryDto, type PublicSiteDto, type SeriesEditDto, type SeriesSummaryDto, type ThemeDto,
+  type ArticleEditDto, type ArticleSummaryDto, type CoverJobDto, type CoverSelectionDto, type PublicSiteDto, type SeriesEditDto, type SeriesSummaryDto, type ThemeDto,
 } from "../../lib/api/mapping";
 
 /** Content visible to the current surface: published content for visitors, everything for the owner in Studio. */
@@ -18,11 +18,16 @@ export type ContentState = {
 };
 export type WorkspaceState = { workspace: Workspace; save: (next: Workspace, requirePersistence?: boolean) => boolean | Promise<boolean>; ready: boolean; storageError: string | null };
 export type ArticleStatus = Exclude<Article["status"], undefined>;
+export type CoverResource = { type: "article" | "series"; id: string; version?: number };
 export type StudioOperations = {
   saveArticle: (article: Article, options: { isNew: boolean; seriesId: string | null; status: ArticleStatus; visibility: "public" | "private" }) => Promise<Article>;
   saveSeries: (series: BlogSeries, status: BlogSeries["status"]) => Promise<BlogSeries>;
   createSeries: (series: BlogSeries) => Promise<BlogSeries>;
   uploadImage: (file: File) => Promise<string>;
+  /** Searches licensed cover candidates; only the owner-typed query reaches the provider. */
+  searchCovers: (resource: CoverResource, query: string) => Promise<CoverJobDto>;
+  /** Stores one candidate as a local media asset; the caller then sets it as the manual cover. */
+  selectCover: (jobId: string, candidateId: string) => Promise<CoverSelectionDto>;
   reload: () => Promise<void>;
 };
 
@@ -151,6 +156,14 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       const form = new FormData(); form.append("file", file);
       const { data } = await api<{ url: string }>("POST", "/studio/media", { form });
       return data.url;
+    },
+    async searchCovers(resource, query) {
+      const { data } = await api<CoverJobDto>("POST", "/studio/cover-jobs", { body: { resourceType: resource.type, resourceId: resource.id, resourceVersion: resource.version ?? null, query } });
+      return data;
+    },
+    async selectCover(jobId, candidateId) {
+      const { data } = await api<CoverSelectionDto>("POST", `/studio/cover-jobs/${jobId}/select`, { body: { candidateId } });
+      return data;
     },
     async createSeries(record) {
       const ref = lookups(latest.current.articles, latest.current.series);

@@ -23,6 +23,10 @@ export type SeriesEditDto = { id: string; version: number; status: BlogSeries["s
 export type ThemeBlockDto = Record<string, unknown> & { id: string; kind: PageBlock["kind"] };
 export type ThemeDto = { schemaVersion: 1; name: string; siteName: string; accent: string; typography: Theme["typography"]; surface: Theme["surface"]; width: Theme["width"]; spacing: Theme["spacing"]; blocks: ThemeBlockDto[] };
 export type PublicSiteDto = { siteName?: string; theme?: ThemeDto | null; authorPublicName?: string | null; seo?: { title?: string | null; description?: string | null }; indexingEnabled: boolean; canonicalOrigin: string };
+/** Studio cover search (`/studio/cover-jobs`, api-contract §8): owner-typed query → licensed candidates; choosing one stores a local copy. */
+export type CoverCandidateDto = { candidateId: string; thumbnailUrl: string; downloadUrl?: string | null; sourceUrl: string; photographer: string | null; photographerUrl?: string | null; licenseUrl: string; alt?: string | null };
+export type CoverJobDto = { id: string; state: "done" | "failed"; candidates: CoverCandidateDto[]; errorCode: string | null };
+export type CoverSelectionDto = { assetId: string; url: string };
 
 export const mediaUrl = (assetId: string) => `/api/v1/media/${assetId}`;
 const mediaPattern = /^\/api\/v1\/media\/([0-9a-f-]{36})$/;
