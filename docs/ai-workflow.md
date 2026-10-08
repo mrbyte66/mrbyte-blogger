@@ -64,7 +64,7 @@ PR başlığı kısa Türkçe, açıklaması `Closes #N` içerir. PR numarasın�
 4. Testten sonra kod değişirse önceki PASS geçersizdir. Son commit yeniden bağımsız test edilir.
 
 Issue yorumları tek başına durumu değiştirmez; otomasyonun sonucu görünür biçimde doğrulanır.
-Bağımsız PASS olmadan merge veya Done yok. CI bu akışın şartı değildir.
+Bağımsız PASS olmadan merge veya Done yok. CI (GitHub Actions) PASS'in yerine geçmez; testçinin ortamında Docker veya ağ yoksa PR'daki yeşil CI, test edilen commit için otomatik testlerin kanıtı sayılır. Kabul ölçütlerinin davranış kontrolü yine testçide (veya kullanıcıda) kalır; kırmızı CI ile PASS verilmez.
 
 ## Tetikleme
 
