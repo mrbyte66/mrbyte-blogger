@@ -1,6 +1,7 @@
 import { render, type RenderOptions } from "@testing-library/react";
 import { useSyncExternalStore, type ReactElement, type ReactNode } from "react";
 import { SiteDataValues, articleActions, seriesActions, type ContentState, type StudioOperations, type WorkspaceState } from "../../components/data/SiteData";
+import type { Category } from "../../lib/api/categories";
 import { ApiError } from "../../lib/api/http";
 import { articles as fixtureArticles, type Article } from "../../lib/content";
 import { insertChapterByCreation } from "../../lib/articles/metadata";
@@ -18,6 +19,7 @@ const uuid = () => `00000000-0000-4000-8000-${String(++counter).padStart(12, "0"
 export class MemorySite {
   articles: Article[];
   series: BlogSeries[];
+  categories: Category[];
   workspace: Workspace = createWorkspace();
   failNext: ApiError | null = null;
   calls: string[] = [];
@@ -29,6 +31,7 @@ export class MemorySite {
       ...a, id: a.id ?? uuid(), version: a.version ?? 0, visibility: a.visibility ?? "public", status: a.status ?? "published",
       createdAt: a.createdAt ?? new Date(Date.UTC(2026, 8, 1 + index)).toISOString(),
     }));
+    this.categories = [...new Set(this.articles.flatMap((a) => a.categories ?? [a.category]))].map((name) => ({ id: uuid(), slug: name, name }));
     const bySlug = (slug: string) => this.articles.find((a) => a.slug === slug);
     this.series = (options.series ?? initialSeries.map((s) => ({ ...s, articleSlugs: s.articleSlugs.filter((slug) => bySlug(slug)) })))
       .map((s) => ({ ...s, id: s.id.length === 36 ? s.id : uuid(), version: s.version ?? 0 }));
@@ -111,8 +114,8 @@ export class MemorySite {
     const cached = this.snapshots.get(mode);
     if (cached) return cached;
     const content: ContentState = mode === "studio"
-      ? { articles: this.articles, series: this.series, ready: true, error: null, studio: this.studio }
-      : { articles: this.published(), series: this.series.filter((s) => s.status === "published"), ready: true, error: null };
+      ? { categories: this.categories, articles: this.articles, series: this.series, ready: true, error: null, studio: this.studio }
+      : { categories: this.categories, articles: this.published(), series: this.series.filter((s) => s.status === "published"), ready: true, error: null };
     const workspace: WorkspaceState = { workspace: mode === "studio" ? this.workspace : { version: 1, draft: this.workspace.applied, applied: this.workspace.applied }, save: mode === "studio" ? this.saveWorkspace : () => false, ready: true, storageError: null };
     const snapshot = { content, workspace };
     this.snapshots.set(mode, snapshot);

@@ -73,3 +73,9 @@ DocumentActions opens the article-only `publication` inspector. `PublicationSche
 The shared page picker has a dedicated “Planlanan yazılar” view. It excludes series, shows each publication time in the local time zone, and defaults to earliest schedule first. Latest schedule first and Turkish title ordering are explicit alternatives. Searching still narrows this view; choosing a result opens its existing article editor.
 
 `addDemoSchedules` explicitly seeds three future scheduled articles through the normal validation/save path. PageNavigator keeps its planned filter open to display the new records. Fixed demo slugs prevent duplicates or overwriting edited examples; unsaved editor changes block seeding. No automatic seed, publication timer or email is introduced.
+
+## API category management (#44)
+
+Studio loads `/studio/categories` with the content workspace. Article metadata allows 1–10 categories, inline creation, and one minimal management dialog for rename/delete. CRUD uses the existing owner-only endpoints; PATCH/DELETE send the category version with If-Match. Registry updates preserve unsaved document/theme edits and use stable IDs (`Article.categoryIds`, articles block `categoryId`) across renames. New articles select the first API category; an empty registry requires creating/selecting a category before saving.
+
+Used categories cannot be deleted: the UI shows known article usage and the server remains authoritative (409 CATEGORY_IN_USE also covers published revisions). Deletion needs explicit confirmation, never removes articles, and does not auto-reassign them. A stale version refreshes only categories. The public registry comes from `/categories`; catalog filters and theme sources have no seed UUID/name mapping. Public DTO names are rendered directly. Test coverage is in category-management and api-mapping tests; the independent tester verifies desktop/mobile, focus, dark mode and real API behavior.

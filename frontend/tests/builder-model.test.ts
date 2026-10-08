@@ -189,7 +189,7 @@ describe("persisted workspace validation", () => {
       [{ id: "unknown", kind: "executable" }],
       [{ id: "articles", kind: "articles", title: "List", category: "Tümü", display: ["rows"], loading: "all" }],
       [workspace.draft.blocks[0], workspace.draft.blocks[0]],
-      [{ id: "articles", kind: "articles", title: "List", category: "Unknown", display: "rows", loading: "all" }],
+      [{ id: "articles", kind: "articles", title: "List", category: "", display: "rows", loading: "all" }],
     ]) expect(parseWorkspace(JSON.stringify({ ...workspace, draft: { ...workspace.draft, blocks } }))).toBeNull();
   });
   it("rejects oversized text and an invalid applied snapshot", () => {

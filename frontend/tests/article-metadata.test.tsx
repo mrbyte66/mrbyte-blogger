@@ -1,9 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { articles } from "../lib/content";
 import { createArticle, validateArticle } from "../lib/articles/model";
 import { articleCategories, insertChapterByCreation, isArticleDate } from "../lib/articles/metadata";
 import { publicArticles } from "../lib/editorial/store";
+import { renderWithSite } from "./support/memory-site";
 import { ArticleProperties } from "../components/builder/ArticleProperties";
 
 describe("article categories and dates", () => {
@@ -30,7 +31,7 @@ describe("article categories and dates", () => {
   });
   it("offers multiple categories and date editing in Studio", () => {
     let updated = articles[0];
-    render(<ArticleProperties article={articles[0]} field="meta" onChange={(a) => { updated = a; }} />);
+    renderWithSite(<ArticleProperties article={articles[0]} field="meta" onChange={(a) => { updated = a; }} />, { mode: "studio" });
     fireEvent.click(screen.getByLabelText("Kültür"));
     expect(articleCategories(updated)).toEqual(["Yazılım", "Kültür"]);
     fireEvent.change(screen.getByLabelText("Yazı tarihi"), { target: { value: "2026-10-01" } });

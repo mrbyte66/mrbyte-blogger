@@ -1,4 +1,4 @@
-import { topics, type Topic } from "../content";
+import { type Topic } from "../content";
 
 export const blockKinds = ["header", "intro", "scene", "articles", "series", "quote", "about", "projects", "footer"] as const;
 export type BlockKind = (typeof blockKinds)[number];
@@ -15,7 +15,7 @@ export type PageBlock =
   | Base<"header">
   | (Base<"intro"> & { title: string; description: string; eyebrow: string; layout: IntroLayout })
   | (Base<"scene"> & { title: string; emphasis: string; description: string; featuredArticleSlug: string; showFeaturedArticle: boolean; featuredSeriesSlug: string; showFeaturedSeries: boolean })
-  | (Base<"articles"> & { title: string; category: Topic; display: "rows" | "cards"; loading: "all" | "progressive" })
+  | (Base<"articles"> & { title: string; category: Topic; categoryId?: string | null; display: "rows" | "cards"; loading: "all" | "progressive" })
   | (Base<"series"> & { title: string; display: "cards" | "list" })
   | (Base<"quote"> & { text: string; attribution: string; display: QuoteDisplay })
   | (Base<"about"> & { title: string; text: string })
@@ -203,7 +203,7 @@ function validBlock(value: unknown): value is PageBlock {
     case "header": return true;
     case "intro": return text(value.title, 160) && text(value.description) && text(value.eyebrow, 120) && typeof value.layout === "string" && ["statement", "centered", "split"].includes(value.layout);
     case "scene": return text(value.title, 160) && text(value.emphasis, 160) && text(value.description) && validFeaturedSlug(value.featuredArticleSlug) && validFeaturedSlug(value.featuredSeriesSlug) && typeof value.showFeaturedArticle === "boolean" && typeof value.showFeaturedSeries === "boolean";
-    case "articles": return text(value.title, 160) && topics.some((topic) => topic === value.category) && typeof value.display === "string" && ["rows", "cards"].includes(value.display) && typeof value.loading === "string" && ["all", "progressive"].includes(value.loading);
+    case "articles": return text(value.title, 160) && text(value.category, 80) && !!value.category.trim() && (value.categoryId === undefined || value.categoryId === null || (typeof value.categoryId === "string" && /^[0-9a-f-]{36}$/i.test(value.categoryId))) && typeof value.display === "string" && ["rows", "cards"].includes(value.display) && typeof value.loading === "string" && ["all", "progressive"].includes(value.loading);
     case "series": return text(value.title, 160) && typeof value.display === "string" && ["cards", "list"].includes(value.display);
     case "quote": return text(value.text) && text(value.attribution, 120) && typeof value.display === "string" && ["band", "card"].includes(value.display);
     case "about": return text(value.title, 160) && text(value.text);

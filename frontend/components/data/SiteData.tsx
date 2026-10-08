@@ -1,5 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { categoryNames, type Category, type StudioCategory } from "../../lib/api/categories";
+import { announceContentChange } from "./PublicContentRefresh";
 import type { Article } from "../../lib/content";
 import type { BlogSeries } from "../../lib/series/model";
 import { cloneTheme, createTheme, createWorkspace, type Theme, type Workspace } from "../../lib/builder/model";
@@ -14,6 +16,8 @@ import {
 /** Content visible to the current surface: published content for visitors, everything for the owner in Studio. */
 export type ContentState = {
   articles: readonly Article[]; series: readonly BlogSeries[]; ready: boolean; error: string | null;
+  categories?: readonly Category[];
+  categoryManager?: { create: (name: string) => Promise<StudioCategory>; rename: (category: StudioCategory, name: string) => Promise<StudioCategory>; remove: (category: StudioCategory) => Promise<void>; refresh: () => Promise<void>; items: readonly StudioCategory[] };
   studio?: StudioOperations;
 };
 export type WorkspaceState = { workspace: Workspace; save: (next: Workspace, requirePersistence?: boolean) => boolean | Promise<boolean>; ready: boolean; storageError: string | null };
@@ -51,11 +55,11 @@ const lookups = (articles: readonly Article[], series: readonly BlogSeries[]) =>
 });
 
 /** Visitor surface: server-rendered published content and the applied theme. Read-only. */
-export function SiteDataProvider({ site, articles, series, children }: { site: PublicSiteDto; articles: ArticleSummaryDto[]; series: SeriesSummaryDto[]; children: ReactNode }) {
-  const content = useMemo<ContentState>(() => ({ articles: articles.map(articleFromPublic), series: series.map(seriesFromPublic), ready: true, error: null }), [articles, series]);
+export function SiteDataProvider({ site, articles, series, categories: registry, children }: { site: PublicSiteDto; articles: ArticleSummaryDto[]; series: SeriesSummaryDto[]; categories?: Category[]; children: ReactNode }) {
+  const content = useMemo<ContentState>(() => ({ articles: articles.map(articleFromPublic), series: series.map(seriesFromPublic), categories: registry ?? [...new Map(articles.flatMap((a) => a.categories).map((c) => [c.id, c])).values()], ready: true, error: null }), [articles, series, registry]);
   const workspace = useMemo<WorkspaceState>(() => {
     const ref = lookups(content.articles, content.series);
-    const theme = site.theme ? themeFromDto(site.theme, ref.slugOfArticle, ref.slugOfSeries) : createTheme("scene");
+    const theme = site.theme ? themeFromDto(site.theme, ref.slugOfArticle, ref.slugOfSeries, content.categories) : createTheme("scene");
     return { workspace: { version: 1, draft: cloneTheme(theme), applied: cloneTheme(theme) }, save: () => false, ready: true, storageError: null };
   }, [site.theme, content]);
   const info = useMemo(() => ({ canonicalOrigin: site.canonicalOrigin, authorPublicName: site.authorPublicName ?? null }), [site.canonicalOrigin, site.authorPublicName]);
@@ -68,27 +72,30 @@ type ThemeWorkspaceDto = { version: number; draftRevisionId: string | null; appl
 /** Owner surface: all content and the theme workspace, loaded and changed through the Studio API. */
 export function StudioDataProvider({ children }: { children: ReactNode }) {
   const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<StudioCategory[]>([]);
   const [series, setSeries] = useState<BlogSeries[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<Workspace>(createWorkspace);
   const [themeError, setThemeError] = useState<string | null>(null);
   const themeServer = useRef<ThemeServerState>({ version: 0, draftRevisionId: null });
-  const latest = useRef({ articles, series, workspace });
-  latest.current = { articles, series, workspace };
+  const latest = useRef({ articles, series, workspace, categories });
+  latest.current = { articles, series, workspace, categories };
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reload = useCallback(async () => {
     try {
-      const [articleDtos, seriesDtos, theme] = await Promise.all([
-        allPages<ArticleEditDto>("/studio/articles"), allPages<SeriesEditDto>("/studio/series"), api<ThemeWorkspaceDto>("GET", "/studio/theme"),
+      const [articleDtos, seriesDtos, theme, categoryResponse] = await Promise.all([
+        allPages<ArticleEditDto>("/studio/articles"), allPages<SeriesEditDto>("/studio/series"), api<ThemeWorkspaceDto>("GET", "/studio/theme"), api<{ items: StudioCategory[] }>("GET", "/studio/categories"),
       ]);
-      const nextArticles = articleDtos.map(articleFromEdit);
+      const registry = categoryResponse.data.items;
+      const nextArticles = articleDtos.map((dto) => articleFromEdit(dto, registry));
+      setCategories(registry);
       const nextSeries = seriesDtos.map((dto) => seriesFromEdit(dto, (id) => nextArticles.find((a) => a.id === id)?.slug));
       const ref = lookups(nextArticles, nextSeries);
-      const applied = theme.data.applied ? themeFromDto(theme.data.applied, ref.slugOfArticle, ref.slugOfSeries) : createTheme("scene");
-      const draft = theme.data.draft ? themeFromDto(theme.data.draft, ref.slugOfArticle, ref.slugOfSeries) : cloneTheme(applied);
+      const applied = theme.data.applied ? themeFromDto(theme.data.applied, ref.slugOfArticle, ref.slugOfSeries, registry) : createTheme("scene");
+      const draft = theme.data.draft ? themeFromDto(theme.data.draft, ref.slugOfArticle, ref.slugOfSeries, registry) : cloneTheme(applied);
       themeServer.current = { version: theme.data.version, draftRevisionId: theme.data.draftRevisionId };
       setArticles(nextArticles); setSeries(nextSeries); setWorkspace({ version: 1, draft, applied }); setError(null);
     } catch (cause) {
@@ -100,7 +107,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
   // ------------------------------------------------------------ theme
   const putDraft = useCallback(async (theme: Theme) => {
     const ref = lookups(latest.current.articles, latest.current.series);
-    const { data } = await api<ThemeWorkspaceDto>("PUT", "/studio/theme/draft", { body: themeToDto(theme, ref.idOfArticle, ref.idOfSeries), ifMatch: themeServer.current.version });
+    const { data } = await api<ThemeWorkspaceDto>("PUT", "/studio/theme/draft", { body: themeToDto(theme, ref.idOfArticle, ref.idOfSeries, latest.current.categories), ifMatch: themeServer.current.version });
     themeServer.current = { version: data.version, draftRevisionId: data.draftRevisionId };
   }, []);
   const enqueue = useCallback(<T,>(task: () => Promise<T>) => {
@@ -192,7 +199,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       const oldSeriesId = previous?.seriesId ?? null;
       const seriesVersions = oldSeriesId === seriesId ? [] : [oldSeriesId, seriesId].filter((id): id is string => !!id)
         .map((id) => ({ id, version: all.find((s) => s.id === id)?.version ?? 0 }));
-      const body = articleWrite(article, seriesId, seriesVersions);
+      const body = articleWrite(article, seriesId, seriesVersions, latest.current.categories);
       let dto: ArticleEditDto; let etag: string | null;
       if (isNew || !previous) {
         ({ data: dto, etag } = await api<ArticleEditDto>("POST", "/studio/articles", { body: { ...body, visibility }, idempotent: true }));
@@ -204,11 +211,37 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
         ({ data: dto, etag } = await api<ArticleEditDto>("POST", `/studio/articles/${dto.id}/actions`, { body: payload, ifMatch: etag ?? dto.version, idempotent: true }));
       }
       await reload();
-      return articleFromEdit(dto);
+      return articleFromEdit(dto, latest.current.categories);
     },
   }), [reload]);
 
-  const content = useMemo<ContentState>(() => ({ articles, series, ready, error, studio }), [articles, series, ready, error, studio]);
+  const refreshCategories = useCallback(async () => {
+    const { data } = await api<{ items: StudioCategory[] }>("GET", "/studio/categories");
+    latest.current.categories = data.items;
+    setCategories(data.items);
+    setArticles((list) => list.map((a) => a.categoryIds ? { ...a, categories: categoryNames(a.categoryIds, data.items), category: categoryNames(a.categoryIds, data.items)[0] ?? "" } : a));
+  }, []);
+  const categoryManager = useMemo(() => ({ items: categories, refresh: refreshCategories,
+    async create(name: string) {
+      const { data } = await api<StudioCategory>("POST", "/studio/categories", { body: { name } });
+      // Apply the returned identity immediately, even if a later refresh fails.
+      setCategories((list) => [...list, data]); latest.current.categories = [...latest.current.categories, data];
+      announceContentChange(); return data;
+    },
+    async rename(category: StudioCategory, name: string) {
+      const { data } = await api<StudioCategory>("PATCH", `/studio/categories/${category.id}`, { body: { name }, ifMatch: category.version });
+      const registry = latest.current.categories.map((c) => c.id === data.id ? data : c);
+      latest.current.categories = registry; setCategories(registry);
+      setArticles((list) => list.map((a) => a.categoryIds ? { ...a, categories: categoryNames(a.categoryIds, registry), category: categoryNames(a.categoryIds, registry)[0] ?? "" } : a));
+      announceContentChange(); return data;
+    },
+    async remove(category: StudioCategory) {
+      await api("DELETE", `/studio/categories/${category.id}`, { ifMatch: category.version });
+      const registry = latest.current.categories.filter((c) => c.id !== category.id);
+      latest.current.categories = registry; setCategories(registry); announceContentChange();
+    },
+  }), [categories, refreshCategories]);
+  const content = useMemo<ContentState>(() => ({ articles, series, categories, categoryManager, ready, error, studio }), [articles, series, categories, categoryManager, ready, error, studio]);
   const themeState = useMemo<WorkspaceState>(() => ({ workspace, save: saveTheme, ready, storageError: themeError }), [workspace, saveTheme, ready, themeError]);
   return <ContentContext.Provider value={content}><WorkspaceContext.Provider value={themeState}>{children}</WorkspaceContext.Provider></ContentContext.Provider>;
 }

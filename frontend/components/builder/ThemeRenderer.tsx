@@ -37,7 +37,7 @@ function FeedArticle({ article, index, preview }: { article: Article; index: num
 function ArticleFeed({ block, preview }: { block: ArticlesBlock; preview: boolean }) {
   const { articles: storedArticles } = useArticles();
   const articles = publicArticles(storedArticles);
-  const items = articles.filter((item) => block.category === "Tümü" || articleCategories(item).includes(block.category));
+  const items = articles.filter((item) => block.categoryId ? item.categoryIds?.includes(block.categoryId) : block.category === "Tümü" || articleCategories(item).includes(block.category));
   const progressive = block.loading === "progressive";
   const feed = useProgressiveItems({ total: progressive ? items.length : 0, listKey: `${block.id}-${block.category}` });
   const more = progressive && feed.hasMore;
