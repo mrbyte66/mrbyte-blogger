@@ -18,7 +18,11 @@ export type PresentationDto = { width: "comfortable" | "wide"; heading: "left" |
 export type ArticleSummaryDto = { id: string; slug: string; title: string; eyebrow: string; abstract: string; categories: CategoryDto[]; displayDate: string; readingMinutes: number; cover?: MediaDto; stats?: ArticleStats; presentation?: PresentationDto; document?: DocumentDto };
 export type ArticleDetailDto = ArticleSummaryDto & { revisionId?: string; document: DocumentDto; presentation: PresentationDto; firstPublishedAt?: string; publicModifiedAt?: string; seo?: { title?: string; description?: string; indexable: boolean } };
 export type ArticleEditDto = { id: string; version: number; createdAt: string; status: Exclude<Article["status"], undefined>; visibility: "public" | "private"; scheduledAt?: string | null; scheduleZone?: string | null; firstPublishedAt?: string | null; title: string; slug: string; eyebrow: string; abstract: string; displayDate: string; categoryIds: string[]; document: DocumentDto; presentation: PresentationDto; seo: { title?: string | null; description?: string | null; indexable: boolean }; cover: { mode: "auto" | "manual" | "none"; assetId?: string | null; media?: MediaDto | null }; seriesPlacement: { seriesId: string } | null; readingMinutes: number };
-export type SeriesSummaryDto = { id: string; slug: string; title: string; summary: string; ongoing: boolean; cover?: MediaDto | null; chapterCount: number; stats?: ArticleStats; presentation: { heading: "left" | "center"; chapterStyle: "cards" | "rows" }; chapters: { id: string; slug: string; title: string }[] };
+type SeriesPresentation = { heading: "left" | "center"; chapterStyle: "cards" | "rows" };
+/** Used when a series carries no presentation (older or partial responses must not break the page). */
+export const DEFAULT_SERIES_PRESENTATION: SeriesPresentation = { heading: "left", chapterStyle: "cards" };
+/** `presentation` and `chapters` may be missing from older or incompatible backends (#30). */
+export type SeriesSummaryDto = { id: string; slug: string; title: string; summary: string; ongoing: boolean; cover?: MediaDto | null; chapterCount: number; stats?: ArticleStats; presentation?: SeriesPresentation; chapters?: { id: string; slug: string; title: string }[] };
 export type SeriesEditDto = { id: string; version: number; status: BlogSeries["status"]; title: string; slug: string; summary: string; ongoing: boolean; cover: { mode: "auto" | "manual" | "none"; assetId?: string | null; media?: MediaDto | null }; presentation: { heading: "left" | "center"; chapterStyle: "cards" | "rows" }; seo: { indexable: boolean }; chapterIds: string[] };
 export type ThemeBlockDto = Record<string, unknown> & { id: string; kind: PageBlock["kind"] };
 export type ThemeDto = { schemaVersion: 1; name: string; siteName: string; accent: string; typography: Theme["typography"]; surface: Theme["surface"]; width: Theme["width"]; spacing: Theme["spacing"]; blocks: ThemeBlockDto[] };
@@ -105,7 +109,7 @@ export function articleWrite(article: Article, seriesId: string | null, seriesVe
 }
 
 export function seriesFromPublic(dto: SeriesSummaryDto): BlogSeries {
-  return { id: dto.id, slug: dto.slug, title: dto.title, summary: dto.summary, status: "published", ongoing: dto.ongoing, presentation: dto.presentation, ...(dto.cover ? { coverImage: dto.cover.url } : {}), articleSlugs: dto.chapters.map((c) => c.slug) };
+  return { id: dto.id, slug: dto.slug, title: dto.title, summary: dto.summary, status: "published", ongoing: dto.ongoing, presentation: dto.presentation ?? DEFAULT_SERIES_PRESENTATION, ...(dto.cover ? { coverImage: dto.cover.url } : {}), articleSlugs: (dto.chapters ?? []).map((c) => c.slug) };
 }
 
 export function seriesFromEdit(dto: SeriesEditDto, slugOfArticle: (id: string) => string | undefined): BlogSeries {
@@ -117,7 +121,7 @@ export function seriesWrite(series: BlogSeries, idOfArticle: (slug: string) => s
   return {
     title: series.title, slug: series.slug, summary: series.summary, ongoing: series.ongoing,
     cover: cover ? { mode: "manual", assetId: cover[1] } : { mode: "auto" },
-    presentation: series.presentation ?? { heading: "left", chapterStyle: "cards" }, seo: { indexable: true },
+    presentation: series.presentation ?? DEFAULT_SERIES_PRESENTATION, seo: { indexable: true },
     chapterIds: series.articleSlugs.map(idOfArticle).filter((id): id is string => !!id), articleVersions,
   };
 }

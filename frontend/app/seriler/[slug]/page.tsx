@@ -33,7 +33,7 @@ export default async function SeriesRoute({ params }: Props) {
     <JsonLd data={{
       "@context": "https://schema.org", "@type": "CollectionPage", name: series.title, description: series.summary || undefined,
       url: `${siteOrigin()}/seriler/${series.slug}`,
-      mainEntity: { "@type": "ItemList", itemListElement: series.chapters.map((chapter, index) => ({ "@type": "ListItem", position: index + 1, url: `${siteOrigin()}/yazilar/${chapter.slug}`, name: chapter.title })) },
+      mainEntity: { "@type": "ItemList", itemListElement: (series.chapters ?? []).map((chapter, index) => ({ "@type": "ListItem", position: index + 1, url: `${siteOrigin()}/yazilar/${chapter.slug}`, name: chapter.title })) },
     }} />
     <SeriesPage slug={series.slug} />
   </>;
