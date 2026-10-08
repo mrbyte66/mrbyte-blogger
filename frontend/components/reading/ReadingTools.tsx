@@ -76,6 +76,8 @@ function ScopedReadingTools({ articleId, contentRootId, contentRevision = "", me
     function finishPointerSelection(event: PointerEvent) {
       const target = event.target;
       if (!(target instanceof Element) || target.closest(".reading-toolbar, .reading-panel")) return;
+      // A form field (e.g. the login dialog) keeps its caret: WebKit drops it when the document selection is cleared (#38).
+      if (target.closest("input, textarea, select, [contenteditable]")) return;
       const root = document.getElementById(contentRootId);
       if (!root) return;
       const next = root.contains(target) ? selectionAnchors(root, window.getSelection()) : [];

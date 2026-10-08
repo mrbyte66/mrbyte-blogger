@@ -149,6 +149,16 @@ describe("browser-local reading tools", () => {
     expect(screen.getByRole("button", { name: "Seçili metnin altını çiz" }).hasAttribute("disabled")).toBe(true);
     expect(screen.queryByText("Seçilen alıntı")).toBeNull();
   });
+  it("keeps the caret of a form field outside the article, such as the login dialog (#38)", () => {
+    render(<><article id="reading-content"><p data-reading-anchor="paragraph-0">Hello <strong>world</strong></p></article><ReadingTools articleId="sample" contentRootId="reading-content" /><dialog open><input aria-label="E-posta" /></dialog></>);
+    const field = screen.getByLabelText("E-posta");
+    const clear = vi.spyOn(window.getSelection()!, "removeAllRanges");
+    act(() => field.focus());
+    fireEvent.pointerUp(field, { pointerType: "mouse", button: 0 });
+    expect(clear).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(field);
+  });
+
   it("rechecks saved marks when edited article content changes without removing the saved quote", async () => {
     localStorage.setItem(readingStorageKey("sample"), JSON.stringify({ version: 1, articleId: "sample", marks: [mark] }));
     const page = (text: string) => <><article id="reading-content"><p data-reading-anchor="paragraph-0">{text}</p></article><ReadingTools articleId="sample" contentRootId="reading-content" contentRevision={text} /></>;
