@@ -70,7 +70,7 @@ Bağımsız PASS olmadan merge veya Done yok. CI (GitHub Actions) PASS'in yerine
 ## Tetikleme
 
 Şu anda agentlar bir sohbet başlatılarak issue/PR bağlantısıyla çalıştırılır.
-Project durum otomasyonu agent başlatmaz. Günlük tarama ve otomatik agent tetikleme henüz kurulmadı.
+Project durum otomasyonu agent başlatmaz. Günlük kodlayıcı/testçi taraması henüz kurulmadı; CI sonucu için yerel, tek seferlik kısa agent tetiklemesi aşağıdaki #59 bölümünde açıklanır.
 Bilgisayar kapalıyken veya hesap limiti doluyken çalışma devam ediyormuş gibi rapor verilmez.
 
 ## Devir promptları
@@ -94,7 +94,7 @@ Bilgisayar kapalıyken veya hesap limiti doluyken çalışma devam ediyormuş gi
 
 Yerel bir tetikleyici kurulursa kodlayıcı kendi `agent:*` + `Todo` + engellenmemiş işlerini; testçi kendi `test:*` + `In Test` işlerini tarar. Her çalıştırmada güncel kayıt tekrar okunur; aktif iş ikinci kez başlatılmaz. Entegrasyon kilidi varsa başka kod işi alınmaz. Testçi PASS/FAIL kaydı ve durum güncellemesi yapar; merge yalnız testçinin PASS kaydından sonra testçi tarafından yapılır.
 
-Claude tarafında yaklaşık 20 dakikalık yerel tarama planlandığı bildirildi; kurulumu burada doğrulanmadı. Codex tarafında periyodik tetikleyici henüz kurulmadı. Bu belge zamanlayıcı oluşturmaz.
+Claude tarafında yaklaşık 20 dakikalık yerel tarama planlandığı bildirildi; kurulumu burada doğrulanmadı. Codex tarafında periyodik kodlayıcı/testçi tetiklemesi henüz kurulmadı. CI sonucu takibi ayrı bir yerel script ile kurulur; aşağıdaki #59 bölümüne bak. Bu belge kendi başına zamanlayıcı oluşturmaz.
 
 ## Panoda sorumlu ve görev devri
 
