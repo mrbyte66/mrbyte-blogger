@@ -32,7 +32,7 @@ export function SeriesCatalog({ series, selectedSeriesSlug, onOpenSeries, onOpen
   const chapters = useProgressiveItems({ total: selected?.articleSlugs.length ?? 0, listKey: selectedSeriesSlug ?? "", limit: chapterLimit, onLimitChange: onChapterLimitChange });
   // A member's own visit history: "where you left off" means last opened, not finished.
   const visits = useSeriesHistory(preview ? undefined : selected?.id);
-  const lastVisit = visits.reduce<(typeof visits)[number] | undefined>((latest, visit) => !latest || visit.lastVisitedAt > latest.lastVisitedAt ? visit : latest, undefined);
+  const lastVisit = visits.reduce<(typeof visits)[number] | undefined>((latest, visit) => !latest || (visit.lastVisitedAt ?? "") > (latest.lastVisitedAt ?? "") ? visit : latest, undefined);
   const lastArticle = lastVisit && articles.find((article) => article.id === lastVisit.articleId);
   function articleAction(slug: string, label: React.ReactNode, className?: string) {
     const open = () => onOpenArticle?.(slug);

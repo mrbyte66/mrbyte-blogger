@@ -1,3 +1,5 @@
+
+import type { Input, Output } from "../api/contract";
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../components/auth/AuthProvider";
@@ -14,11 +16,11 @@ export function useMemberVisit(article: Article) {
   const { id, revisionId } = article;
   useEffect(() => {
     if (!member || !id || !revisionId) return;
-    void api("POST", "/me/visits", { body: { eventId: crypto.randomUUID(), articleId: id, revisionId, visitedAt: new Date().toISOString() } }).catch(() => {});
+    void api("POST", "/me/visits", { body: ({ eventId: crypto.randomUUID(), articleId: id, revisionId, visitedAt: new Date().toISOString() } satisfies Input<"recordVisit">) }).catch(() => {});
   }, [member, id, revisionId]);
 }
 
-export type SeriesVisit = { articleId: string; lastVisitedAt: string };
+export type SeriesVisit = NonNullable<Output<"seriesHistory">["items"]>[number];
 
 /** The member's visits to the public chapters of one series (empty for guests). */
 export function useSeriesHistory(seriesId: string | undefined): SeriesVisit[] {
@@ -29,8 +31,8 @@ export function useSeriesHistory(seriesId: string | undefined): SeriesVisit[] {
     setVisits([]);
     if (!member || !seriesId) return;
     let cancelled = false;
-    api<{ items: SeriesVisit[] }>("GET", `/me/series/${seriesId}/history`)
-      .then(({ data }) => { if (!cancelled) setVisits(data.items); }, () => {});
+    api<Output<"seriesHistory">>("GET", `/me/series/${seriesId}/history`)
+      .then(({ data }) => { if (!cancelled) setVisits(data.items ?? []); }, () => {});
     return () => { cancelled = true; };
   }, [member, seriesId]);
   return visits;

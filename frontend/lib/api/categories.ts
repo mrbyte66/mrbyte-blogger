@@ -1,6 +1,7 @@
 /** Category identity comes from the API; names are editable display labels. */
-export type Category = { id: string; slug: string; name: string };
-export type StudioCategory = Category & { position: number; version: number };
+import type { Schema } from "./contract";
+export type Category = Schema<"Category">;
+export type StudioCategory = Schema<"StudioCategory">;
 export function categoryNames(ids: readonly string[], categories: readonly Category[]): string[] {
   return ids.map((id) => categories.find((c) => c.id === id)?.name ?? "Kategori bulunamadı");
 }

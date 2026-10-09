@@ -1,4 +1,6 @@
 "use client";
+import type { Input, Schema, Output } from "../../lib/api/contract";
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { categoryNames, type Category, type StudioCategory } from "../../lib/api/categories";
 import { announceContentChange } from "./PublicContentRefresh";
@@ -62,12 +64,12 @@ export function SiteDataProvider({ site, articles, series, categories: registry,
     const theme = site.theme ? themeFromDto(site.theme, ref.slugOfArticle, ref.slugOfSeries, content.categories) : createTheme("scene");
     return { workspace: { version: 1, draft: cloneTheme(theme), applied: cloneTheme(theme) }, save: () => false, ready: true, storageError: null };
   }, [site.theme, content]);
-  const info = useMemo(() => ({ canonicalOrigin: site.canonicalOrigin, authorPublicName: site.authorPublicName ?? null }), [site.canonicalOrigin, site.authorPublicName]);
+  const info = useMemo(() => ({ canonicalOrigin: site.canonicalOrigin ?? "", authorPublicName: site.authorPublicName ?? null }), [site.canonicalOrigin, site.authorPublicName]);
   return <SiteInfoContext.Provider value={info}><ContentContext.Provider value={content}><WorkspaceContext.Provider value={workspace}>{children}</WorkspaceContext.Provider></ContentContext.Provider></SiteInfoContext.Provider>;
 }
 
 type ThemeServerState = { version: number; draftRevisionId: string | null };
-type ThemeWorkspaceDto = { version: number; draftRevisionId: string | null; appliedRevisionId: string | null; draft: ThemeDto | null; applied: ThemeDto | null };
+type ThemeWorkspaceDto = Schema<"ThemeWorkspace">;
 
 /** Owner surface: all content and the theme workspace, loaded and changed through the Studio API. */
 export function StudioDataProvider({ children }: { children: ReactNode }) {
@@ -87,7 +89,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async () => {
     try {
       const [articleDtos, seriesDtos, theme, categoryResponse] = await Promise.all([
-        allPages<ArticleEditDto>("/studio/articles"), allPages<SeriesEditDto>("/studio/series"), api<ThemeWorkspaceDto>("GET", "/studio/theme"), api<{ items: StudioCategory[] }>("GET", "/studio/categories"),
+        allPages<ArticleEditDto>("/studio/articles"), allPages<SeriesEditDto>("/studio/series"), api<ThemeWorkspaceDto>("GET", "/studio/theme"), api<Output<"studioListCategories">>("GET", "/studio/categories"),
       ]);
       const registry = categoryResponse.data.items;
       const nextArticles = articleDtos.map((dto) => articleFromEdit(dto, registry));
@@ -107,7 +109,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
   // ------------------------------------------------------------ theme
   const putDraft = useCallback(async (theme: Theme) => {
     const ref = lookups(latest.current.articles, latest.current.series);
-    const { data } = await api<ThemeWorkspaceDto>("PUT", "/studio/theme/draft", { body: themeToDto(theme, ref.idOfArticle, ref.idOfSeries, latest.current.categories), ifMatch: themeServer.current.version });
+    const { data } = await api<ThemeWorkspaceDto>("PUT", "/studio/theme/draft", { body: (themeToDto(theme, ref.idOfArticle, ref.idOfSeries, latest.current.categories) satisfies Input<"studioSaveThemeDraft">), ifMatch: themeServer.current.version });
     themeServer.current = { version: data.version, draftRevisionId: data.draftRevisionId };
   }, []);
   const enqueue = useCallback(<T,>(task: () => Promise<T>) => {
@@ -123,7 +125,8 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     if (applying) {
       return enqueue(async () => {
         await putDraft(next.draft);
-        const { data } = await api<ThemeWorkspaceDto>("POST", "/studio/theme/apply", { body: { draftRevisionId: themeServer.current.draftRevisionId }, ifMatch: themeServer.current.version });
+        if (!themeServer.current.draftRevisionId) throw new ApiError(409, "DRAFT_NOT_FOUND", "Tema taslağı bulunamadı.");
+        const { data } = await api<ThemeWorkspaceDto>("POST", "/studio/theme/apply", { body: ({ draftRevisionId: themeServer.current.draftRevisionId } satisfies Input<"studioApplyTheme">), ifMatch: themeServer.current.version });
         themeServer.current = { version: data.version, draftRevisionId: data.draftRevisionId };
         setThemeError(null);
         return true;
@@ -161,20 +164,21 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
     reload,
     async uploadImage(file) {
       const form = new FormData(); form.append("file", file);
-      const { data } = await api<{ url: string }>("POST", "/studio/media", { form });
+      const { data } = await api<Output<"studioUploadMedia", 202>>("POST", "/studio/media", { form });
+      if (!data.url) throw new ApiError(409, "MEDIA_NOT_READY", "Görsel henüz hazır değil.");
       return data.url;
     },
     async searchCovers(resource, query) {
-      const { data } = await api<CoverJobDto>("POST", "/studio/cover-jobs", { body: { resourceType: resource.type, resourceId: resource.id, resourceVersion: resource.version ?? null, query } });
+      const { data } = await api<CoverJobDto>("POST", "/studio/cover-jobs", { body: ({ resourceType: resource.type, resourceId: resource.id, resourceVersion: resource.version ?? null, query } satisfies Input<"studioSearchCovers">) });
       return data;
     },
     async selectCover(jobId, candidateId) {
-      const { data } = await api<CoverSelectionDto>("POST", `/studio/cover-jobs/${jobId}/select`, { body: { candidateId } });
+      const { data } = await api<CoverSelectionDto>("POST", `/studio/cover-jobs/${jobId}/select`, { body: ({ candidateId } satisfies Input<"studioSelectCover">) });
       return data;
     },
     async createSeries(record) {
       const ref = lookups(latest.current.articles, latest.current.series);
-      const { data } = await api<SeriesEditDto>("POST", "/studio/series", { body: seriesWrite({ ...record, articleSlugs: [] }, ref.idOfArticle, []), idempotent: true });
+      const { data } = await api<SeriesEditDto>("POST", "/studio/series", { body: (seriesWrite({ ...record, articleSlugs: [] }, ref.idOfArticle, []) satisfies Input<"studioCreateSeries">), idempotent: true });
       const created = seriesFromEdit(data, ref.slugOfArticle);
       setSeries((list) => [...list, created]);
       return created;
@@ -186,9 +190,9 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       if (!previous?.version && previous?.version !== 0) throw new ApiError(404, "NOT_FOUND", "Seri bulunamadı.");
       const changed = new Set([...previous.articleSlugs.filter((s) => !record.articleSlugs.includes(s)), ...record.articleSlugs.filter((s) => !previous.articleSlugs.includes(s))]);
       const versions = [...changed].map((slug) => list.find((a) => a.slug === slug)).filter((a): a is Article => !!a?.id).map((a) => ({ id: a.id!, version: a.version ?? 0 }));
-      let { data, etag } = await api<SeriesEditDto>("PUT", `/studio/series/${record.id}`, { body: seriesWrite(record, ref.idOfArticle, versions), ifMatch: previous.version });
+      let { data, etag } = await api<SeriesEditDto>("PUT", `/studio/series/${record.id}`, { body: (seriesWrite(record, ref.idOfArticle, versions) satisfies Input<"studioUpdateSeries">), ifMatch: previous.version });
       for (const action of seriesActions(data.status, status)) {
-        ({ data, etag } = await api<SeriesEditDto>("POST", `/studio/series/${record.id}/actions`, { body: { action }, ifMatch: etag ?? data.version, idempotent: true }));
+        ({ data, etag } = await api<SeriesEditDto>("POST", `/studio/series/${record.id}/actions`, { body: ({ action } satisfies Input<"studioSeriesAction">), ifMatch: etag ?? data.version, idempotent: true }));
       }
       await reload();
       return seriesFromEdit(data, ref.slugOfArticle);
@@ -202,13 +206,13 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       const body = articleWrite(article, seriesId, seriesVersions, latest.current.categories);
       let dto: ArticleEditDto; let etag: string | null;
       if (isNew || !previous) {
-        ({ data: dto, etag } = await api<ArticleEditDto>("POST", "/studio/articles", { body: { ...body, visibility }, idempotent: true }));
+        ({ data: dto, etag } = await api<ArticleEditDto>("POST", "/studio/articles", { body: ({ ...body, visibility } satisfies Input<"studioCreateArticle">), idempotent: true }));
       } else {
-        ({ data: dto, etag } = await api<ArticleEditDto>("PUT", `/studio/articles/${previous.id}`, { body, ifMatch: previous.version ?? 0 }));
+        ({ data: dto, etag } = await api<ArticleEditDto>("PUT", `/studio/articles/${previous.id}`, { body: (body satisfies Input<"studioUpdateArticle">), ifMatch: previous.version ?? 0 }));
       }
       for (const step of articleActions(dto.status, dto.visibility, status, visibility)) {
         const payload = step === "schedule" ? { action: step, scheduledAt: article.scheduledAt, timeZone: browserTimeZone() } : { action: step };
-        ({ data: dto, etag } = await api<ArticleEditDto>("POST", `/studio/articles/${dto.id}/actions`, { body: payload, ifMatch: etag ?? dto.version, idempotent: true }));
+        ({ data: dto, etag } = await api<ArticleEditDto>("POST", `/studio/articles/${dto.id}/actions`, { body: (payload satisfies Input<"studioArticleAction">), ifMatch: etag ?? dto.version, idempotent: true }));
       }
       await reload();
       return articleFromEdit(dto, latest.current.categories);
@@ -216,20 +220,20 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
   }), [reload]);
 
   const refreshCategories = useCallback(async () => {
-    const { data } = await api<{ items: StudioCategory[] }>("GET", "/studio/categories");
+    const { data } = await api<Output<"studioListCategories">>("GET", "/studio/categories");
     latest.current.categories = data.items;
     setCategories(data.items);
     setArticles((list) => list.map((a) => a.categoryIds ? { ...a, categories: categoryNames(a.categoryIds, data.items), category: categoryNames(a.categoryIds, data.items)[0] ?? "" } : a));
   }, []);
   const categoryManager = useMemo(() => ({ items: categories, refresh: refreshCategories,
     async create(name: string) {
-      const { data } = await api<StudioCategory>("POST", "/studio/categories", { body: { name } });
+      const { data } = await api<StudioCategory>("POST", "/studio/categories", { body: ({ name } satisfies Input<"studioCreateCategory">) });
       // Apply the returned identity immediately, even if a later refresh fails.
       setCategories((list) => [...list, data]); latest.current.categories = [...latest.current.categories, data];
       announceContentChange(); return data;
     },
     async rename(category: StudioCategory, name: string) {
-      const { data } = await api<StudioCategory>("PATCH", `/studio/categories/${category.id}`, { body: { name }, ifMatch: category.version });
+      const { data } = await api<StudioCategory>("PATCH", `/studio/categories/${category.id}`, { body: ({ name } satisfies Input<"studioUpdateCategory">), ifMatch: category.version });
       const registry = latest.current.categories.map((c) => c.id === data.id ? data : c);
       latest.current.categories = registry; setCategories(registry);
       setArticles((list) => list.map((a) => a.categoryIds ? { ...a, categories: categoryNames(a.categoryIds, registry), category: categoryNames(a.categoryIds, registry)[0] ?? "" } : a));
@@ -247,8 +251,8 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
 }
 
 /** Lifecycle steps to move from the server state to the editor's chosen state (API contract §7). */
-export function articleActions(current: ArticleStatus, currentVisibility: "public" | "private", target: ArticleStatus, visibility: "public" | "private"): string[] {
-  const steps: string[] = [];
+export function articleActions(current: ArticleStatus, currentVisibility: "public" | "private", target: ArticleStatus, visibility: "public" | "private"): Input<"studioArticleAction">["action"][] {
+  const steps: Input<"studioArticleAction">["action"][] = [];
   let status = current;
   if (visibility === "private" && currentVisibility === "public") { if (status === "trashed") { steps.push("restore"); } steps.push("make-private"); status = "draft"; }
   if (visibility === "public" && currentVisibility === "private") {
@@ -268,7 +272,7 @@ export function articleActions(current: ArticleStatus, currentVisibility: "publi
   return steps;
 }
 
-export function seriesActions(current: BlogSeries["status"], target: BlogSeries["status"]): string[] {
+export function seriesActions(current: BlogSeries["status"], target: BlogSeries["status"]): Input<"studioSeriesAction">["action"][] {
   if (current === target) return [];
   if (target === "published") return current === "archived" || current === "trashed" ? ["restore", "publish"] : ["publish"];
   if (target === "draft") return [current === "published" ? "save-draft" : "restore"];

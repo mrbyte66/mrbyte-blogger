@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SERIES_PRESENTATION, seriesFromPublic, type SeriesSummaryDto } from "../lib/api/mapping";
 
-const base: SeriesSummaryDto = { id: "40000000-0000-4000-8000-000000000001", slug: "seri", title: "Seri", summary: "Özet", ongoing: true, chapterCount: 0 };
+const base: SeriesSummaryDto = { id: "40000000-0000-4000-8000-000000000001", slug: "seri", title: "Seri", summary: "Özet", ongoing: true, chapterCount: 0, url: "/seriler/seri", cover: null, stats: { views: 0, claps: 0, saves: 0 } };
 
 describe("public series mapping (#30)", () => {
   it("tolerates a summary without chapters or presentation", () => {
@@ -23,10 +23,10 @@ import { articleFromEdit, articleFromPublic, articleWrite, themeFromDto, themeTo
 import { createTheme } from "../lib/builder/model";
 import { validateArticle } from "../lib/articles/model";
 const category = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", slug: "bilim", name: "Bilim" };
-const edit: ArticleEditDto = { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", version: 1, createdAt: "2026-10-08T00:00:00Z", status: "draft", visibility: "public", title: "Yıldızlar", slug: "yildizlar", eyebrow: "", abstract: "", displayDate: "2026-10-08", categoryIds: [category.id], document: { schemaVersion: 1, blocks: [{ id: "p", type: "paragraph", text: "Bir yazı." }] }, presentation: { heading: "left", width: "comfortable", showMeta: true }, seo: { indexable: true }, cover: { mode: "auto" }, seriesPlacement: null, readingMinutes: 1 };
+const edit: ArticleEditDto = { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", version: 1, updatedAt: "2026-10-08T00:00:00Z", url: "/yazilar/yildizlar", scheduledAt: null, scheduleZone: null, firstPublishedAt: null, lastPublishedAt: null, revisionId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", createdAt: "2026-10-08T00:00:00Z", status: "draft", visibility: "public", title: "Yıldızlar", slug: "yildizlar", eyebrow: "", abstract: "", displayDate: "2026-10-08", categoryIds: [category.id], document: { schemaVersion: 1, blocks: [{ id: "p", type: "paragraph", text: "Bir yazı." }] }, presentation: { heading: "left", width: "comfortable", showMeta: true }, seo: { indexable: true }, cover: { mode: "auto", assetId: null, media: null }, seriesPlacement: null, readingMinutes: 1 };
 describe("dynamic category identities (#44)", () => {
   it("reads public names from the DTO rather than guessing seed topics", () => {
-    expect(articleFromPublic({ ...edit, categories: [category], cover: undefined, abstract: "Özet" }).categories).toEqual(["Bilim"]);
+    expect(articleFromPublic({ ...edit, categories: [category], cover: undefined, stats: { views: 0, claps: 0, saves: 0 }, abstract: "Özet" }).categories).toEqual(["Bilim"]);
   });
   it("preserves IDs through draft validation and a renamed registry", () => {
     const article = validateArticle(articleFromEdit(edit, [category]));

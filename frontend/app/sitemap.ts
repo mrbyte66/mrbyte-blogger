@@ -1,3 +1,4 @@
+import type { Schema } from "../lib/api/contract";
 import type { MetadataRoute } from "next";
 import { backend, siteOrigin } from "../lib/api/server";
 
@@ -11,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = siteOrigin();
   const entries: MetadataRoute.Sitemap = [];
   for (let page = 0; page < 40; page++) {
-    const { data } = await backend<{ items: { path: string; lastModified?: string }[]; totalPages: number }>(`/api/v1/seo/urls?page=${page}&size=50`);
+    const { data } = await backend<Schema<"SeoUrlPage">>(`/api/v1/seo/urls?page=${page}&size=50`);
     if (!data) break;
     for (const item of data.items) entries.push({ url: `${origin}${item.path}`, ...(item.lastModified ? { lastModified: item.lastModified } : {}) });
     if (page + 1 >= data.totalPages) break;
