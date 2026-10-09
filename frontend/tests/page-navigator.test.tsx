@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PageNavigator } from "../components/builder/PageNavigator";
@@ -54,4 +55,27 @@ it("shows an empty draft state", () => {
   fireEvent.click(screen.getByRole("button", {name:"Sayfalar: Ana sayfa"}));
   fireEvent.change(screen.getByLabelText("İçerik görünümü"), {target:{value:"draft"}});
   expect(screen.getByText("Taslakta bekleyen yazı veya seri yok.")).toBeTruthy();
+});
+
+
+it("exposes standalone series creation beside writing and closes the menu", () => {
+  const createSeries = vi.fn();
+  render(<PageNavigator target={{ kind: "home" }} articles={articles} series={initialSeries} ready onNavigate={vi.fn()} onCreateArticle={vi.fn()} onCreateSeries={createSeries} />);
+  fireEvent.click(screen.getByRole("button", { name: "Sayfalar: Ana sayfa" }));
+  const button = screen.getByRole("button", { name: /Yeni seri/ });
+  expect(button.parentElement).toBe(screen.getByRole("button", { name: /Yeni yazı/ }).parentElement);
+  fireEvent.click(button);
+  expect(createSeries).toHaveBeenCalledOnce();
+  expect(screen.queryByRole("navigation", { name: "Sayfalar" })).toBeNull();
+});
+
+it("allows keyboard activation of new series", async () => {
+  const user = userEvent.setup(); const createSeries = vi.fn();
+  render(<PageNavigator target={{ kind: "home" }} articles={articles} series={initialSeries} ready onNavigate={vi.fn()} onCreateArticle={vi.fn()} onCreateSeries={createSeries} />);
+  screen.getByRole("button", { name: "Sayfalar: Ana sayfa" }).focus();
+  await user.keyboard("{Enter}");
+  screen.getByRole("button", { name: /Yeni seri/ }).focus();
+  await user.keyboard("{Enter}");
+  expect(createSeries).toHaveBeenCalledOnce();
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Sayfalar: Ana sayfa" }));
 });

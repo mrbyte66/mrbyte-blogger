@@ -406,3 +406,6 @@ html[data-theme=dark] .studio .studio-state.status-published { color:#bee69d; }h
 .category-field :is(button,input):focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
 @media(max-width:520px) { .category-dialog { padding:22px; }.category-dialog footer { align-items:stretch; flex-direction:column; gap:12px; } }
 @media(prefers-reduced-motion:reduce) { .category-icon { transition:none; } }
+
+/* The inline series form groups its fields in a fieldset (disabled while saving). */
+fieldset.inline-series-fields { min-width:0; border:0; padding:0; margin:0; }

@@ -15,7 +15,7 @@ import { scrollBehavior } from "../../lib/motion";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { PreviewCanvas } from "./PreviewCanvas";
 import { ArticleProperties, articleFields } from "./ArticleProperties";
-import { SeriesProperties, seriesFields } from "./SeriesProperties";
+import { SeriesProperties, hasPublicChapter, seriesFields } from "./SeriesProperties";
 export function DocumentEditor({ navigation, initial, articles, series, isNew = false, onDirty, onNavigate, onSave, onDiscard, onCreateSeries, error }: { navigation?: ReactNode; initial: DocumentDraft; articles: readonly Article[]; series: readonly BlogSeries[]; isNew?: boolean; onDirty: (dirty: boolean) => void; onNavigate: (target: StudioTarget) => void; onSave: (draft: DocumentDraft, seriesId?: string | null) => Promise<boolean>; onCreateSeries: (series: BlogSeries) => Promise<BlogSeries | null>; onDiscard: () => void; error: string | null }) {
   const { workspace, ready } = useWorkspace();
   const inspectorRef = useRef<HTMLElement>(null);
@@ -28,7 +28,7 @@ export function DocumentEditor({ navigation, initial, articles, series, isNew = 
   const [mobile, setMobile] = useState(false);
   const [editing, setEditing] = useState(true);
   const [message, setMessage] = useState("");
-  const initialSeriesId = initial.kind === "article" ? series.find((s) => s.status !== "trashed" && s.articleSlugs.includes(initial.article.slug))?.id ?? null : null;
+  const initialSeriesId = initial.kind === "article" ? initial.article.seriesId ?? series.find((s) => s.status !== "trashed" && s.articleSlugs.includes(initial.article.slug))?.id ?? null : null;
   const [seriesId, setSeriesId] = useState(initialSeriesId);
   const [savedSeriesId, setSavedSeriesId] = useState(initialSeriesId);
   const [creatingSeries, setCreatingSeries] = useState(false);
@@ -38,16 +38,16 @@ export function DocumentEditor({ navigation, initial, articles, series, isNew = 
   // A brand-new article counts as changed only after the author edits its template.
   const dirty = JSON.stringify(draft) !== JSON.stringify(baseline ?? initial) || seriesId !== savedSeriesId || seriesFormDirty;
   const status = draft.kind === "article" ? articleStatus(draft.article) : draft.series.status;
-  const canPublish = draft.kind === "article" ? draft.article.paragraphs.some((p) => p.trim()) : draft.series.articleSlugs.length > 0;
+  const canPublish = draft.kind === "article" ? draft.article.paragraphs.some((p) => p.trim()) : hasPublicChapter(draft.series, articles);
   useEffect(() => { if (creatingSeries) seriesFormRef.current?.scrollIntoView({ block: "start", behavior: scrollBehavior() }); }, [creatingSeries]);
   const valid = parseDocumentDraft(draft);
   const missingBody = (status === "published" || status === "scheduled") && !canPublish;
   const selectedSeries = series.find((item) => item.id === seriesId);
   const seriesPublishNote = draft.kind === "article" && draft.article.visibility !== "private" && selectedSeries?.status === "draft"
-    ? `${selectedSeries.title} serisi de yayınlanacak.` : "";
+    ? `Seri de yayınlanacak: ${selectedSeries.title}.` : "";
   const publishHint = canPublish ? seriesPublishNote : draft.kind === "article"
     ? "Yayına almak için soldaki «Metin ve paragraflar» alanına en az bir paragraf yaz. Başlık ve özet tek başına yetmez."
-    : "Seriyi yayına almak için en az bir bölüm ekle.";
+    : "Seriyi yayına almak için yayında ve herkese açık en az bir bölüm ekle.";
   const [preview, setPreview] = useState(initial);
   // After a save the server returns a new version; adopt it in place (keeping the selected field).
   const serverVersion = initial.kind === "article" ? `${initial.article.id}:${initial.article.version}` : `${initial.series.id}:${initial.series.version}`;

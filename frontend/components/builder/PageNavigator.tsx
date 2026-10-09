@@ -8,9 +8,9 @@ import type { StudioTarget } from "../../lib/builder/document-protocol";
 type Props = {
   target: StudioTarget; articles: readonly Article[]; series: readonly BlogSeries[];
   ready: boolean; onNavigate: (target: StudioTarget) => void;
-  onCreateArticle: () => void;
+  onCreateArticle: () => void; onCreateSeries?: () => void;
 };
-export function PageNavigator({ target, articles, series, ready, onNavigate, onCreateArticle }: Props) {
+export function PageNavigator({ target, articles, series, ready, onNavigate, onCreateArticle, onCreateSeries }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"active" | "draft" | "scheduled" | "archived" | "trashed">("active");
@@ -42,7 +42,7 @@ export function PageNavigator({ target, articles, series, ready, onNavigate, onC
     {open && <nav id={id} className="studio-page-menu" aria-label="Sayfalar">
       <div className="page-menu-heading"><strong>Sayfalar</strong><span>{articles.length} yazı · {series.length} seri</span></div>
       <label className="page-search"><span className="sr-only">Sayfa ara</span><input autoFocus value={query} placeholder="Başlığa göre ara…" onChange={(event) => setQuery(event.target.value)} /></label>
-      <div className="page-menu-create"><button disabled={!ready} onClick={() => create(onCreateArticle)}>＋ Yeni yazı</button></div>
+      <div className="page-menu-create"><button disabled={!ready} onClick={() => create(onCreateArticle)}>＋ Yeni yazı</button>{onCreateSeries && <button disabled={!ready} onClick={() => create(onCreateSeries)}>＋ Yeni seri</button>}</div>
       <label className="page-menu-filter"><span>Göster</span><select aria-label="İçerik görünümü" value={view} onChange={(e) => setView(e.target.value as typeof view)}><option value="active">Aktif içerikler</option><option value="draft">Taslaklar</option><option value="scheduled">Planlanan yazılar</option><option value="archived">Arşiv</option><option value="trashed">Çöp kutusu</option></select></label>
       {view === "scheduled" && <label className="page-menu-filter"><span>Sırala</span><select aria-label="Yayın planı sıralaması" value={scheduleSort} onChange={e => setScheduleSort(e.target.value as typeof scheduleSort)}><option value="nearest">En yakın yayın önce</option><option value="farthest">En uzak yayın önce</option><option value="title">Başlık · A–Z</option></select></label>}
       
