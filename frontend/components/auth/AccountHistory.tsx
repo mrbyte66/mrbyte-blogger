@@ -1,9 +1,10 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api, describe } from "../../lib/api/http";
+import type { Schema } from "../../lib/api/contract";
 import { SlideLink } from "../SlideLink";
 
-type HistoryItem = { articleId: string; available: boolean; article?: { slug: string; title: string }; lastVisitedAt?: string };
+type HistoryItem = Schema<"HistoryPage">["items"][number];
 const formatTime = (value: string) => new Date(value).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" });
 
 /**
@@ -15,7 +16,7 @@ export function AccountHistory() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
-    try { setItems((await api<{ items: HistoryItem[] }>("GET", "/me/history?size=30")).data.items); setError(""); }
+    try { setItems((await api<Schema<"HistoryPage">>("GET", "/me/history?size=30")).data.items); setError(""); }
     catch (cause) { setError(describe(cause)); }
   }, []);
   useEffect(() => { void load(); }, [load]);

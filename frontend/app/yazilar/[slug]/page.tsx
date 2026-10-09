@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
     openGraph: {
       type: "article", url, title: article.title, description,
-      publishedTime: article.firstPublishedAt, modifiedTime: article.publicModifiedAt,
+      publishedTime: article.firstPublishedAt ?? undefined, modifiedTime: article.publicModifiedAt ?? undefined,
       ...(article.cover ? { images: [{ url: article.cover.url, width: article.cover.width, height: article.cover.height }] } : {}),
     },
   };

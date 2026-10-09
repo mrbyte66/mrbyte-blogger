@@ -1,4 +1,5 @@
 // Server-only: used by Server Components, route metadata, sitemap and robots. Never imported by client UI.
+import type { Schema, Output, Page } from "./contract";
 import { cache } from "react";
 import type { ArticleDetailDto, ArticleSummaryDto, CategoryDto, PublicSiteDto, SeriesSummaryDto } from "./mapping";
 
@@ -27,7 +28,7 @@ export async function backend<T>(path: string, options: { cookie?: string | null
 async function allPages<T>(path: string): Promise<T[]> {
   const items: T[] = [];
   for (let page = 0; page < 40; page++) {
-    const { data } = await backend<{ items: T[]; totalPages: number }>(`${path}${path.includes("?") ? "&" : "?"}page=${page}&size=50`);
+    const { data } = await backend<Page<T>>(`${path}${path.includes("?") ? "&" : "?"}page=${page}&size=50`);
     if (!data) break;
     items.push(...data.items);
     if (page + 1 >= data.totalPages) break;
@@ -43,7 +44,7 @@ export const loadPublicContent = cache(async (): Promise<PublicContent> => {
     backend<PublicSiteDto>("/api/v1/site"),
     allPages<ArticleSummaryDto>("/api/v1/articles?expand=document"),
     allPages<SeriesSummaryDto>("/api/v1/series"),
-    backend<{ items: CategoryDto[] }>("/api/v1/categories"),
+    backend<Output<"listPublicCategories">>("/api/v1/categories"),
   ]);
   return { site: site.data ?? { indexingEnabled: false, canonicalOrigin: "" }, articles, series, categories: categories.data?.items ?? [] };
 });
@@ -51,7 +52,7 @@ export const loadPublicContent = cache(async (): Promise<PublicContent> => {
 export type Resolved<T> = { kind: "found"; value: T } | { kind: "redirect"; path: string } | { kind: "missing" };
 
 export const loadArticle = cache(async (slug: string): Promise<Resolved<ArticleDetailDto>> => resolve<ArticleDetailDto>(`/api/v1/articles/by-slug/${encodeURIComponent(slug)}`));
-export const loadSeries = cache(async (slug: string): Promise<Resolved<SeriesSummaryDto & { seo?: { indexable: boolean; description?: string | null }; publicModifiedAt?: string }>> => resolve(`/api/v1/series/by-slug/${encodeURIComponent(slug)}`));
+export const loadSeries = cache(async (slug: string): Promise<Resolved<Schema<"SeriesDetail">>> => resolve(`/api/v1/series/by-slug/${encodeURIComponent(slug)}`));
 
 async function resolve<T>(path: string): Promise<Resolved<T>> {
   const { status, data } = await backend<T & { resolution?: string; canonicalPath?: string }>(path);
@@ -60,7 +61,7 @@ async function resolve<T>(path: string): Promise<Resolved<T>> {
   return { kind: "found", value: data };
 }
 
-export type SessionDto = { authenticated: boolean; profile?: { id: string; role: "owner" | "member"; verified: boolean } };
+export type SessionDto = Schema<"Session">;
 export async function loadSession(cookie: string | null): Promise<SessionDto> {
   if (!cookie) return { authenticated: false };
   return (await backend<SessionDto>("/api/v1/auth/session", { cookie })).data ?? { authenticated: false };

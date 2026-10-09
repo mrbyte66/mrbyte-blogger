@@ -1,36 +1,28 @@
-import type { Article, ArticleStats } from "../content";
+import type { Article } from "../content";
 import type { BlogSeries } from "../series/model";
 import type { PageBlock, Theme } from "../builder/model";
 import { categoryIds, categoryNames, type Category } from "./categories";
 
-/** API contract shapes (docs/api-contract.md). Only fields the frontend uses are typed. */
-export type BlockDto =
-  | { id: string; type: "paragraph"; text: string }
-  | { id: string; type: "heading"; text: string; level: number }
-  | { id: string; type: "quote"; text: string; attribution?: string }
-  | { id: string; type: "code"; text: string; language?: string; caption?: string }
-  | { id: string; type: "image"; assetId?: string; staticPath?: string; alt?: string; caption?: string; width?: number; height?: number }
-  | { id: string; type: "table"; caption?: string; columns: string[]; rows: string[][] };
-export type DocumentDto = { schemaVersion: 1; blocks: BlockDto[] };
-export type MediaDto = { id: string; url: string; width?: number; height?: number; attribution?: { provider: string; photographer?: string; photographerUrl?: string; sourceUrl?: string; licenseUrl?: string } };
-export type CategoryDto = { id: string; slug: string; name: string };
-export type PresentationDto = { width: "comfortable" | "wide"; heading: "left" | "center"; showMeta: boolean };
-export type ArticleSummaryDto = { id: string; slug: string; title: string; eyebrow: string; abstract: string; categories: CategoryDto[]; displayDate: string; readingMinutes: number; cover?: MediaDto; stats?: ArticleStats; presentation?: PresentationDto; document?: DocumentDto };
-export type ArticleDetailDto = ArticleSummaryDto & { revisionId?: string; document: DocumentDto; presentation: PresentationDto; firstPublishedAt?: string; publicModifiedAt?: string; seo?: { title?: string; description?: string; indexable: boolean } };
-export type ArticleEditDto = { id: string; version: number; createdAt: string; status: Exclude<Article["status"], undefined>; visibility: "public" | "private"; scheduledAt?: string | null; scheduleZone?: string | null; firstPublishedAt?: string | null; title: string; slug: string; eyebrow: string; abstract: string; displayDate: string; categoryIds: string[]; document: DocumentDto; presentation: PresentationDto; seo: { title?: string | null; description?: string | null; indexable: boolean }; cover: { mode: "auto" | "manual" | "none"; assetId?: string | null; media?: MediaDto | null }; seriesPlacement: { seriesId: string } | null; readingMinutes: number };
-type SeriesPresentation = { heading: "left" | "center"; chapterStyle: "cards" | "rows" };
-/** Used when a series carries no presentation (older or partial responses must not break the page). */
+import type { Schema, Output } from "./contract";
+export type BlockDto = Schema<"Block">;
+export type DocumentDto = Schema<"Document">;
+export type MediaDto = Schema<"MediaPublic">;
+export type CategoryDto = Schema<"Category">;
+export type PresentationDto = Schema<"ArticlePresentation">;
+export type ArticleSummaryDto = Schema<"ArticleSummary">;
+export type ArticleDetailDto = Schema<"ArticleDetail">;
+export type ArticleEditDto = Schema<"ArticleEdit">;
+type SeriesPresentation = Schema<"SeriesPresentation">;
 export const DEFAULT_SERIES_PRESENTATION: SeriesPresentation = { heading: "left", chapterStyle: "cards" };
-/** `presentation` and `chapters` may be missing from older or incompatible backends (#30). */
-export type SeriesSummaryDto = { id: string; slug: string; title: string; summary: string; ongoing: boolean; cover?: MediaDto | null; chapterCount: number; stats?: ArticleStats; presentation?: SeriesPresentation; chapters?: { id: string; slug: string; title: string }[] };
-export type SeriesEditDto = { id: string; version: number; status: BlogSeries["status"]; title: string; slug: string; summary: string; ongoing: boolean; cover: { mode: "auto" | "manual" | "none"; assetId?: string | null; media?: MediaDto | null }; presentation: { heading: "left" | "center"; chapterStyle: "cards" | "rows" }; seo: { indexable: boolean }; chapterIds: string[] };
-export type ThemeBlockDto = Record<string, unknown> & { id: string; kind: PageBlock["kind"] };
-export type ThemeDto = { schemaVersion: 1; name: string; siteName: string; accent: string; typography: Theme["typography"]; surface: Theme["surface"]; width: Theme["width"]; spacing: Theme["spacing"]; blocks: ThemeBlockDto[] };
-export type PublicSiteDto = { siteName?: string; theme?: ThemeDto | null; authorPublicName?: string | null; seo?: { title?: string | null; description?: string | null }; indexingEnabled: boolean; canonicalOrigin: string };
-/** Studio cover search (`/studio/cover-jobs`, api-contract §8): owner-typed query → licensed candidates; choosing one stores a local copy. */
-export type CoverCandidateDto = { candidateId: string; thumbnailUrl: string; downloadUrl?: string | null; sourceUrl: string; photographer: string | null; photographerUrl?: string | null; licenseUrl: string; alt?: string | null };
-export type CoverJobDto = { id: string; state: "done" | "failed"; candidates: CoverCandidateDto[]; errorCode: string | null };
-export type CoverSelectionDto = { assetId: string; url: string };
+// Older servers may omit the two fields (#30); derive their types without redefining the wire contract.
+export type SeriesSummaryDto = Omit<Schema<"SeriesSummary">, "presentation" | "chapters"> & Partial<Pick<Schema<"SeriesSummary">, "presentation" | "chapters">>;
+export type SeriesEditDto = Schema<"SeriesEdit">;
+export type ThemeBlockDto = Schema<"ThemeBlock">;
+export type ThemeDto = Schema<"ThemeDocument">;
+export type PublicSiteDto = Schema<"PublicSite">;
+export type CoverJobDto = Schema<"CoverJob">;
+export type CoverCandidateDto = CoverJobDto["candidates"][number];
+export type CoverSelectionDto = Output<"studioSelectCover">;
 
 export const mediaUrl = (assetId: string) => `/api/v1/media/${assetId}`;
 const mediaPattern = /^\/api\/v1\/media\/([0-9a-f-]{36})$/;
@@ -73,7 +65,7 @@ export function articleFromPublic(dto: ArticleSummaryDto | ArticleDetailDto): Ar
   const categories = dto.categories.map((c) => c.name);
   return {
     id: dto.id, slug: dto.slug, authored: true, status: "published", title: dto.title, category: categories[0] ?? "", categories, categoryIds: dto.categories.map((c) => c.id),
-    publishedAt: dto.displayDate, eyebrow: dto.eyebrow, excerpt: dto.abstract, minutes: Math.max(1, dto.readingMinutes),
+    publishedAt: dto.displayDate, eyebrow: dto.eyebrow ?? "", excerpt: dto.abstract ?? "", minutes: Math.max(1, dto.readingMinutes),
     ...(dto.presentation ? { presentation: dto.presentation } : {}),
     ...(dto.cover ? { coverUrl: dto.cover.url } : {}),
     ...(dto.stats ? { stats: dto.stats } : {}),
@@ -88,7 +80,7 @@ export function articleFromEdit(dto: ArticleEditDto, registry: readonly Category
     id: dto.id, version: dto.version, slug: dto.slug, authored: true, status: dto.status, visibility: dto.visibility,
     title: dto.title || "Adsız yazı", category: categories[0] ?? "", categories, categoryIds: [...dto.categoryIds], createdAt: dto.createdAt, publishedAt: dto.displayDate,
     ...(dto.scheduledAt ? { scheduledAt: new Date(dto.scheduledAt).toISOString() } : {}),
-    eyebrow: dto.eyebrow, excerpt: dto.abstract, minutes: Math.max(1, dto.readingMinutes), presentation: dto.presentation,
+    eyebrow: dto.eyebrow ?? "", excerpt: dto.abstract ?? "", minutes: Math.max(1, dto.readingMinutes), presentation: dto.presentation,
     ...(dto.cover.media ? { coverUrl: dto.cover.media.url } : {}),
     seriesId: dto.seriesPlacement?.seriesId ?? null,
     ...fromDocument(dto.document),
@@ -96,11 +88,11 @@ export function articleFromEdit(dto: ArticleEditDto, registry: readonly Category
 }
 
 /** Request body for create/update. The server derives reading time, previews and canonical URLs. */
-export function articleWrite(article: Article, seriesId: string | null, seriesVersions: { id: string; version: number }[], registry: readonly Category[] = []) {
+export function articleWrite(article: Article, seriesId: string | null, seriesVersions: Schema<"VersionRef">[], registry: readonly Category[] = []): Schema<"ArticleWrite"> {
   const cover = article.coverUrl && mediaPattern.exec(article.coverUrl);
   return {
     title: article.title, slug: article.slug, eyebrow: article.eyebrow, abstract: article.excerpt, displayDate: article.publishedAt,
-    categoryIds: article.categoryIds ?? categoryIds(article.categories ?? [article.category], registry),
+    categoryIds: article.categoryIds ? [...article.categoryIds] : categoryIds(article.categories ?? [article.category], registry),
     document: toDocument(article), presentation: article.presentation ?? { width: "comfortable", heading: "left", showMeta: true },
     seo: { indexable: true }, cover: cover ? { mode: "manual", assetId: cover[1] } : { mode: "auto" },
     seriesPlacement: seriesId ? { seriesId } : null, seriesVersions,
@@ -108,14 +100,14 @@ export function articleWrite(article: Article, seriesId: string | null, seriesVe
 }
 
 export function seriesFromPublic(dto: SeriesSummaryDto): BlogSeries {
-  return { id: dto.id, slug: dto.slug, title: dto.title, summary: dto.summary, status: "published", ongoing: dto.ongoing, presentation: dto.presentation ?? DEFAULT_SERIES_PRESENTATION, ...(dto.cover ? { coverImage: dto.cover.url } : {}), articleSlugs: (dto.chapters ?? []).map((c) => c.slug) };
+  return { id: dto.id, slug: dto.slug, title: dto.title, summary: dto.summary ?? "", status: "published", ongoing: dto.ongoing, presentation: dto.presentation ?? DEFAULT_SERIES_PRESENTATION, ...(dto.cover ? { coverImage: dto.cover.url } : {}), articleSlugs: (dto.chapters ?? []).map((c) => c.slug) };
 }
 
 export function seriesFromEdit(dto: SeriesEditDto, slugOfArticle: (id: string) => string | undefined): BlogSeries {
-  return { id: dto.id, version: dto.version, slug: dto.slug, title: dto.title, summary: dto.summary, status: dto.status, ongoing: dto.ongoing, presentation: dto.presentation, ...(dto.cover.media ? { coverImage: dto.cover.media.url } : {}), articleSlugs: dto.chapterIds.map(slugOfArticle).filter((s): s is string => !!s) };
+  return { id: dto.id, version: dto.version, slug: dto.slug, title: dto.title, summary: dto.summary ?? "", status: dto.status, ongoing: dto.ongoing, presentation: dto.presentation, ...(dto.cover.media ? { coverImage: dto.cover.media.url } : {}), articleSlugs: dto.chapterIds.map(slugOfArticle).filter((s): s is string => !!s) };
 }
 
-export function seriesWrite(series: BlogSeries, idOfArticle: (slug: string) => string | undefined, articleVersions: { id: string; version: number }[]) {
+export function seriesWrite(series: BlogSeries, idOfArticle: (slug: string) => string | undefined, articleVersions: Schema<"VersionRef">[]): Schema<"SeriesWrite"> {
   const cover = series.coverImage && mediaPattern.exec(series.coverImage);
   return {
     title: series.title, slug: series.slug, summary: series.summary, ongoing: series.ongoing,

@@ -1,4 +1,6 @@
 "use client";
+import type { Input, Output } from "../../lib/api/contract";
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { api, describe } from "../../lib/api/http";
@@ -56,7 +58,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     if (latest.current[articleId]) return;
     setClap(articleId, {});
     enqueue(articleId, async () => {
-      try { setClap(articleId, { clapped: (await api<{ clapped: boolean }>("GET", `/articles/${articleId}/my-clap`)).data.clapped }); }
+      try { setClap(articleId, { clapped: (await api<Output<"myClap">>("GET", `/articles/${articleId}/my-clap`)).data.clapped }); }
       catch { setClap(articleId, { clapped: false }); }
     });
   }, [enqueue, setClap]);
@@ -66,7 +68,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     setClap(articleId, { clapped: target, pending: true, error: "" });
     enqueue(articleId, async () => {
       try {
-        const { data } = await api<{ clapped: boolean; claps: number }>("PUT", `/articles/${articleId}/clap`, { body: { clapped: target } });
+        const { data } = await api<Output<"setClap">>("PUT", `/articles/${articleId}/clap`, { body: ({ clapped: target } satisfies Input<"setClap">) });
         setClap(articleId, { clapped: data.clapped, pending: false });
         merge(articleId, { claps: data.claps });
       } catch (cause) {
@@ -84,7 +86,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     if (sent.current.has(key)) return;
     sent.current.add(key);
     const body = { eventId: crypto.randomUUID(), articleId, source, pageViewId, occurredAt: new Date().toISOString() };
-    const send = (attempt: number): Promise<void> => api<{ views: number }>("POST", "/impressions", { body })
+    const send = (attempt: number): Promise<void> => api<Output<"recordImpression">>("POST", "/impressions", { body: (body satisfies Input<"recordImpression">) })
       .then(({ data }) => merge(articleId, { views: data.views }))
       // A network failure is retried once with the same event ID; the server never counts it twice.
       .catch((error: { status?: number }) => { if (attempt === 0 && error?.status === 0) return send(1); });

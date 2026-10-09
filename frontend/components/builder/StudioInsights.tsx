@@ -2,11 +2,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, describe } from "../../lib/api/http";
+import type { Page, Schema } from "../../lib/api/contract";
 import { StudioHeader } from "./StudioHeader";
 
-type Page<T> = { items: T[]; page: number; totalPages: number; totalElements: number };
-type ArticleStatsRow = { articleId: string; title: string; views: number; claps: number; saves: number };
-type MemberRow = { id: string; name: string | null; email: string; status: string; createdAt: string };
+type ArticleStatsRow = Schema<"OwnerArticleStatsPage">["items"][number];
+type MemberRow = Schema<"MemberPage">["items"][number];
 const statusLabels: Record<string, string> = { active: "Etkin", pending: "Doğrulama bekliyor" };
 const formatDate = (value: string) => new Date(value).toLocaleDateString("tr-TR", { dateStyle: "medium" });
 

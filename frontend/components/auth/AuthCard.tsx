@@ -1,4 +1,5 @@
 "use client";
+import type { Input } from "../../lib/api/contract";
 import { useEffect, useId, useRef, useState } from "react";
 import { passwordStrength, validEmail, type AuthScreen } from "../../lib/auth/model";
 import { api, describe } from "../../lib/api/http";
@@ -65,21 +66,21 @@ export function AuthCard({ initial = "login", onComplete }: { initial?: AuthScre
           setResult({ title: "E-postanı kontrol et", text: `Doğrulama bağlantısını ${email.trim()} adresine gönderdik. Bağlantıyı açıp doğruladıktan sonra giriş yapabilirsin.`, next: "login" });
         }
       } else if (screen === "forgot") {
-        await api("POST", "/auth/password/forgot", { body: { email: email.trim() } });
+        await api("POST", "/auth/password/forgot", { body: ({ email: email.trim() } satisfies Input<"forgotPassword">) });
         setResult({ title: "Sıradaki adım hazır", text: "Bu adrese kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderdik. Bağlantı 30 dakika geçerli.", next: "login" });
       } else if (screen === "reset") {
-        await api("POST", "/auth/password/reset", { body: { token: link.token, password, passwordConfirmation: confirmation } });
+        await api("POST", "/auth/password/reset", { body: ({ token: link.token, password, passwordConfirmation: confirmation } satisfies Input<"resetPassword">) });
         setPassword(""); setConfirmation(""); await auth.refresh();
         setResult({ title: "Şifren güncellendi", text: "Güvenliğin için bütün oturumların kapatıldı. Yeni şifrenle giriş yapabilirsin.", next: "login" });
       } else if (screen === "verify") {
         if (link.token) {
-          await api("POST", link.emailChange ? "/auth/email-change/confirm" : "/auth/verification/confirm", { body: { token: link.token } });
+          await api("POST", link.emailChange ? "/auth/email-change/confirm" : "/auth/verification/confirm", { body: ({ token: link.token } satisfies Input<"confirmVerification"> & Input<"confirmEmailChange">) });
           await auth.refresh();
           setResult(link.emailChange
             ? { title: "E-posta adresin değişti", text: "Güvenliğin için bütün oturumların kapatıldı. Yeni adresinle giriş yapabilirsin.", next: "login" }
             : { title: "E-postan doğrulandı", text: "Hesabın etkin. Artık kitaplığını ve hesap ayarlarını kullanabilirsin.", next: auth.session ? undefined : "login" });
         } else {
-          await api("POST", "/auth/verification/resend", { body: { email: email.trim() } });
+          await api("POST", "/auth/verification/resend", { body: ({ email: email.trim() } satisfies Input<"resendVerification">) });
           setResult({ title: "Bağlantı gönderildi", text: "Doğrulanmamış bir hesap varsa bu adrese yeni bir doğrulama bağlantısı gönderdik." });
         }
       }

@@ -1,6 +1,7 @@
 export type Topic = string;
 /** Public totals from the server: visible-card/permalink views, active claps and member saves. */
-export type ArticleStats = { views: number; claps: number; saves: number };
+import type { Schema } from "./api/contract";
+export type ArticleStats = Schema<"ArticleStatsInline">;
 export type Article = {
   /** Server identity and optimistic-lock version (absent until the article is saved to the API). */
   id?: string;

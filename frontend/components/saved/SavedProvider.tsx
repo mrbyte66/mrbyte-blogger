@@ -1,4 +1,6 @@
 "use client";
+import type { Input, Schema, Output } from "../../lib/api/contract";
+
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { useContent } from "../data/SiteData";
@@ -9,10 +11,10 @@ import { allPages, api, describe } from "../../lib/api/http";
  * The signed-in member's private library, stored on the server (API contract §5). Nothing is kept
  * in browser storage; another account's records are never loaded. Signing out clears the state.
  */
-export type SavedCollection = { id: string; name: string; isDefault: boolean; count: number; version: number };
+export type SavedCollection = Schema<"Collection">;
 export type SavedEntry = { articleId: string; slug?: string; collectionId: string; savedAt: string; version: number; available: boolean };
 export type SavedLibrary = { collections: SavedCollection[]; entries: SavedEntry[] };
-type BookmarkDto = { articleId: string; collectionId: string; savedAt: string; version: number; available: boolean; article?: { slug: string } };
+type BookmarkDto = Schema<"BookmarkItem">;
 type MemberLibrary = {
   library: SavedLibrary; defaultId: string; ready: boolean; member: boolean; error: string;
   entryFor: (slug: string) => SavedEntry | undefined;
@@ -43,7 +45,7 @@ export function SavedProvider({ children }: { children: ReactNode }) {
     if (!userId) { setLibrary(empty); setLoadedFor(null); return; }
     try {
       const [collections, bookmarks] = await Promise.all([
-        api<{ items: SavedCollection[] }>("GET", "/me/collections"), allPages<BookmarkDto>("/me/bookmarks?sort=saved_asc"),
+        api<Output<"listCollections">>("GET", "/me/collections"), allPages<BookmarkDto>("/me/bookmarks?sort=saved_asc"),
       ]);
       if (current !== generation.current) return;
       setLibrary({ collections: collections.data.items, entries: bookmarks.map(({ article, ...entry }) => ({ ...entry, ...(article ? { slug: article.slug } : {}) })) });
@@ -78,18 +80,18 @@ export function SavedProvider({ children }: { children: ReactNode }) {
     save: (slug, collectionId) => {
       const id = idOf(slug);
       if (!id) return Promise.resolve(false);
-      return run(() => api("PUT", `/me/bookmarks/${id}`, { body: collectionId ? { collectionId } : {} }), id);
+      return run(() => api("PUT", `/me/bookmarks/${id}`, { body: (collectionId ? { collectionId } : {} satisfies Input<"saveBookmark">) }), id);
     },
     remove: (key) => {
       const id = idOf(key) ?? key;
       return run(() => api("DELETE", `/me/bookmarks/${id}`), id);
     },
     create: (name, slug) => run(async () => {
-      const { data } = await api<SavedCollection>("POST", "/me/collections", { body: { name: name.trim() }, idempotent: true });
+      const { data } = await api<SavedCollection>("POST", "/me/collections", { body: ({ name: name.trim() } satisfies Input<"createCollection">), idempotent: true });
       const id = slug ? idOf(slug) : undefined;
-      if (id) { await api("PUT", `/me/bookmarks/${id}`, { body: { collectionId: data.id } }); refreshStats(id); }
+      if (id) { await api("PUT", `/me/bookmarks/${id}`, { body: ({ collectionId: data.id } satisfies Input<"saveBookmark">) }); refreshStats(id); }
     }),
-    rename: (id, name) => run(() => api("PATCH", `/me/collections/${id}`, { body: { name: name.trim() }, ifMatch: visible.collections.find((c) => c.id === id)?.version ?? 0 })),
+    rename: (id, name) => run(() => api("PATCH", `/me/collections/${id}`, { body: ({ name: name.trim() } satisfies Input<"renameCollection">), ifMatch: visible.collections.find((c) => c.id === id)?.version ?? 0 })),
     deleteCategory: (id) => run(() => api("DELETE", `/me/collections/${id}`, { ifMatch: visible.collections.find((c) => c.id === id)?.version ?? 0 })),
   };
   return <Context.Provider value={value}>{children}</Context.Provider>;

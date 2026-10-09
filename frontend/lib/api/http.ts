@@ -3,14 +3,15 @@
  * Browser client for the Spring Boot API (same origin via /api). Cookies carry the opaque session;
  * unsafe methods send the CSRF token. Nothing here stores credentials or tokens in browser storage.
  */
-export type FieldError = { field: string; code: string };
+import type { Schema, Page } from "./contract";
+export type FieldError = NonNullable<Schema<"Problem">["errors"]>[number];
 export class ApiError extends Error {
   constructor(readonly status: number, readonly code: string, readonly title: string, readonly errors: FieldError[] = [], readonly extras: Record<string, unknown> = {}) {
     super(title);
   }
 }
 
-let csrf: Promise<{ token: string; headerName: string }> | null = null;
+let csrf: Promise<Schema<"CsrfToken">> | null = null;
 function csrfToken() {
   csrf ??= fetch("/api/v1/auth/csrf", { credentials: "same-origin", cache: "no-store" })
     .then(async (response) => { if (!response.ok) throw new ApiError(response.status, "CSRF_UNAVAILABLE", "Sunucuya ulaşılamadı."); return response.json(); })
@@ -81,7 +82,7 @@ export async function allPages<T>(path: string): Promise<T[]> {
   const items: T[] = [];
   for (let page = 0; page < 40; page++) {
     const separator = path.includes("?") ? "&" : "?";
-    const { data } = await api<{ items: T[]; totalPages: number }>("GET", `${path}${separator}page=${page}&size=50`);
+    const { data } = await api<Page<T>>("GET", `${path}${separator}page=${page}&size=50`);
     items.push(...data.items);
     if (page + 1 >= data.totalPages) break;
   }

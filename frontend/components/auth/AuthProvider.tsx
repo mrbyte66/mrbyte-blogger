@@ -1,4 +1,6 @@
 "use client";
+import type { Input, Schema, Output } from "../../lib/api/contract";
+
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { AuthScreen, AvatarStyle } from "../../lib/auth/model";
 import { api, ApiError, describe, resetCsrf } from "../../lib/api/http";
@@ -10,7 +12,7 @@ export type AccountProfile = {
   publicationEmail: boolean; timeZone: string; version: number; googleConnected: boolean;
 };
 export type AccountSession = { profile: AccountProfile; expiresAt: number };
-type ProfileDto = { id: string; name: string; email: string; verified: boolean; avatar: string | null; role: "member" | "owner"; preferences: { publicationEmail: boolean; timeZone: string }; version: number };
+type ProfileDto = Schema<"Profile">;
 
 type AuthContext = {
   session: AccountSession | null; ready: boolean; error: string;
@@ -51,13 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const { data } = await api<{ authenticated: boolean; profile?: ProfileDto; expiresAt?: string }>("GET", "/auth/session");
+      const { data } = await api<Schema<"Session">>("GET", "/auth/session");
       if (!data.authenticated || !data.profile) {
         userId.current = null; setSession(null);
       } else {
         let googleConnected = false;
         if (data.profile.verified) {
-          try { googleConnected = (await api<{ items: { provider: string }[] }>("GET", "/me/connections")).data.items.some((c) => c.provider === "google"); } catch { /* optional detail */ }
+          try { googleConnected = (await api<Output<"listConnections">>("GET", "/me/connections")).data.items.some((c) => c.provider === "google"); } catch { /* optional detail */ }
         }
         const p = data.profile;
         userId.current = p.id;
@@ -93,20 +95,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(identifier: string, password: string) {
     setError("");
     try {
-      await api("POST", "/auth/login", { body: { identifier: identifier.trim(), password } });
+      await api("POST", "/auth/login", { body: ({ identifier: identifier.trim(), password } satisfies Input<"login">) });
       resetCsrf(); await refresh(); announce(); return true;
     } catch (cause) { setError(describe(cause)); return false; }
   }
   async function register(name: string, email: string, password: string, confirmation: string) {
     setError("");
-    try { await api("POST", "/auth/register", { body: { name: name.trim(), email: email.trim(), password, passwordConfirmation: confirmation } }); return true; }
+    try { await api("POST", "/auth/register", { body: ({ name: name.trim(), email: email.trim(), password, passwordConfirmation: confirmation } satisfies Input<"register">) }); return true; }
     catch (cause) { setError(describe(cause)); return false; }
   }
   async function startGoogle(purpose: "login" | "reauth" = "login") {
     setError("");
     try {
       const returnTo = `${window.location.pathname}${window.location.search}`;
-      const { data } = await api<{ authorizationUrl: string }>("POST", "/auth/google/start", { body: { returnTo, purpose } });
+      const { data } = await api<Output<"startGoogle">>("POST", "/auth/google/start", { body: ({ returnTo, purpose } satisfies Input<"startGoogle">) });
       window.location.assign(data.authorizationUrl);
     } catch (cause) { setError(cause instanceof ApiError && cause.code === "GOOGLE_NOT_CONFIGURED" ? "Google ile giriş henüz yapılandırılmadı. E-posta ve şifreyle devam edebilirsin." : describe(cause)); }
   }
@@ -114,10 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!session) return false;
     setError("");
     try {
-      if (patch.name !== undefined || patch.avatar !== undefined) await api("PATCH", "/me", { body: { name: patch.name, avatar: patch.avatar }, ifMatch: session.profile.version });
+      if (patch.name !== undefined || patch.avatar !== undefined) await api("PATCH", "/me", { body: ({ name: patch.name, avatar: patch.avatar } satisfies Input<"updateProfile">), ifMatch: session.profile.version });
       if (patch.publicationEmail !== undefined) {
         const { data } = await api<ProfileDto>("GET", "/me");
-        await api("PATCH", "/me/preferences", { body: { publicationEmail: patch.publicationEmail }, ifMatch: data.version });
+        await api("PATCH", "/me/preferences", { body: ({ publicationEmail: patch.publicationEmail } satisfies Input<"updatePreferences">), ifMatch: data.version });
       }
       await refresh(); announce(); return true;
     } catch (cause) { setError(describe(cause)); await refresh(); return false; }
