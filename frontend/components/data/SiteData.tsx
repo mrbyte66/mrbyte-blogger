@@ -181,6 +181,8 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
       const ref = lookups(latest.current.articles, latest.current.series);
       const { data } = await api<SeriesEditDto>("POST", "/studio/series", { body: (seriesWrite({ ...record, articleSlugs: [] }, ref.idOfArticle, []) satisfies Input<"studioCreateSeries">), idempotent: true });
       const created = seriesFromEdit(data, ref.slugOfArticle);
+      // Known immediately (not only after the next render), so a following saveSeries finds its version.
+      latest.current = { ...latest.current, series: [...latest.current.series, created] };
       setSeries((list) => [...list, created]);
       return created;
     },

@@ -149,6 +149,51 @@ describe("standalone series creation on the live canvas", () => {
     await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
     expect(site.series.at(-1)!.articleSlugs).toEqual(["ilk-bolum"]);
   });
+  it("saves a new series with its chapters in one Save and never duplicates it when the chapter step fails", async () => {
+    const site = studio(new MemorySite({ series: [] })); const seriesCount = site.series.length;
+    const free = site.articles.find((a) => !site.series.some((s) => s.articleSlugs.includes(a.slug)) && a.status === "published")!;
+    openSeries();
+    fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Tek adım" } });
+    fireEvent.click(screen.getByRole("button", { name: "Bölümler" }));
+    fireEvent.change(screen.getByLabelText("Bölüm ekle"), { target: { value: free.slug } });
+    await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
+    expect(site.series).toHaveLength(seriesCount + 1);
+    expect(site.series.at(-1)).toMatchObject({ title: "Tek adım", status: "draft", articleSlugs: [free.slug] });
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    const other = site.articles.find((a) => !site.series.some((s) => s.articleSlugs.includes(a.slug)) && a.status === "published")!;
+    vi.spyOn(site.studio, "saveSeries").mockRejectedValueOnce(new Error("offline"));
+    openSeries();
+    fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Yarım kalan" } });
+    fireEvent.click(screen.getByRole("button", { name: "Bölümler" }));
+    fireEvent.change(screen.getByLabelText("Bölüm ekle"), { target: { value: other.slug } });
+    await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
+    expect(site.series).toHaveLength(seriesCount + 2);
+    expect(screen.getByRole("alert").textContent).toContain("Seri taslak olarak oluşturuldu ama bölümleri kaydedilemedi");
+    expect(screen.getByRole("button", { name: "Sayfalar: Yarım kalan" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Bölümler" }));
+    fireEvent.change(screen.getByLabelText("Bölüm ekle"), { target: { value: other.slug } });
+    await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
+    expect(site.series).toHaveLength(seriesCount + 2);
+    expect(site.series.at(-1)!.articleSlugs).toEqual([other.slug]);
+  });
+  it("changes lifecycle only through the actions menu and publishes only with a public published chapter", async () => {
+    const draftArticle = { ...articles[0], status: "draft" as const };
+    const site = studio(new MemorySite({ series: [], articles: articles.map((a) => a.slug === draftArticle.slug ? draftArticle : { ...a }) }));
+    openSeries();
+    fireEvent.click(screen.getByRole("button", { name: "Seri bilgileri" }));
+    expect(screen.queryByLabelText("Görünürlük")).toBeNull();
+    expect(screen.getByText(/Durum: Taslak\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Bölümler" }));
+    const picker = screen.getByLabelText("Bölüm ekle") as HTMLSelectElement;
+    expect([...picker.options].find((o) => o.value === draftArticle.slug)?.textContent).toMatch(/ · taslak$/);
+    fireEvent.change(picker, { target: { value: draftArticle.slug } });
+    fireEvent.click(screen.getByLabelText("İçerik işlemleri"));
+    expect((screen.getByRole("button", { name: /Yayına al|yayında ve herkese açık/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("note").textContent).toContain("yayında ve herkese açık en az bir bölüm");
+    expect(screen.getByText(/^Taslak/, { selector: ".studio-state" })).toBeTruthy();
+    expect(site.series.every((s) => s.title !== "Yeni seri")).toBe(true);
+  });
   it("keeps the canvas draft after a failed save and creates it once on retry", async () => {
     const site = studio(); const seriesCount = site.series.length;
     vi.spyOn(site.studio, "createSeries").mockRejectedValueOnce(new Error("offline"));

@@ -48,9 +48,19 @@ export function SiteEditor() {
         setNewArticle(null); setTarget({ kind: "article", slug: saved.slug });
       } else if (newSeries) {
         // Create the draft first; chapters and a non-draft state then go through the normal series save.
-        let saved = await content.studio.createSeries({ ...draft.series, status: "draft", articleSlugs: [] });
-        if (draft.series.articleSlugs.length || draft.series.status !== "draft") saved = await content.studio.saveSeries({ ...draft.series, id: saved.id, version: saved.version }, draft.series.status);
-        setNewSeries(null); setTarget({ kind: "series", slug: saved.slug });
+        const created = await content.studio.createSeries({ ...draft.series, status: "draft", articleSlugs: [] });
+        // From here on the series exists: never create it twice, even if the chapter step fails.
+        setNewSeries(null);
+        let saved = created;
+        if (draft.series.articleSlugs.length || draft.series.status !== "draft") {
+          try { saved = await content.studio.saveSeries({ ...draft.series, id: created.id, version: created.version }, draft.series.status); }
+          catch (cause) {
+            setTarget({ kind: "series", slug: created.slug });
+            setSaveError(`Seri taslak olarak oluşturuldu ama bölümleri kaydedilemedi; bölümleri yeniden ekleyip kaydet. ${describe(cause)}`);
+            return false;
+          }
+        }
+        setTarget({ kind: "series", slug: saved.slug });
       } else {
         const saved = await content.studio.saveSeries(draft.series, draft.series.status);
         setTarget({ kind: "series", slug: saved.slug });
