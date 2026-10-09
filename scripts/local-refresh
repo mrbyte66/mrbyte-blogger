@@ -26,7 +26,7 @@ need() { command -v "$1" >/dev/null 2>&1 || die "'$1' bulunamadı. $2"; }
 usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
 
 label_of() { # container label, empty when the container or label is missing
-  docker inspect --format "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null | sed 's/<no value>//'
+  { docker inspect --format "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null || true; } | sed 's/<no value>//'
 }
 
 status() {
