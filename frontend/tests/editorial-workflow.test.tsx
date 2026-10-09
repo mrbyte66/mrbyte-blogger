@@ -131,6 +131,11 @@ describe("standalone series creation on the live canvas", () => {
     expect(screen.getByRole("region", { name: "Canlı sayfa tuvali" })).toBeTruthy();
     expect(screen.queryByLabelText("Yeni seri başlığı")).toBeNull();
     expect(site.series).toHaveLength(seriesCount);
+    // Same start as “Yeni yazı”: a valid template named on the canvas and in the page switcher.
+    expect((screen.getByLabelText("Seri başlığı") as HTMLInputElement).value).toBe("Yeni seri");
+    expect(screen.getByRole("button", { name: "Sayfalar: Yeni seri" })).toBeTruthy();
+    expect(screen.queryByText(/Eksik veya geçersiz alan var/)).toBeNull();
+    expect(screen.getByRole("region", { name: "Canlı sayfa tuvali" }).querySelector("iframe")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Mevsim defteri" } });
     await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
     const created = site.series.at(-1)!;

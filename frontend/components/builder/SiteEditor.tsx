@@ -70,7 +70,8 @@ export function SiteEditor() {
   }
   function addSeries() {
     if (dirty && !confirmLeave()) { setNotice("Yeni bir seri açmadan önce düzenlemelerini kaydet veya geri al."); return; }
-    const record: BlogSeries = { ...createSeries(), slug: `yeni-seri-${crypto.randomUUID().slice(0, 8)}` };
+    // Same starting point as a new article: a valid template the canvas can render at once.
+    const record: BlogSeries = { ...createSeries(), title: "Yeni seri", slug: `yeni-seri-${crypto.randomUUID().slice(0, 8)}` };
     setNewArticle(null); setNewSeries(record); setDirty(false); setTarget({ kind: "series", slug: record.slug }); setNotice(""); setSaveError(null);
   }
   function addArticle() {
@@ -80,7 +81,7 @@ export function SiteEditor() {
     const record = { ...createArticle(), seriesId: target.kind === "series" && !newSeries ? series?.id : undefined, category: firstCategory?.name ?? "", categories: firstCategory ? [firstCategory.name] : [], categoryIds: firstCategory ? [firstCategory.id] : undefined };
     setNewSeries(null); setDirty(false); setNewArticle(record); setTarget({ kind: "article", slug: record.slug }); setNotice(""); setSaveError(null);
   }
-  const navigation = <PageNavigator target={target} articles={availableArticles} series={content.series} ready={content.ready} onNavigate={navigate} onCreateArticle={addArticle} onCreateSeries={addSeries} />;
+  const navigation = <PageNavigator target={target} articles={availableArticles} series={availableSeries} ready={content.ready} onNavigate={navigate} onCreateArticle={addArticle} onCreateSeries={addSeries} />;
   const error = saveError ?? content.error;
   return <div className="studio-site-editor">
     {target.kind === "home" && error && <p role="alert" className="studio-navigation-notice">{error}</p>}
