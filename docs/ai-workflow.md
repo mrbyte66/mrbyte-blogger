@@ -87,7 +87,7 @@ Bilgisayar kapalıyken veya hesap limiti doluyken çalışma devam ediyormuş gi
 2. GitHub issue/PR ve Project kayıtlarını kontrol et: kabul ölçütleri, sorumlu etiketleri, bağımlılıklar, açık PR’lar ve entegrasyon kilidi. Yerel dal veya başka ajanın test sonucu ortak gerçek sayılmaz.
 3. Kodlayıcı işi ancak kendi `agent:*` etiketiyle atanmış, `Todo` ve `blocked` olmayan durumda al. Testçi kendi `test:*` etiketiyle atanmış `In Test` işini alır; incelemeyi başlatırken durumu In Progress yapmaz. Son durumu yeniden oku; issueya ajan/rol, branch ve başlangıç kaydı yaz; kodlamaya başlıyorsan `In Progress` yap. İki ajan aynı işi sahiplenirse ilerlemeyi durdurup issue üzerinde koordinasyon kur; etiket/yorum atomik kilit değildir.
 4. Güncel main’den standart branch ve ayrı worktree aç. Kaynak başka makinedeyse önce remote’a push edilmesini bekle; yerel dosyaya güvenme. Çakışma, engel ve kapsam değişikliklerini GitHub’a yaz.
-5. Teslimde remote branch/PR, base ve head commit, test komutları/sonuçları, kurulum gereksinimleri ve kalan sorunları bildir. Testçi remote’daki belirtilen commiti kendi worktree’sinde doğrular. Sırlar kayda girmez.
+5. Teslimde remote branch/PR, base ve head commit, test komutları/sonuçları, kurulum gereksinimleri ve kalan sorunları bildir. Arayüz değişikliğinde yerel yığını yenileme komutu da yazılır: `./scripts/local-refresh pr N` (geri dönüş: `./scripts/local-refresh main`). Testçi remote’daki belirtilen commiti kendi worktree’sinde doğrular. Sırlar kayda girmez.
 6. İş el değiştirirse eski sorumlu etiketi kaldırılıp yenisi eklenir; kısa devir yorumu yazılır. Kopan/limit dolan ajan işleri otomatik olarak tamamlandı sayılmaz; yeniden sahiplenmeden önce son kayıt ve PR kontrol edilir.
 
 ## Periyodik tarama sözleşmesi

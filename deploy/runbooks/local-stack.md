@@ -32,11 +32,39 @@ Yerel Docker soketiyle çalışıyorsan stdin de olur: `… run --rm -T backend 
 
 Sonra `/studio`'dan kullanıcı adı veya e-posta ile gir. Okur hesabı için sitede "Üye ol" → Mailpit'teki doğrulama bağlantısı.
 
-## Kod değişince
+## Main veya PR ile yenileme (`scripts/local-refresh`)
+
+İlk kurulumdan sonra yığını tek komutla yenile. Betik çalışma kopyana dokunmadan hedef commiti geçici bir worktree'de derler, `backend`/`frontend` imajlarını yeniden kurar ve sağlıklı başlamalarını bekler. Veritabanı ve medya volume'ları korunur; betikte `down -v` gibi veri silen komut yoktur.
+
+```sh
+./scripts/local-refresh            # menü: panodaki In Test işleri (#numara ve başlık) + "güncel main'e dön"
+./scripts/local-refresh main       # origin/main'i çeker ve yığını ondan kurar
+./scripts/local-refresh pr 43      # PR #43'ün son commitini kurar; sonunda "local-refresh main" ile dönmeyi hatırlatır
+./scripts/local-refresh durum      # şu an hangi kaynak ve commitin çalıştığını yazar
+```
+
+- Menüde iş numarası seçilir; bağlı açık PR betik tarafından panodan bulunur. `gh` girişi gerekir.
+- `:3010`'da aynı anda tek kaynak çalışır. Başka PR için komutu yeniden çalıştır. Her yenilemeden sonra çıktı `Gösterilen: PR #43 · commit abc1234` biçiminde neyin çalıştığını yazar. Bilgi imaj etiketlerinden (`satir.source`, `org.opencontainers.image.revision`) okunur.
+- Geçici worktree başarıdan sonra silinir. Derleme veya sağlık kontrolü başarısız olursa inceleme için yerinde bırakılır; çıktı yolunu, günlük ve silme komutunu yazar. Ayrı dal açılmaz (detached worktree).
+- `deploy/google.local.env` varsa geçici kopyaya alınır ve worktree ile birlikte silinir.
+- Bir PR'ın migration'ı veritabanını main'den ileri taşıyabilir; main'e dönünce şema farkı hata verirse PR merge edilene kadar o PR'da kal veya yedekten dön (`backup-restore.md`).
+- `main` modu çalışma kopyan temiz `main` dalındaysa onu da ileri alır; değilse yalnız `origin/main`'i derler.
+
+Her yerden çalıştırmak için kısayol (bir kez, `~/.zshrc`):
+
+```sh
+echo "alias local-refresh='$HOME/Documents/mrbyte-blogger/scripts/local-refresh'" >> ~/.zshrc && source ~/.zshrc
+```
+
+Deneme için ayrı yığın: `SATIR_LOCAL_PROJECT`, `LOCAL_IMAGE_TAG` ve port değişkenleri (`LOCAL_WEB_PORT` vb.) asıl `satir-local` yığınından ayrı volume, imaj ve port kullanır.
+
+## Kod değişince (çalışma kopyasından)
 
 ```sh
 docker compose -f deploy/compose.local.yml up -d --build backend frontend
 ```
+
+Bu yol imaj etiketini `working-tree` olarak bırakır; `local-refresh durum` bunu gösterir.
 
 ## Örnek içerik ve test üyeleri
 
