@@ -15,6 +15,11 @@ const leaveMessage = "Kaydedilmemiş değişiklikler var. Kaydetmeden bu sayfada
 /** Asks before discarding unsaved edits; environments without dialogs keep the edits. */
 function confirmLeave(): boolean { try { return window.confirm(leaveMessage) === true; } catch { return false; } }
 
+const savedNotices = new Set(["Kaydedildi ve yayında.", "Yayın planı kaydedildi.", "Arşivlendi; ziyaretçilerden gizlendi.", "Çöp kutusuna taşındı.", "Taslak kaydedildi; ziyaretçilerden gizli."]);
+function savedNotice(status: string) {
+  return status === "published" ? "Kaydedildi ve yayında." : status === "scheduled" ? "Yayın planı kaydedildi." : status === "archived" ? "Arşivlendi; ziyaretçilerden gizlendi." : status === "trashed" ? "Çöp kutusuna taşındı." : "Taslak kaydedildi; ziyaretçilerden gizli.";
+}
+
 export function SiteEditor() {
   const content = useContentWorkspace();
   const [target, setTarget] = useState<StudioTarget>({ kind: "home" });
@@ -41,11 +46,14 @@ export function SiteEditor() {
   const initial: DocumentDraft | null = article ? { kind: "article", article } : series ? { kind: "series", series } : null;
   async function save(draft: DocumentDraft, seriesId?: string | null): Promise<boolean> {
     if (!content.studio) return false;
+    // When the saved slug differs (first save of a new page, renamed slug) the editor reopens and loses its
+    // own status line, so the confirmation is shown as a page notice instead.
+    let landed: { slug: string; status: string } | null = null;
     try {
       if (draft.kind === "article") {
         const status = draft.article.status ?? "draft";
         const saved = await content.studio.saveArticle(draft.article, { isNew: !!newArticle, seriesId: seriesId ?? null, status, visibility: draft.article.visibility ?? "public" });
-        setNewArticle(null); setTarget({ kind: "article", slug: saved.slug });
+        setNewArticle(null); setTarget({ kind: "article", slug: saved.slug }); landed = { slug: saved.slug, status: saved.status ?? "draft" };
       } else if (newSeries) {
         // Create the draft first; chapters and a non-draft state then go through the normal series save.
         const created = await content.studio.createSeries({ ...draft.series, status: "draft", articleSlugs: [] });
@@ -60,12 +68,12 @@ export function SiteEditor() {
             return false;
           }
         }
-        setTarget({ kind: "series", slug: saved.slug });
+        setTarget({ kind: "series", slug: saved.slug }); landed = { slug: saved.slug, status: saved.status };
       } else {
         const saved = await content.studio.saveSeries(draft.series, draft.series.status);
-        setTarget({ kind: "series", slug: saved.slug });
+        setTarget({ kind: "series", slug: saved.slug }); landed = { slug: saved.slug, status: saved.status };
       }
-      setNotice(""); setSaveError(null);
+      setNotice(landed && target.kind !== "home" && landed.slug !== target.slug ? savedNotice(landed.status) : ""); setSaveError(null);
       announceContentChange();
       return true;
     } catch (cause) {
@@ -100,7 +108,7 @@ export function SiteEditor() {
       : target.kind === "home" ? <ThemeEditor navigation={navigation} onNavigate={navigate} /> : initial ? <DocumentEditor
       navigation={navigation} key={`${target.kind}-${target.slug}`} initial={initial} isNew={target.kind === "article" ? !!newArticle : !!newSeries}
       articles={content.articles} series={content.series} onCreateSeries={createInlineSeries}
-      onDirty={setDirty} onNavigate={navigate} onSave={save}
+      onDirty={(next) => { setDirty(next); if (next) setNotice((current) => savedNotices.has(current) ? "" : current); }} onNavigate={navigate} onSave={save}
       onDiscard={() => { setNewArticle(null); setNewSeries(null); setDirty(false); setTarget({ kind: "home" }); setNotice(""); setSaveError(null); }} error={error}
     /> : <p role="status">Sayfa yükleniyor…</p>}
   </div>;

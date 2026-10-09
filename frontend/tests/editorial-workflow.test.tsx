@@ -141,6 +141,10 @@ describe("standalone series creation on the live canvas", () => {
     const created = site.series.at(-1)!;
     expect(site.series).toHaveLength(seriesCount + 1);
     expect(created).toMatchObject({ title: "Mevsim defteri", slug: "mevsim-defteri", status: "draft", articleSlugs: [] });
+    expect(screen.getByText("Taslak kaydedildi; ziyaretçilerden gizli.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Mevsim defteri 2" } });
+    expect(screen.queryByText("Taslak kaydedildi; ziyaretçilerden gizli.")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Mevsim defteri" } });
     expect(site.articles).toHaveLength(count);
     expect(screen.getByRole("button", { name: "Sayfalar: Mevsim defteri" })).toBeTruthy();
     newWriting();
