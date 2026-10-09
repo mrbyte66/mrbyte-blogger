@@ -32,8 +32,12 @@ services:
       - "127.0.0.1:${LOCAL_MAIL_UI_PORT:-8025}:8025"
 
   backend:
-    build: ../backend
-    image: satir-backend:local
+    build:
+      context: ../backend
+      labels:   # set by scripts/local-refresh; shows which commit is running
+        org.opencontainers.image.revision: ${SATIR_REVISION:-unknown}
+        satir.source: ${SATIR_SOURCE:-working-tree}
+    image: satir-backend:${LOCAL_IMAGE_TAG:-local}
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: dev            # migrates on start, non-Secure dev cookies
@@ -58,8 +62,12 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ../frontend
-    image: satir-frontend:local
+    build:
+      context: ../frontend
+      labels:   # set by scripts/local-refresh; shows which commit is running
+        org.opencontainers.image.revision: ${SATIR_REVISION:-unknown}
+        satir.source: ${SATIR_SOURCE:-working-tree}
+    image: satir-frontend:${LOCAL_IMAGE_TAG:-local}
     restart: unless-stopped
     environment:
       BACKEND_INTERNAL_URL: http://backend:8080

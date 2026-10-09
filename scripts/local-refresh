@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# Yerel tam yığını (deploy/compose.local.yml, http://127.0.0.1:3010) güncel main'den veya bir PR dalından yeniler.
+# Veritabanı ve medya volume'ları korunur; bu betik hiçbir zaman `down -v` çalıştırmaz.
+#
+#   local-refresh             In Test işlerinden seçim menüsü (veya güncel main'e dön)
+#   local-refresh main        güncel origin/main'i derleyip çalıştırır
+#   local-refresh pr N        PR #N'nin son commitini geçici worktree'de derleyip çalıştırır
+#   local-refresh durum       çalışan imajın kaynağını ve commitini gösterir
+#
+# Ayrıntı: deploy/runbooks/local-stack.md
+set -euo pipefail
+
+REPO=$(cd "$(dirname "$0")/.." && pwd)
+PROJECT=${SATIR_LOCAL_PROJECT:-satir-local}
+WEB_PORT=${LOCAL_WEB_PORT:-3010}
+BOARD_OWNER=${SATIR_BOARD_OWNER:-mrbyte66}
+BOARD_NUMBER=${SATIR_BOARD_NUMBER:-2}
+
+# Docker Desktop on macOS does not always put the CLI on PATH.
+if ! command -v docker >/dev/null 2>&1 && [ -x /Applications/Docker.app/Contents/Resources/bin/docker ]; then
+  PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
+fi
+
+die() { printf 'Hata: %s\n' "$*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || die "'$1' bulunamadı. $2"; }
+usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
+
+label_of() { # container label, empty when the container or label is missing
+  { docker inspect --format "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null || true; } | sed 's/<no value>//'
+}
+
+status() {
+  local container="${PROJECT}-frontend-1" source revision
+  source=$(label_of "$container" satir.source)
+  revision=$(label_of "$container" org.opencontainers.image.revision)
+  if [ -z "$source$revision" ]; then
+    echo "Gösterilen: bilinmiyor (yığın çalışmıyor veya bu betikle derlenmedi)."
+  else
+    echo "Gösterilen: ${source:-?} · commit ${revision:0:7} · http://127.0.0.1:${WEB_PORT}"
+  fi
+}
+
+# Builds the given commit in a temporary detached worktree and restarts backend/frontend.
+# Named volumes belong to the compose project, so data and media survive the rebuild.
+refresh() {
+  local source=$1 revision=$2 tmp
+  need docker "Docker Desktop'ı kur veya başlat."
+  docker info >/dev/null 2>&1 || die "Docker çalışmıyor. Docker Desktop'ı başlatıp yeniden dene."
+  tmp=$(mktemp -d "${TMPDIR:-/tmp}/satir-refresh.XXXXXX")
+  rmdir "$tmp"
+  git -C "$REPO" worktree add --quiet --detach "$tmp" "$revision" || die "Geçici worktree açılamadı."
+  # Git-ignored local secrets live next to the compose file; the copy goes away with the worktree.
+  [ -f "$REPO/deploy/google.local.env" ] && cp "$REPO/deploy/google.local.env" "$tmp/deploy/google.local.env"
+  echo "Derleniyor: $source (${revision:0:7}) → http://127.0.0.1:${WEB_PORT}"
+  if SATIR_SOURCE="$source" SATIR_REVISION="$revision" \
+     docker compose -p "$PROJECT" -f "$tmp/deploy/compose.local.yml" up -d --build --wait --wait-timeout 600; then
+    git -C "$REPO" worktree remove --force "$tmp"
+    git -C "$REPO" worktree prune
+    status
+  else
+    echo "Hata: yığın derlenemedi veya sağlıklı başlamadı. Geçici worktree incelemek için yerinde bırakıldı: $tmp" >&2
+    echo "Günlükler: docker compose -p $PROJECT -f $tmp/deploy/compose.local.yml logs backend frontend" >&2
+    echo "Bitince silmek için: git -C \"$REPO\" worktree remove --force \"$tmp\"" >&2
+    exit 1
+  fi
+}
+
+refresh_main() {
+  git -C "$REPO" fetch --quiet origin main || die "origin/main çekilemedi."
+  # Fast-forward the main checkout too, but only when it is on a clean main.
+  if [ "$(git -C "$REPO" symbolic-ref --short -q HEAD || true)" = main ] && [ -z "$(git -C "$REPO" status --porcelain --untracked-files=no)" ]; then
+    git -C "$REPO" merge --ff-only --quiet origin/main || echo "Not: yerel main ileri alınamadı; yığın yine origin/main'den derlenecek."
+  fi
+  refresh "main" "$(git -C "$REPO" rev-parse origin/main)"
+}
+
+refresh_pr() {
+  local number=$1 revision title=""
+  case "$number" in ''|*[!0-9]*) die "PR numarası sayı olmalı: local-refresh pr 43" ;; esac
+  git -C "$REPO" fetch --quiet origin "pull/$number/head" || die "PR #$number bulunamadı veya çekilemedi."
+  revision=$(git -C "$REPO" rev-parse FETCH_HEAD)
+  command -v gh >/dev/null 2>&1 && title=$(cd "$REPO" && gh pr view "$number" --json title,state -q '"\(.title) [\(.state)]"' 2>/dev/null || true)
+  [ -n "$title" ] && echo "PR #$number: $title"
+  refresh "PR #$number" "$revision"
+  echo "Güncel main'e dönmek için: local-refresh main"
+}
+
+# The open pull request linked to an issue on the board (last one wins when several are linked).
+linked_pr() {
+  local issue=$1 url number
+  for url in $(gh project item-list "$BOARD_NUMBER" --owner "$BOARD_OWNER" --format json --limit 500 \
+      --jq ".items[] | select(.content.number == $issue) | .[\"linked pull requests\"][]?"); do
+    number=${url##*/}
+    [ "$(cd "$REPO" && gh pr view "$number" --json state -q .state 2>/dev/null)" = OPEN ] && echo "$number"
+  done | tail -n 1
+}
+
+menu() {
+  need gh "GitHub CLI gerekli (https://cli.github.com)."
+  [ -t 0 ] || { usage; die "Menü için etkileşimli terminal gerekli; 'local-refresh main' veya 'local-refresh pr N' kullan."; }
+  status
+  echo "Studio panosunda In Test işleri aranıyor…"
+  local rows count=0 line choice number pr
+  rows=$(gh project item-list "$BOARD_NUMBER" --owner "$BOARD_OWNER" --format json --limit 500 \
+    --jq '.items[] | select(.status == "In Test" and .content.type == "Issue") | "\(.content.number)\t\(.content.title)"' | sort -n)
+  echo
+  if [ -n "$rows" ]; then
+    while IFS=$'\t' read -r number line; do
+      count=$((count + 1)); printf '  %d) #%s %s\n' "$count" "$number" "$line"
+    done <<< "$rows"
+  else
+    echo "  In Test durumunda iş yok."
+  fi
+  echo "  m) Güncel main'e dön"
+  echo "  q) Çık"
+  printf 'Seçim: '
+  read -r choice
+  case "$choice" in
+    m|M) refresh_main; return ;;
+    q|Q|'') return ;;
+    *[!0-9]*) die "Geçersiz seçim: $choice" ;;
+  esac
+  [ "$choice" -ge 1 ] && [ "$choice" -le "$count" ] || die "Geçersiz seçim: $choice"
+  number=$(printf '%s\n' "$rows" | sed -n "${choice}p" | cut -f1)
+  pr=$(linked_pr "$number")
+  [ -n "$pr" ] || die "#$number için açık bağlı PR bulunamadı."
+  echo "#$number → PR #$pr"
+  refresh_pr "$pr"
+}
+
+case "${1:-}" in
+  '') menu ;;
+  main) refresh_main ;;
+  pr) refresh_pr "${2:-}" ;;
+  durum|status) status ;;
+  -h|--help|yardim) usage ;;
+  *) usage; exit 2 ;;
+esac
