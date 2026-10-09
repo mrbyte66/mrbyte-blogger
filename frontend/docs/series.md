@@ -27,3 +27,7 @@ Three published demonstration series cover software, literature and culture. The
 After real authentication and backend exist, an authenticated member's successfully opened article page can record an automatic visit associated with that account. Membership history should show which chapters were visited, never label them completed or read. Anonymous readers see the default presentation. No checkbox, fake account, guest tracking or local completion state should substitute for this future contract. Account synchronization and backend schema are deliberately deferred.
 
 Series authoring now lives in the shared Studio page navigator and `SeriesProperties`, beside the actual series page canvas. The former standalone `SeriesStudio` form has been removed so authoring has a single entry point. Per-series `presentation` controls heading alignment and chapter card/row style. Covers appear on both catalog cards and the series detail page.
+
+## First chapter publication
+
+Studio uses the existing atomic article action to activate a selected draft series on immediate publication, with a visible notice in the publication menu. The series version is refreshed after chapter membership is saved. Published series are not reactivated; ordinary draft saves and scheduled publication do not activate a series. Series information explains why published series without public published chapters are absent from the visitor catalog.
