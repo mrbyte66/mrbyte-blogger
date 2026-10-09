@@ -47,7 +47,7 @@ Sonra `/studio`'dan kullanıcı adı veya e-posta ile gir. Okur hesabı için si
 - `:3010`'da aynı anda tek kaynak çalışır. Başka PR için komutu yeniden çalıştır. Her yenilemeden sonra çıktı `Gösterilen: PR #43 · commit abc1234` biçiminde neyin çalıştığını yazar. Bilgi imaj etiketlerinden (`satir.source`, `org.opencontainers.image.revision`) okunur.
 - Geçici worktree başarıdan sonra silinir. Derleme veya sağlık kontrolü başarısız olursa inceleme için yerinde bırakılır; çıktı yolunu, günlük ve silme komutunu yazar. Ayrı dal açılmaz (detached worktree).
 - `deploy/google.local.env` varsa geçici kopyaya alınır ve worktree ile birlikte silinir.
-- Bir PR'ın migration'ı veritabanını main'den ileri taşıyabilir; main'e dönünce şema farkı hata verirse PR merge edilene kadar o PR'da kal veya yedekten dön (`backup-restore.md`).
+- PR, `main`'de olmayan veya `main`'den farklı bir migration içeriyorsa (`backend/src/main/resources/db/migration/`) betik dosyaları listeler, riski ve geri dönüş komutlarını (yedek al → main'e dönerken şemayı silip yedeği yükle → `local-refresh main`) yazar ve onay ister: `y` yedeği `~/satir-local-yedek-<tarih>.dump` olarak alıp devam eder, `e` yedeksiz devam eder, boş/başka cevap vazgeçer ve yığına dokunmaz. Etkileşimsiz çalıştırmada onay yoksa durur; bilerek devam için `local-refresh pr N --migration-onay`. Migration değişikliği yoksa soru sorulmaz. Testi: `bash scripts/tests/local-refresh-migrations.sh` (CI'da da çalışır).
 - `main` modu çalışma kopyan temiz `main` dalındaysa onu da ileri alır; değilse yalnız `origin/main`'i derler.
 
 Her yerden çalıştırmak için kısayol (bir kez, `~/.zshrc`):
