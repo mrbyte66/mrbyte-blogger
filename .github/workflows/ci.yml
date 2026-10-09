@@ -74,3 +74,5 @@ jobs:
       - uses: actions/checkout@v7
       - name: Migration guard tests
         run: bash scripts/tests/local-refresh-migrations.sh
+      - name: CI monitor regression tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_ci_monitor.py'

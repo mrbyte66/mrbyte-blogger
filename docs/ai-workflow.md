@@ -70,7 +70,7 @@ Bağımsız PASS olmadan merge veya Done yok. CI (GitHub Actions) PASS'in yerine
 ## Tetikleme
 
 Şu anda agentlar bir sohbet başlatılarak issue/PR bağlantısıyla çalıştırılır.
-Project durum otomasyonu agent başlatmaz. Günlük tarama ve otomatik agent tetikleme henüz kurulmadı.
+Project durum otomasyonu agent başlatmaz. Günlük kodlayıcı/testçi taraması henüz kurulmadı; CI sonucu için yerel, tek seferlik kısa agent tetiklemesi aşağıdaki #59 bölümünde açıklanır.
 Bilgisayar kapalıyken veya hesap limiti doluyken çalışma devam ediyormuş gibi rapor verilmez.
 
 ## Devir promptları
@@ -94,7 +94,7 @@ Bilgisayar kapalıyken veya hesap limiti doluyken çalışma devam ediyormuş gi
 
 Yerel bir tetikleyici kurulursa kodlayıcı kendi `agent:*` + `Todo` + engellenmemiş işlerini; testçi kendi `test:*` + `In Test` işlerini tarar. Her çalıştırmada güncel kayıt tekrar okunur; aktif iş ikinci kez başlatılmaz. Entegrasyon kilidi varsa başka kod işi alınmaz. Testçi PASS/FAIL kaydı ve durum güncellemesi yapar; merge yalnız testçinin PASS kaydından sonra testçi tarafından yapılır.
 
-Claude tarafında yaklaşık 20 dakikalık yerel tarama planlandığı bildirildi; kurulumu burada doğrulanmadı. Codex tarafında periyodik tetikleyici henüz kurulmadı. Bu belge zamanlayıcı oluşturmaz.
+Claude tarafında yaklaşık 20 dakikalık yerel tarama planlandığı bildirildi; kurulumu burada doğrulanmadı. Codex tarafında periyodik kodlayıcı/testçi tetiklemesi henüz kurulmadı. CI sonucu takibi ayrı bir yerel script ile kurulur; aşağıdaki #59 bölümüne bak. Bu belge kendi başına zamanlayıcı oluşturmaz.
 
 ## Panoda sorumlu ve görev devri
 
@@ -104,3 +104,29 @@ Satir Project’inde `Aktif sorumlu` (Codex/Claude/Kullanıcı; yeni ekip üyesi
 - Kullanıcının “#N testini sen yap” demesi devir için yeterlidir. Yeni testçi Testçi/Aktif sorumlu alanlarını ve `test:*` etiketini günceller; önceki testçiye işin devredildiğini GitHub yorumuyla kaydeder. Başka sağlayıcı veya ayrı bağımsız çalışma örneği seçilebilir; uygulayan örnek kendi işine bağımsız PASS veremez.
 - FAIL: kanıt ve hatalar yazılır, In Progress’e dönülür; Aktif sorumlu düzeltmeyi alan kodlayıcıya geçirilir. Testçi alanı korunur veya açık devirle değiştirilir. PASS ve merge kuralları değişmez.
 - Alan, etiket ve yorumlar ajan tarafından birlikte güncellenir; mevcut Project otomasyonu bunları kendiliğinden eşitlemez. Uyumsuzluk varsa son açık kullanıcı devri ve GitHub kaydı esas alınarak düzeltilir. Başka ajanın yerel durumuna güvenilmez.
+
+## CI beklerken token tasarrufu (#59)
+
+PR açtıktan sonra AI sohbetinde `gh pr checks --watch` çıktısını tekrar tekrar okumak veya CI'ı sık sorgulamak kullanılmaz. `scripts/ci-monitor.py` GitHub'ı AI kullanmadan takip eder. Bekleyen/kuyruktaki veya eksik kontroller agent başlatmaz. Son commitin CI sonuçları tamamlanınca taze, kısa bir Codex CLI oturumu (`gpt-6.1-sol`, düşük reasoning) yalnız sonucu özetler; uzun kodlama sohbeti yeniden yüklenmez.
+
+PR açılması panoyu otomatik In Test yapıyorsa kodlayıcı CI beklerken durumu In Progress ve aktif sorumlusunu kendisine geri ayarlar; PR açılması teste hazır olmak değildir.
+
+Kodlayıcı kodlama bittikten sonra PR’a `ci:awaiting` etiketi ekler (`gh pr edit N --add-label ci:awaiting`); düzeltmeye geri dönüyorsa etiketi kaldırır. Bu açık hazır sinyali olmadan takipçi işe dokunmaz. Devir tamamlanınca etiket kaldırılır.
+
+Script yalnız PR’ında `ci:awaiting`, issue’da `agent:codex`, tek bağlı açık issue, In Progress ve tek testçi etiketi olan PR'ları devralır. Yeşil CI → In Test ve etiketlerdeki testçi aktif sorumlu; kırmızı CI → In Progress ve Codex aktif sorumlu. Bu devir bağımsız PASS/FAIL testi, kod düzeltme veya merge değildir. Testçinin işi mevcut devir sözleşmesine göre ayrıca başlar. In Test/Done veya kapanmış PR/issue geri çekilmez. Claude kodlayıcı işleri bu Codex kurulumunca alınmaz; Claude da beklerken aynı tokensız takip ilkesini izlemelidir.
+
+Aynı PR/commit/CI denemesi için disk üzerinde mükerrer çağrı engellenir. Yeni commit/rerun yeni kimliktir; sonuç agent değerlendirmesi sırasında değişirse eski sonuçla durum değiştirilmez. Agent hatasında/limitinde otomatik AI yeniden-deneme döngüsü yoktur; kayıt `error` ile bırakılır. Operatör logu kontrol edip ilgili başarısız kaydı yerel `events.json` dosyasından kaldırarak bilinçli tekrar deneyebilir. GitHub/ağ hataları sonraki taramada yeniden denenir; başarılı özet yeniden üretilmez.
+
+macOS kurulumu (mevcut GitHub ve ChatGPT CLI oturumu; ayrı API anahtarı gerekmez):
+
+```sh
+python3 scripts/install-ci-monitor.py
+# Kontrol (AI veya GitHub yazımı yapmaz):
+python3 "$HOME/.local/share/satir-ci/ci-monitor.py" --config "$HOME/.local/share/satir-ci/config.json" --dry-run
+# Durdurma:
+python3 scripts/install-ci-monitor.py --uninstall
+```
+
+Kurulum `~/Library/LaunchAgents/com.satir.ci-monitor.plist` ile 120 saniyelik, AI çalıştırmayan yerel tarama kaydeder. Tarihi sonuçlar ilk kurulumda baseline olarak atlanır. Script/config/loglar `~/.local/share/satir-ci/` altında; kaynak worktree arşivlense de kurulu kopya çalışır. Bilgisayar kapalı/uykuda veya kullanıcı oturumu kapalıysa çalışmaz; tekrar açıldığında mevcut açık PR'ları kontrol eder. Loglar `monitor.log`, `errors.log`, olay başına `state/<kimlik>/agent.log`; sırlar loglanmaz. CLI oturumu/model erişimi olmadığında hata kaydı vardır, başarılı devir sayılmaz.
+
+Bu yerel script, Codex'in periyodik AI heartbeat otomasyonu değildir: bekleme AI token tüketmez; tamamlanan yeni sonuç başına tek kısa agent çağrısı kredi kullanır. Kurulum veya script güncellemesinden sonra aynı installer tekrar çalıştırılır. Project alan kimlikleri/CI adları değişirse yapılandırma ve owning script güncellenir.
