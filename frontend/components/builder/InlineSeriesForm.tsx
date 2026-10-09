@@ -4,7 +4,7 @@ import { createSeries, slugifySeriesTitle, validateSeries, type BlogSeries } fro
 import { TextField } from "./ArticleProperties";
 import { ImageUpload } from "./ImageUpload";
 
-export function InlineSeriesForm({ onSave, onCancel, onDirty, context = "article" }: { context?: "article" | "standalone"; onSave: (series: BlogSeries) => Promise<boolean>; onCancel: () => void; onDirty: (dirty: boolean) => void }) {
+export function InlineSeriesForm({ onSave, onCancel, onDirty }: { onSave: (series: BlogSeries) => Promise<boolean>; onCancel: () => void; onDirty: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState(createSeries);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -21,7 +21,7 @@ export function InlineSeriesForm({ onSave, onCancel, onDirty, context = "article
     finally { savingRef.current = false; setSaving(false); }
   }
   return <section aria-busy={saving} ref={root} className="inline-series-form" aria-labelledby={headingId}>
-    <header><div><span className="studio-eyebrow">{context === "standalone" ? "YENİ SERİ" : "YAZININ SERİSİ"}</span><h2 id={headingId}>Yeni bir seri başlat</h2><p>{context === "standalone" ? "Bir konuya yer aç. Bölümlerini sonra ekleyebilirsin." : "Kaydettiğinde seri seçilir; yazını düzenlemeye devam edersin."}</p></div><button type="button" disabled={saving} onClick={onCancel} aria-label="Yeni seri formunu kapat">×</button></header>
+    <header><div><span className="studio-eyebrow">YAZININ SERİSİ</span><h2 id={headingId}>Yeni bir seri başlat</h2><p>Kaydettiğinde seri seçilir; yazını düzenlemeye devam edersin.</p></div><button type="button" disabled={saving} onClick={onCancel} aria-label="Yeni seri formunu kapat">×</button></header>
     <fieldset disabled={saving} className="inline-series-fields">
       <TextField label="Yeni seri başlığı" value={draft.title} onChange={(title) => update({ ...draft, title, slug: customSlug ? draft.slug : slugifySeriesTitle(title) })} />
       <TextField label="Yeni seri bağlantısı" value={draft.slug} onChange={(slug) => { setCustomSlug(true); update({ ...draft, slug }); }} />

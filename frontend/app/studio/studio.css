@@ -407,11 +407,5 @@ html[data-theme=dark] .studio .studio-state.status-published { color:#bee69d; }h
 @media(max-width:520px) { .category-dialog { padding:22px; }.category-dialog footer { align-items:stretch; flex-direction:column; gap:12px; } }
 @media(prefers-reduced-motion:reduce) { .category-icon { transition:none; } }
 
-/* Direct series creation shares the existing Studio form and theme tokens. */
-.studio-series-create-content { width:min(100%,760px); margin:0 auto; padding:24px; }
-.studio-series-create-content .inline-series-form { margin-top:0; }
+/* The inline series form groups its fields in a fieldset (disabled while saving). */
 fieldset.inline-series-fields { min-width:0; border:0; padding:0; margin:0; }
-@media(max-width:520px) {
-  .studio-series-create-content { padding:16px; }
-  .studio-series-create .inline-series-form footer button { flex:1; min-height:44px; }
-}

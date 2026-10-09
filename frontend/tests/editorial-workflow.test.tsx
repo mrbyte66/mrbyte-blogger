@@ -120,19 +120,22 @@ describe("lifecycle translation to API actions", () => {
 });
 
 
-describe("standalone series creation", () => {
+describe("standalone series creation on the live canvas", () => {
   function openSeries() {
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
     fireEvent.click(screen.getByRole("button", { name: /Yeni seri/ }));
   }
-  it("creates an empty draft and starts its first chapter without another series selection", async () => {
-    const site = studio(); const count = site.articles.length;
+  it("opens an unsaved draft on the canvas, creates it on Save and starts its first chapter", async () => {
+    const site = studio(); const count = site.articles.length; const seriesCount = site.series.length;
     openSeries();
-    expect(document.activeElement).toBe(screen.getByLabelText("Yeni seri başlığı"));
-    fireEvent.change(screen.getByLabelText("Yeni seri başlığı"), { target: { value: "Mevsim defteri" } });
-    await click(screen.getByRole("button", { name: "Seriyi kaydet" }));
+    expect(screen.getByRole("region", { name: "Canlı sayfa tuvali" })).toBeTruthy();
+    expect(screen.queryByLabelText("Yeni seri başlığı")).toBeNull();
+    expect(site.series).toHaveLength(seriesCount);
+    fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Mevsim defteri" } });
+    await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
     const created = site.series.at(-1)!;
-    expect(created).toMatchObject({ title: "Mevsim defteri", status: "draft", articleSlugs: [] });
+    expect(site.series).toHaveLength(seriesCount + 1);
+    expect(created).toMatchObject({ title: "Mevsim defteri", slug: "mevsim-defteri", status: "draft", articleSlugs: [] });
     expect(site.articles).toHaveLength(count);
     expect(screen.getByRole("button", { name: "Sayfalar: Mevsim defteri" })).toBeTruthy();
     newWriting();
@@ -141,24 +144,29 @@ describe("standalone series creation", () => {
     await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
     expect(site.series.at(-1)!.articleSlugs).toEqual(["ilk-bolum"]);
   });
-  it("retains form content after save failure and permits retry", async () => {
-    const site = studio();
+  it("keeps the canvas draft after a failed save and creates it once on retry", async () => {
+    const site = studio(); const seriesCount = site.series.length;
     vi.spyOn(site.studio, "createSeries").mockRejectedValueOnce(new Error("offline"));
     openSeries();
-    fireEvent.change(screen.getByLabelText("Yeni seri başlığı"), { target: { value: "Yeniden dene" } });
-    await click(screen.getByRole("button", { name: "Seriyi kaydet" }));
-    expect((screen.getByLabelText("Yeni seri başlığı") as HTMLInputElement).value).toBe("Yeniden dene");
-    expect(screen.getByRole("alert").textContent).toContain("Seri oluşturulamadı");
-    await click(screen.getByRole("button", { name: "Seriyi kaydet" }));
+    fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Yeniden dene" } });
+    await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
+    expect(screen.getByRole("alert").textContent).toContain("Kaydedilemedi");
+    expect((screen.getByLabelText("Seri başlığı") as HTMLInputElement).value).toBe("Yeniden dene");
+    expect(site.series).toHaveLength(seriesCount);
+    await click(screen.getByRole("button", { name: /Sayfayı kaydet/ }));
+    expect(site.series).toHaveLength(seriesCount + 1);
     expect(site.series.at(-1)!.title).toBe("Yeniden dene");
   });
-  it("keeps dirty series edits when leaving is declined", () => {
+  it("keeps unsaved series edits when leaving is declined and discards an untouched draft", () => {
     const site = studio(); const count = site.series.length;
     openSeries();
-    fireEvent.change(screen.getByLabelText("Yeni seri başlığı"), { target: { value: "Kaybolmasın" } });
+    fireEvent.change(screen.getByLabelText("Seri başlığı"), { target: { value: "Kaybolmasın" } });
     vi.spyOn(window, "confirm").mockReturnValue(false);
-    fireEvent.click(screen.getByRole("button", { name: "Vazgeç" }));
-    expect((screen.getByLabelText("Yeni seri başlığı") as HTMLInputElement).value).toBe("Kaybolmasın");
+    fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
+    fireEvent.click(screen.getByRole("button", { name: site.series[0].title }));
+    expect((screen.getByLabelText("Seri başlığı") as HTMLInputElement).value).toBe("Kaybolmasın");
+    fireEvent.click(screen.getByRole("button", { name: "Değişiklikleri geri al" }));
+    expect(screen.queryByLabelText("Seri başlığı")).toBeNull();
     expect(site.series).toHaveLength(count);
   });
 });
