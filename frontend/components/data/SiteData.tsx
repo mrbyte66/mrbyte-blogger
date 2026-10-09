@@ -1,4 +1,5 @@
 "use client";
+import { articlePublishAction } from "../../lib/api/series-publication";
 import type { Input, Schema, Output } from "../../lib/api/contract";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -211,7 +212,7 @@ export function StudioDataProvider({ children }: { children: ReactNode }) {
         ({ data: dto, etag } = await api<ArticleEditDto>("PUT", `/studio/articles/${previous.id}`, { body: (body satisfies Input<"studioUpdateArticle">), ifMatch: previous.version ?? 0 }));
       }
       for (const step of articleActions(dto.status, dto.visibility, status, visibility)) {
-        const payload = step === "schedule" ? { action: step, scheduledAt: article.scheduledAt, timeZone: browserTimeZone() } : { action: step };
+        const payload = step === "publish" ? await articlePublishAction(seriesId) : step === "schedule" ? { action: step, scheduledAt: article.scheduledAt, timeZone: browserTimeZone() } : { action: step };
         ({ data: dto, etag } = await api<ArticleEditDto>("POST", `/studio/articles/${dto.id}/actions`, { body: (payload satisfies Input<"studioArticleAction">), ifMatch: etag ?? dto.version, idempotent: true }));
       }
       await reload();

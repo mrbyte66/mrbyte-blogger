@@ -1,6 +1,6 @@
 # Blog series
 
-Status: implemented as a browser-local frontend prototype. Domain and component contracts are documented in `../../frontend/docs/series.md`. Backend publication, account synchronization and SEO publication remain deferred.
+Status: V1 uses the Spring Boot API for publication and membership. The older prototype notes below remain historical; current publication behavior is described in the issue #47 section and `../api-contract.md`.
 
 ## Reader experience
 
@@ -31,3 +31,9 @@ The prototype uses existing stable article slugs as references and an ordered me
 The frontend includes three clearly labeled demonstration series. The AI/software series contains ten distinct sample articles; literature and culture use their existing example articles. Expanded fixtures upgrade only an exactly untouched original demo collection. User edits, custom series and intentional deletions must be preserved.
 
 Studio creates a series from a writing draft through the contextual series selector and inline canvas form (title/slug/description/cover/level). Series save selects the new record without leaving writing. Draft writing can be saved before publication; published first chapters activate new single-chapter series. Series support archive and reversible trash through the shared content-actions menu. Membership survives status changes; public chapter lists skip hidden writing.
+
+## First-chapter publication (issue #47, current API behavior)
+
+Studio tells the author “<series title> serisi de yayınlanacak” before publishing a chapter assigned to a draft series. The existing `publishSeries` action publishes both atomically. Studio fetches the series version after saving membership, preserving optimistic concurrency. Already-published series retain their status; archived series are not activated. Draft saves and scheduling do not activate a series.
+
+Public catalogs require a published series with a published, public chapter. Studio explains “yayında bölüm yok” when no such chapter exists; private, draft and scheduled chapters do not qualify. This API behavior supersedes the older prototype publication descriptions above.

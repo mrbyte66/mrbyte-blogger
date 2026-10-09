@@ -42,7 +42,10 @@ export function DocumentEditor({ navigation, initial, articles, series, isNew = 
   useEffect(() => { if (creatingSeries) seriesFormRef.current?.scrollIntoView({ block: "start", behavior: scrollBehavior() }); }, [creatingSeries]);
   const valid = parseDocumentDraft(draft);
   const missingBody = (status === "published" || status === "scheduled") && !canPublish;
-  const publishHint = canPublish ? "" : draft.kind === "article"
+  const selectedSeries = series.find((item) => item.id === seriesId);
+  const seriesPublishNote = draft.kind === "article" && draft.article.visibility !== "private" && selectedSeries?.status === "draft"
+    ? `${selectedSeries.title} serisi de yayınlanacak.` : "";
+  const publishHint = canPublish ? seriesPublishNote : draft.kind === "article"
     ? "Yayına almak için soldaki «Metin ve paragraflar» alanına en az bir paragraf yaz. Başlık ve özet tek başına yetmez."
     : "Seriyi yayına almak için en az bir bölüm ekle.";
   const [preview, setPreview] = useState(initial);
@@ -87,13 +90,14 @@ export function DocumentEditor({ navigation, initial, articles, series, isNew = 
     // Private writing is never live or planned: saving it takes the article off the site.
     const nextStatus: ContentStatus = draft.kind === "article" && draft.article.visibility === "private" && (requested === "published" || requested === "scheduled") ? "draft" : requested;
     const next: DocumentDraft = draft.kind === "article" ? { kind: "article", article: { ...draft.article, status: nextStatus, scheduledAt: nextStatus === "scheduled" ? draft.article.scheduledAt : undefined } } : { kind: "series", series: { ...draft.series, status: nextStatus as BlogSeries["status"] } };
+    const publishedSeriesNote = nextStatus === "published" ? seriesPublishNote : "";
     setSaving(true); setMessage("Kaydediliyor…");
     const saved = await onSave(next, draft.kind === "article" ? seriesId : undefined);
     setSaving(false);
     if (saved) {
       setDraft(next); setBaseline(structuredClone(next)); setSavedSeriesId(seriesId); onDirty(false);
       const privateNote = next.kind === "article" && next.article.visibility === "private" ? " Yazı özel: yalnız sen görebilirsin." : "";
-      setMessage((nextStatus === "scheduled" ? "Yayın planı kaydedildi. Sunucu yazıyı planlanan zamanda yayımlayacak." : nextStatus === "trashed" ? "Çöp kutusuna taşındı. İçerik işlemlerinden geri yükleyebilirsin." : nextStatus === "archived" ? "Arşivlendi; ziyaretçilerden gizlendi." : nextStatus === "draft" ? "Taslak kaydedildi; ziyaretçilerden gizli." : "Kaydedildi ve yayında.") + privateNote);
+      setMessage((nextStatus === "scheduled" ? "Yayın planı kaydedildi. Sunucu yazıyı planlanan zamanda yayımlayacak." : nextStatus === "trashed" ? "Çöp kutusuna taşındı. İçerik işlemlerinden geri yükleyebilirsin." : nextStatus === "archived" ? "Arşivlendi; ziyaretçilerden gizlendi." : nextStatus === "draft" ? "Taslak kaydedildi; ziyaretçilerden gizli." : "Kaydedildi ve yayında.") + privateNote + (publishedSeriesNote ? ` ${selectedSeries?.title} serisi de yayınlandı.` : ""));
     } else setMessage("");
   }
   function closeSeriesForm() {

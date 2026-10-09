@@ -240,6 +240,37 @@ class EditorialIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void firstChapterPublicationActivatesDraftSeriesWithFreshVersionAtomically() {
+        createOwner();
+        owner = ownerClient();
+        Response created = owner.command("/api/v1/studio/series", series("Mevsimler", "mevsimler", List.of(), List.of()), null);
+        Response chapter = create(with(with(article("İlkbahar", "ilkbahar", "Bahar geldi."),
+                "seriesPlacement", Map.of("seriesId", created.text("id"))),
+                "seriesVersions", List.of(version(created))));
+        Response currentSeries = owner.get("/api/v1/studio/series/" + created.id());
+        assertThat(currentSeries.version()).isGreaterThan(created.version());
+
+        Response stale = owner.command("/api/v1/studio/articles/" + chapter.id() + "/actions",
+                Map.of("action", "publish", "publishSeries", true, "seriesVersion", created.version()), chapter.etag());
+        assertThat(stale.status()).isEqualTo(412);
+        assertThat(owner.get("/api/v1/studio/articles/" + chapter.id()).text("status")).isEqualTo("draft");
+        assertThat(client().get("/api/v1/series/by-slug/mevsimler").status()).isEqualTo(404);
+
+        Response published = owner.command("/api/v1/studio/articles/" + chapter.id() + "/actions",
+                Map.of("action", "publish", "publishSeries", true, "seriesVersion", currentSeries.version()), chapter.etag());
+        assertThat(published.status()).as(String.valueOf(published.json())).isEqualTo(200);
+        assertThat(owner.get("/api/v1/studio/series/" + created.id()).text("status")).isEqualTo("published");
+        assertThat(client().get("/api/v1/series/by-slug/mevsimler").json().get("chapterCount").asInt()).isEqualTo(1);
+
+        Response latestSeries = owner.get("/api/v1/studio/series/" + created.id());
+        Response second = create(with(with(article("Yaz", "yaz", "Yaz geldi."),
+                "seriesPlacement", Map.of("seriesId", created.text("id"))),
+                "seriesVersions", List.of(version(latestSeries))));
+        assertThat(act(second, "publish").status()).isEqualTo(200);
+        assertThat(client().get("/api/v1/series/by-slug/mevsimler").json().get("chapterCount").asInt()).isEqualTo(2);
+    }
+
+    @Test
     void membersAndVisitorsCannotUseStudio() {
         createOwner();
         createMember("okur@example.test", "okur-parolasi-123", true);
