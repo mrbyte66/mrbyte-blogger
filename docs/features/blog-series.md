@@ -37,3 +37,7 @@ Studio creates a series from a writing draft through the contextual series selec
 Studio tells the author “<series title> serisi de yayınlanacak” before publishing a chapter assigned to a draft series. The existing `publishSeries` action publishes both atomically. Studio fetches the series version after saving membership, preserving optimistic concurrency. Already-published series retain their status; archived series are not activated. Draft saves and scheduling do not activate a series.
 
 Public catalogs require a published series with a published, public chapter. Studio explains “yayında bölüm yok” when no such chapter exists; private, draft and scheduled chapters do not qualify. This API behavior supersedes the older prototype publication descriptions above.
+
+## Direct series creation (#48)
+
+Studio's page navigator offers “Yeni seri” beside “Yeni yazı”. Both paths share the existing series form (title, slug, summary, cover, ongoing flag); difficulty remains removed. Standalone creation saves an empty draft and opens its series editor. Choosing “Yeni yazı” while editing a series preselects that series for the new chapter, without creating membership until the article is saved. Unsaved form edits require confirmation before leaving; failed saves preserve inputs and allow retry. The shared form blocks duplicate submissions, uses existing theme tokens and collapses to one column on mobile.

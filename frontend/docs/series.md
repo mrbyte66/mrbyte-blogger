@@ -31,3 +31,7 @@ Series authoring now lives in the shared Studio page navigator and `SeriesProper
 ## First chapter publication
 
 Studio uses the existing atomic article action to activate a selected draft series on immediate publication, with a visible notice in the publication menu. The series version is refreshed after chapter membership is saved. Published series are not reactivated; ordinary draft saves and scheduled publication do not activate a series. Series information explains why published series without public published chapters are absent from the visitor catalog.
+
+## Direct series creation (#48)
+
+Studio's page navigator offers “Yeni seri” beside “Yeni yazı”. Both paths share the existing series form (title, slug, summary, cover, ongoing flag); difficulty remains removed. Standalone creation saves an empty draft and opens its series editor. Choosing “Yeni yazı” while editing a series preselects that series for the new chapter, without creating membership until the article is saved. Unsaved form edits require confirmation before leaving; failed saves preserve inputs and allow retry. The shared form blocks duplicate submissions, uses existing theme tokens and collapses to one column on mobile.

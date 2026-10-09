@@ -28,7 +28,7 @@ export function DocumentEditor({ navigation, initial, articles, series, isNew = 
   const [mobile, setMobile] = useState(false);
   const [editing, setEditing] = useState(true);
   const [message, setMessage] = useState("");
-  const initialSeriesId = initial.kind === "article" ? series.find((s) => s.status !== "trashed" && s.articleSlugs.includes(initial.article.slug))?.id ?? null : null;
+  const initialSeriesId = initial.kind === "article" ? initial.article.seriesId ?? series.find((s) => s.status !== "trashed" && s.articleSlugs.includes(initial.article.slug))?.id ?? null : null;
   const [seriesId, setSeriesId] = useState(initialSeriesId);
   const [savedSeriesId, setSavedSeriesId] = useState(initialSeriesId);
   const [creatingSeries, setCreatingSeries] = useState(false);

@@ -4,24 +4,32 @@ import { createSeries, slugifySeriesTitle, validateSeries, type BlogSeries } fro
 import { TextField } from "./ArticleProperties";
 import { ImageUpload } from "./ImageUpload";
 
-export function InlineSeriesForm({ onSave, onCancel, onDirty }: { onSave: (series: BlogSeries) => Promise<boolean>; onCancel: () => void; onDirty: (dirty: boolean) => void }) {
+export function InlineSeriesForm({ onSave, onCancel, onDirty, context = "article" }: { context?: "article" | "standalone"; onSave: (series: BlogSeries) => Promise<boolean>; onCancel: () => void; onDirty: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState(createSeries);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [customSlug, setCustomSlug] = useState(false);
   const headingId = useId();
   const root = useRef<HTMLElement>(null);
   useEffect(() => { root.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true }); }, []);
   const valid = !!validateSeries([draft]);
   function update(next: BlogSeries) { setDraft(next); onDirty(true); }
-  return <section ref={root} className="inline-series-form" aria-labelledby={headingId}>
-    <header><div><span className="studio-eyebrow">YAZININ SERİSİ</span><h2 id={headingId}>Yeni bir seri başlat</h2><p>Kaydettiğinde seri seçilir; yazını düzenlemeye devam edersin.</p></div><button type="button" onClick={onCancel} aria-label="Yeni seri formunu kapat">×</button></header>
-    <div className="inline-series-fields">
+  async function save() {
+    if (!valid || savingRef.current) return;
+    savingRef.current = true; setSaving(true);
+    try { if (await onSave(draft)) onDirty(false); }
+    finally { savingRef.current = false; setSaving(false); }
+  }
+  return <section aria-busy={saving} ref={root} className="inline-series-form" aria-labelledby={headingId}>
+    <header><div><span className="studio-eyebrow">{context === "standalone" ? "YENİ SERİ" : "YAZININ SERİSİ"}</span><h2 id={headingId}>Yeni bir seri başlat</h2><p>{context === "standalone" ? "Bir konuya yer aç. Bölümlerini sonra ekleyebilirsin." : "Kaydettiğinde seri seçilir; yazını düzenlemeye devam edersin."}</p></div><button type="button" disabled={saving} onClick={onCancel} aria-label="Yeni seri formunu kapat">×</button></header>
+    <fieldset disabled={saving} className="inline-series-fields">
       <TextField label="Yeni seri başlığı" value={draft.title} onChange={(title) => update({ ...draft, title, slug: customSlug ? draft.slug : slugifySeriesTitle(title) })} />
       <TextField label="Yeni seri bağlantısı" value={draft.slug} onChange={(slug) => { setCustomSlug(true); update({ ...draft, slug }); }} />
       <div className="settings-full"><TextField label="Yeni seri açıklaması" multiline value={draft.summary} onChange={(summary) => update({ ...draft, summary })} /></div>
       <div className="settings-full"><ImageUpload label="Kapak görseli yükle" onUploaded={(coverImage) => update({ ...draft, coverImage })} /></div>
       {draft.coverImage && <figure className="inline-series-cover settings-full"><img src={draft.coverImage} alt="Seri kapağı önizlemesi" /><figcaption>Kapak önizlemesi</figcaption></figure>}
       <label className="document-checkbox"><input type="checkbox" checked={draft.ongoing} onChange={(e) => update({ ...draft, ongoing: e.target.checked })} />Devam eden seri</label>
-    </div>
-    <footer><span>Seri taslak olarak oluşur; en az bir bölümü yayındayken seriyi ayrıca yayımlarsın.</span><button className="studio-secondary" onClick={onCancel}>Vazgeç</button><button className="studio-primary" disabled={!valid} onClick={async () => { if (await onSave(draft)) onDirty(false); }}>Seriyi kaydet</button></footer>
+    </fieldset>
+    <footer><span>Seri taslak olarak kaydedilir. İlk bölümünü yayınladığında seri de yayına alınır.</span><button className="studio-secondary" disabled={saving} onClick={onCancel}>Vazgeç</button><button className="studio-primary" disabled={!valid || saving} onClick={save}>{saving ? "Kaydediliyor…" : "Seriyi kaydet"}</button></footer>
   </section>;
 }
