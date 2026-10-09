@@ -5,12 +5,14 @@
 #   local-refresh             In Test işlerinden seçim menüsü (veya güncel main'e dön)
 #   local-refresh main        güncel origin/main'i derleyip çalıştırır
 #   local-refresh pr N        PR #N'nin son commitini geçici worktree'de derleyip çalıştırır
+#                             (main'de olmayan migration varsa uyarır ve onay ister; etkileşimsiz: --migration-onay)
 #   local-refresh durum       çalışan imajın kaynağını ve commitini gösterir
 #
 # Ayrıntı: deploy/runbooks/local-stack.md
 set -euo pipefail
 
-REPO=$(cd "$(dirname "$0")/.." && pwd)
+REPO=${SATIR_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
+MIGRATIONS=backend/src/main/resources/db/migration
 PROJECT=${SATIR_LOCAL_PROJECT:-satir-local}
 WEB_PORT=${LOCAL_WEB_PORT:-3010}
 BOARD_OWNER=${SATIR_BOARD_OWNER:-mrbyte66}
@@ -23,7 +25,7 @@ fi
 
 die() { printf 'Hata: %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "'$1' bulunamadı. $2"; }
-usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 label_of() { # container label, empty when the container or label is missing
   { docker inspect --format "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null || true; } | sed 's/<no value>//'
@@ -74,13 +76,54 @@ refresh_main() {
   refresh "main" "$(git -C "$REPO" rev-parse origin/main)"
 }
 
+# Migration files the revision adds or changes compared with the base (main). Flyway applies them to
+# the shared local database on start; main's backend then refuses the newer/changed history.
+pending_migrations() {
+  git -C "$REPO" diff --name-only --no-renames --diff-filter=AM "$1" "$2" -- "$MIGRATIONS"
+}
+
+# Explains the risk and asks before continuing. Returns non-zero when the owner declines.
+# Answers: y = back up the database first, e = continue without a backup, anything else = stop.
+confirm_migrations() {
+  local list=$1 assume_yes=${2:-0} answer backup
+  [ -n "$list" ] || return 0
+  backup="$HOME/satir-local-yedek-$(date +%Y%m%d-%H%M%S).dump"
+  {
+    echo "Uyarı: bu PR main'de olmayan veya main'den farklı veritabanı migration'ları içeriyor:"
+    printf '%s\n' "$list" | sed 's|^.*/|  - |'
+    echo "Backend açılışta bunları yerel veritabanına uygular ve bu geri alınmaz. Sonra 'local-refresh main'"
+    echo "ile dönünce main bu şemayı tanımaz ve backend açılmayabilir (PR merge edilene kadar)."
+    echo "Geri dönüş yolu: devam etmeden önce yedek al; main'e dönerken yedeği geri yükle:"
+    echo "  docker exec ${PROJECT}-postgres-1 pg_dump -U satir -Fc satir > $backup"
+    echo "  docker stop ${PROJECT}-backend-1"
+    echo "  docker exec ${PROJECT}-postgres-1 psql -U satir -d satir -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'"
+    echo "  docker exec -i ${PROJECT}-postgres-1 pg_restore -U satir -d satir --no-owner < $backup"
+    echo "  local-refresh main"
+  } >&2
+  if [ "$assume_yes" = 1 ]; then echo "Onay --migration-onay ile verildi; yedek alınmadı." >&2; return 0; fi
+  # LOCAL_REFRESH_INTERACTIVE=1 lets tests answer through a pipe.
+  [ -t 0 ] || [ "${LOCAL_REFRESH_INTERACTIVE:-}" = 1 ] || { echo "Onay için etkileşimli terminal gerekli. Bilerek devam etmek için: local-refresh pr N --migration-onay" >&2; return 1; }
+  printf 'Devam? [y] yedek alıp devam  [e] yedeksiz devam  [H] vazgeç: ' >&2
+  read -r answer || answer=""
+  case "$answer" in
+    y|Y)
+      docker exec "${PROJECT}-postgres-1" pg_dump -U satir -Fc satir > "$backup" || { rm -f "$backup"; echo "Yedek alınamadı; yığın değişmedi." >&2; return 1; }
+      echo "Yedek alındı: $backup" >&2 ;;
+    e|E) ;;
+    *) echo "Vazgeçildi; yığın değişmedi." >&2; return 1 ;;
+  esac
+}
+
 refresh_pr() {
-  local number=$1 revision title=""
+  local number=$1 option=${2:-} revision title="" assume_yes=0
   case "$number" in ''|*[!0-9]*) die "PR numarası sayı olmalı: local-refresh pr 43" ;; esac
+  case "$option" in '') ;; --migration-onay) assume_yes=1 ;; *) die "Bilinmeyen seçenek: $option" ;; esac
+  git -C "$REPO" fetch --quiet origin main || die "origin/main çekilemedi."
   git -C "$REPO" fetch --quiet origin "pull/$number/head" || die "PR #$number bulunamadı veya çekilemedi."
   revision=$(git -C "$REPO" rev-parse FETCH_HEAD)
   command -v gh >/dev/null 2>&1 && title=$(cd "$REPO" && gh pr view "$number" --json title,state -q '"\(.title) [\(.state)]"' 2>/dev/null || true)
   [ -n "$title" ] && echo "PR #$number: $title"
+  confirm_migrations "$(pending_migrations origin/main "$revision")" "$assume_yes" || exit 1
   refresh "PR #$number" "$revision"
   echo "Güncel main'e dönmek için: local-refresh main"
 }
@@ -128,10 +171,12 @@ menu() {
   refresh_pr "$pr"
 }
 
+# Sourcing (tests) only defines the functions.
+[ "${BASH_SOURCE[0]}" = "$0" ] || return 0
 case "${1:-}" in
   '') menu ;;
   main) refresh_main ;;
-  pr) refresh_pr "${2:-}" ;;
+  pr) refresh_pr "${2:-}" "${3:-}" ;;
   durum|status) status ;;
   -h|--help|yardim) usage ;;
   *) usage; exit 2 ;;

@@ -63,3 +63,12 @@ jobs:
         run: npx vitest run
       - name: Build
         run: npm run build
+
+  scripts:
+    name: Scripts (local-refresh)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Migration guard tests
+        run: bash scripts/tests/local-refresh-migrations.sh
