@@ -44,6 +44,11 @@ html[data-theme=dark] .reading-tools :is(small,.reading-hint,.reading-instructio
 html[data-theme=dark] .reading-tools :is(.reading-text-button,.reading-quote-link,.reading-mark-meta button) { color:#c4dfb5; }
 
 .code-block { --selection-ink:#b8f274; }
+html[data-theme=dark] .studio :is(.cover-preview,.cover-search-row input,.cover-candidate-pick,.cover-chosen) { background:var(--surface); color:var(--ink); border-color:var(--line); }
+html[data-theme=dark] .studio :is(.cover-search-error,.upload-status.is-error) { color:#ffc1d1; background:#3c2530; border-color:#966074; }
+html[data-theme=dark] .studio .upload-status.is-done { color:#e0f0d4; background:#334333; border-color:#64775d; }
+html[data-theme=dark] .studio .cover-remove { color:#ffc1d1; }
+html[data-theme=dark] .studio .cover-candidate-pick span { background:rgba(32,38,34,.92); color:var(--ink); }
 html[data-theme=dark] .studio .studio-remove { color:#ffc1d1; background:#3c2530; border-color:#966074; }
 html[data-theme=dark] .studio .studio-remove:hover:not(:disabled) { background:#55303e; border-color:#e89fb4; }
 html[data-theme=dark] .studio .starter-visual { color:#e8f3dd; background:#354334; border-color:#64775d; }

@@ -319,7 +319,25 @@ html[data-theme=dark] .studio .page-menu-list button[aria-current=page] { backgr
 .inline-series-form { margin-top:22px; padding:24px; border:1px solid var(--line); border-radius:12px; background:var(--panel); scroll-margin-top:100px; }
 .inline-series-form>header { display:flex; justify-content:space-between; gap:16px; margin-bottom:24px; }.inline-series-form h2 { font-size:23px; font-weight:500; letter-spacing:-.03em; margin:6px 0 8px; }.inline-series-form header p { color:var(--muted); font-size:13px; line-height:1.7; margin:0; }.inline-series-form header>button { font-size:24px; align-self:start; width:44px; }
 .inline-series-fields { display:grid; grid-template-columns:1fr 1fr; gap:0 18px; }.inline-series-form .studio-field { margin-bottom:18px; }.inline-series-form footer { display:flex; flex-wrap:wrap; align-items:center; gap:10px; border-top:1px solid var(--line); padding-top:18px; }.inline-series-form footer>span { flex:1; font-size:12px; color:var(--muted); line-height:1.7; min-width:140px; }
-.inline-series-cover { margin:0 0 20px; }.inline-series-cover img { display:block; max-width:100%; max-height:220px; border-radius:8px; object-fit:cover; }.inline-series-cover figcaption { font-size:12px; margin-top:8px; color:var(--muted); }
+/* Image upload: button row (with optional actions beside it), result message right below. */
+.studio-upload { display:grid; gap:8px; min-width:0; margin-bottom:20px; }
+.studio-upload-row { display:flex; flex-wrap:wrap; gap:8px; min-width:0; }
+.studio-upload-row>* { flex:1 1 130px; min-width:0; cursor:pointer; padding:11px 14px; }
+.studio-upload-row>label[aria-disabled=true] { cursor:progress; opacity:.7; }
+.studio-upload:focus-within .studio-upload-row>label { outline:2px solid var(--ink); outline-offset:2px; }
+.upload-status { margin:0; font-size:13px; line-height:1.6; padding:8px 12px; border-radius:6px; border:1px solid transparent; }
+.upload-status:empty,.upload-status.is-idle { display:none; }
+.upload-status.is-busy { color:var(--muted); border-color:var(--line); }
+.upload-status.is-done { color:#2f5a2a; background:#eef6e6; border-color:#c7dfb8; }
+.upload-status.is-error { color:#8a4035; background:#fdf8f5; border-color:#d8b8ae; }
+/* Cover field: preview → change/remove → note → online search (same in article, series and inline series form). */
+.cover-field { display:grid; gap:12px; margin-bottom:24px; min-width:0; }
+.cover-field .studio-upload { margin-bottom:0; }
+.cover-preview { margin:0; aspect-ratio:16/9; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#eef1e8; display:grid; place-items:center; }
+.cover-preview img { display:block; width:100%; height:100%; object-fit:cover; }
+.cover-preview-empty { padding:16px; font-size:13px; line-height:1.6; color:var(--muted); text-align:center; }
+.cover-remove { color:#8a4035; }
+.cover-note { margin:0; font-size:12px; line-height:1.7; color:var(--muted); }
 .page-menu-list h2 { font:600 16px/1.5 'DM Sans',sans-serif; text-transform:none; letter-spacing:-.02em; color:var(--ink); margin:18px 10px 7px; padding-bottom:8px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; }.page-menu-list h2 span { color:var(--muted); font-size:12px; }
 .page-menu-list section button { display:flex; justify-content:space-between; align-items:center; gap:10px; }.page-menu-list section button>span { min-width:0; }.page-menu-list section button small { font-size:11px; color:var(--muted); flex-shrink:0; }
 .page-menu-filter { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:var(--muted); padding-top:12px; }.page-menu-filter select { border:0; border-radius:6px; font:13px/1.5 'DM Sans',sans-serif; background:var(--surface,#f3f5ef); color:var(--ink); padding:8px 10px; }
@@ -348,8 +366,9 @@ html[data-theme=dark] .studio .studio-state.status-published { color:#bee69d; }h
 
 .document-actions .document-actions-hint { margin:2px 12px 8px; padding:8px 10px; border-radius:6px; background:#f6efdc; color:#6b4f12; font-size:12.5px; }
 /* Online cover search (Studio cover panel). Grid cells shrink to the inspector width; no horizontal overflow at 390px. */
-.cover-search { border-top:1px solid var(--line); padding-top:20px; margin-bottom:24px; min-width:0; }
-.cover-search-label { display:block; font-size:15px; font-weight:500; margin-bottom:9px; }
+.cover-search { border-top:1px solid var(--line); padding-top:18px; margin-top:8px; min-width:0; }
+.cover-search-title { font-size:15px; font-weight:600; margin:0 0 10px; }
+.cover-search-label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
 .cover-search-row { display:flex; gap:8px; min-width:0; }
 .cover-search-row input { flex:1; min-width:0; border:1px solid #cbd5c5; border-radius:6px; padding:11px 13px; font:16px/1.5 'DM Sans',sans-serif; color:var(--ink); background:#fafbf7; }
 .cover-search-row .studio-secondary { flex:0 0 auto; padding:11px 16px; }

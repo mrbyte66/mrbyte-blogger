@@ -63,12 +63,14 @@ export function CoverSearch({ resource, privateContent = false, suggestedQuery, 
   const apply = useRef(onSelected);
   useEffect(() => { apply.current = onSelected; });
   const inputId = useId();
+  const headingId = useId();
   useEffect(() => {
     if (current !== expected.current) { generation.current.select++; expected.current = current; setSelecting(null); }
   }, [current]);
   useEffect(() => { const counters = generation.current; return () => { counters.search++; counters.select++; }; }, []);
   if (!studio) return null;
-  if (!resource) return <p className="property-note">Çevrimiçi kapak aramak için önce sayfayı kaydet.</p>;
+  const heading = <h3 id={headingId} className="cover-search-title">Çevrimiçi kapak bul</h3>;
+  if (!resource) return <section className="cover-search" aria-labelledby={headingId}>{heading}<p className="cover-note">Çevrimiçi kapak aramak için önce kaydet.</p></section>;
 
   const term = query.trim();
   async function run() {
@@ -104,9 +106,10 @@ export function CoverSearch({ resource, privateContent = false, suggestedQuery, 
   }
 
   const tooLong = term.length > MAX_QUERY;
-  return <section className="cover-search" aria-label="Çevrimiçi kapak ara">
+  return <section className="cover-search" aria-labelledby={headingId}>
+    {heading}
     <form className="cover-search-form" role="search" onSubmit={(event) => { event.preventDefault(); void run(); }}>
-      <label className="cover-search-label" htmlFor={inputId}>Çevrimiçi kapak ara</label>
+      <label className="cover-search-label" htmlFor={inputId}>Arama kelimeleri</label>
       <div className="cover-search-row">
         <input id={inputId} type="search" value={query} maxLength={MAX_QUERY + 20} placeholder="örn. sessiz kütüphane" onChange={(event) => setQuery(event.target.value)} aria-invalid={tooLong || undefined} />
         <button type="submit" className="studio-secondary" disabled={!term || tooLong || search.kind === "searching"}>{search.kind === "searching" ? "Aranıyor…" : "Ara"}</button>
@@ -138,15 +141,18 @@ export function CoverSearch({ resource, privateContent = false, suggestedQuery, 
   </section>;
 }
 
-/** Shared cover controls: preview, own upload, remove (falls back to the sample cover) and online search. */
+/**
+ * Shared cover controls for articles, series and the inline series form, in one fixed order:
+ * preview, change/remove side by side (upload result right below), a short note, then online search.
+ */
 export function CoverField({ cover, resource, privateContent, suggestedQuery, previewAlt, onChange }: {
   cover?: string; resource: CoverResource | null; privateContent?: boolean; suggestedQuery: string; previewAlt: string; onChange: (url: string | undefined) => void;
 }) {
-  return <>
-    {cover && <figure className="inline-series-cover"><img src={cover} alt={previewAlt} /></figure>}
-    <ImageUpload label={cover ? "Kapağı değiştir" : "Kapak görseli yükle"} onUploaded={onChange} />
-    {cover && <button type="button" className="studio-remove" onClick={() => onChange(undefined)}>Kapağı kaldır</button>}
-    <p className="property-note">JPEG veya PNG, en fazla 10 MiB. Kapak seçilmezse içeriğe uygun örnek kapak gösterilir; kapak hiçbir zaman sen seçmeden değişmez.</p>
+  return <div className="cover-field">
+    <figure className="cover-preview">{cover ? <img src={cover} alt={previewAlt} /> : <figcaption className="cover-preview-empty">Kapak seçilmedi. Ziyaretçiye içeriğe uygun örnek kapak gösterilir.</figcaption>}</figure>
+    <ImageUpload label={cover ? "Kapağı değiştir" : "Kapak görseli yükle"} onUploaded={onChange}
+      actions={cover && <button type="button" className="studio-secondary cover-remove" onClick={() => onChange(undefined)}>Kapağı kaldır</button>} />
+    <p className="cover-note">JPEG veya PNG, en fazla 10 MiB. Kapak yalnız sen değiştirdiğinde değişir.</p>
     <CoverSearch key={resource?.id ?? "unsaved"} resource={resource} privateContent={privateContent} suggestedQuery={suggestedQuery} current={cover} onSelected={onChange} />
-  </>;
+  </div>;
 }

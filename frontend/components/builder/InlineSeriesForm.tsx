@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createSeries, slugifySeriesTitle, validateSeries, type BlogSeries } from "../../lib/series/model";
 import { TextField } from "./ArticleProperties";
-import { ImageUpload } from "./ImageUpload";
+import { CoverField } from "./CoverSearch";
 
 export function InlineSeriesForm({ onSave, onCancel, onDirty }: { onSave: (series: BlogSeries) => Promise<boolean>; onCancel: () => void; onDirty: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState(createSeries);
@@ -26,8 +26,7 @@ export function InlineSeriesForm({ onSave, onCancel, onDirty }: { onSave: (serie
       <TextField label="Yeni seri başlığı" value={draft.title} onChange={(title) => update({ ...draft, title, slug: customSlug ? draft.slug : slugifySeriesTitle(title) })} />
       <TextField label="Yeni seri bağlantısı" value={draft.slug} onChange={(slug) => { setCustomSlug(true); update({ ...draft, slug }); }} />
       <div className="settings-full"><TextField label="Yeni seri açıklaması" multiline value={draft.summary} onChange={(summary) => update({ ...draft, summary })} /></div>
-      <div className="settings-full"><ImageUpload label="Kapak görseli yükle" onUploaded={(coverImage) => update({ ...draft, coverImage })} /></div>
-      {draft.coverImage && <figure className="inline-series-cover settings-full"><img src={draft.coverImage} alt="Seri kapağı önizlemesi" /><figcaption>Kapak önizlemesi</figcaption></figure>}
+      <div className="settings-full"><CoverField cover={draft.coverImage} resource={null} suggestedQuery={draft.title} previewAlt="Seri kapağı önizlemesi" onChange={(coverImage) => update({ ...draft, coverImage })} /></div>
       <label className="document-checkbox"><input type="checkbox" checked={draft.ongoing} onChange={(e) => update({ ...draft, ongoing: e.target.checked })} />Devam eden seri</label>
     </fieldset>
     <footer><span>Seri taslak olarak kaydedilir. İlk bölümünü yayınladığında seri de yayına alınır.</span><button className="studio-secondary" disabled={saving} onClick={onCancel}>Vazgeç</button><button className="studio-primary" disabled={!valid || saving} onClick={save}>{saving ? "Kaydediliyor…" : "Seriyi kaydet"}</button></footer>
