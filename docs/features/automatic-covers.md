@@ -8,7 +8,8 @@ Yazılar penceresi iki sütunlu orta boy kapaklı kartlar kullanır; dar tuvalde
 
 Yazı ve seri editöründe “Kapak görseli” alanı ortak `CoverField` bileşenini kullanır (`frontend/components/builder/CoverSearch.tsx`):
 
-- Mevcut kapak önizlemesi, kendi görselini yükleme (JPEG/PNG, en fazla 10 MiB) ve “Kapağı kaldır”. Kaldırılan kapak `mode:"auto"` olarak kaydedilir ve içeriğe uygun örnek kapak gösterilir.
+- Düzen (#58), yazı, seri ve satır içi seri formunda aynı: üstte 16:9 kapak önizlemesi (kapak yoksa “örnek kapak gösterilir” notlu boş alan); altında yan yana “Kapağı değiştir/Kapak görseli yükle” ve “Kapağı kaldır”; hemen altında yükleme sonucu (“Görsel yüklendi.” yeşil, hata kırmızı kutu); küçük JPEG/PNG notu; en altta ayrı başlıklı “Çevrimiçi kapak bul”. Koyu temada arama kutusu, sonuç kartları ve mesajlar tema renklerini kullanır; gizli dosya girdisine klavye odağı yükleme düğmesinde görünür. Ekran görüntüleri: `frontend/docs/visual-history/cover-panel-58-*.jpg`.
+- Kendi görselini yükleme (JPEG/PNG, en fazla 10 MiB) ve “Kapağı kaldır”. Kaldırılan kapak `mode:"auto"` olarak kaydedilir ve içeriğe uygun örnek kapak gösterilir.
 - Çevrimiçi arama yalnız kaydedilmiş yazı/seride açılır (`POST /api/v1/studio/cover-jobs`). Sağlayıcıya yalnız sahibin kutuya yazdığı kelimeler gider. Herkese açık yazı ve serilerde kutu başlıkla önceden doldurulur; özel yazıda boş gelir ve başlık hiçbir zaman gönderilmez.
 - Sonuçlar 4:3 önizleme kartlarında gösterilir. Kartın seçme düğmesi yalnız görseli ve “Seç” etiketini içerir; fotoğrafçı, kaynak ve lisans bağlantıları düğmenin dışında, kardeş öğe olarak durur. “Pexels” bağlantısı sonuç listesinin üstündedir. Yalnız `https:` adresleri bağlantı olarak çizilir.
 - Seçim `POST /api/v1/studio/cover-jobs/{id}/select` ile görselin yerel kopyasını ve atfını saklar; dönen medya adresi taslağa `cover:{mode:"manual",assetId}` olarak eklenir. Yayına yansıması için sayfa kaydedilir. Seçilen kapağın kaynağı panelde gösterilir.

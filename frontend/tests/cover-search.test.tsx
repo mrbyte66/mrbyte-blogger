@@ -27,7 +27,7 @@ function open(title: string | RegExp, site = new MemorySite()) {
   fireEvent.click(screen.getByRole("button", { name: "Kapak görseli" }));
   return site;
 }
-const searchBox = () => screen.getByRole("searchbox", { name: "Çevrimiçi kapak ara" });
+const searchBox = () => screen.getByRole("searchbox", { name: "Arama kelimeleri" });
 async function searchFor(query: string) {
   fireEvent.change(searchBox(), { target: { value: query } });
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Ara" })); });
@@ -154,7 +154,7 @@ describe("online cover search in the Studio cover panel", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Sayfalar:/ }));
     fireEvent.click(screen.getByRole("button", { name: /Yeni yazı/ }));
     fireEvent.click(screen.getByRole("button", { name: "Kapak görseli" }));
-    expect(screen.getByText("Çevrimiçi kapak aramak için önce sayfayı kaydet.")).toBeTruthy();
+    expect(screen.getByText("Çevrimiçi kapak aramak için önce kaydet.")).toBeTruthy();
     expect(screen.queryByRole("searchbox")).toBeNull();
   });
 });
